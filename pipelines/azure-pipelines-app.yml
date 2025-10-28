@@ -106,8 +106,8 @@ jobs:
         run: |
           source outputs/infra-outputs.txt
 
-          # Deployment
-          sed -i "s|<ACR_NAME>|${{ env.ACR_NAME }}|g" app/k8s/deployment.yaml
+          # Deployment - use dynamic image tag
+          sed -i "s|image: acrwizdev.azurecr.io/guestbook:.*|image: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.image_tag }}|g" app/k8s/deployment.yaml
           sed -i "s|<MONGO_VM_IP>|$MONGO_VM_IP|g" app/k8s/deployment.yaml
 
           cat app/k8s/deployment.yaml

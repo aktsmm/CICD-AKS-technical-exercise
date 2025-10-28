@@ -131,8 +131,8 @@ jobs:
 
             - name: Replace Placeholders in K8s Manifests
               run: |
-                  # Deployment
-                  sed -i "s|<ACR_NAME>|${{ env.ACR_NAME }}|g" app/k8s/deployment.yaml
+                  # Deployment - use dynamic image tag from build
+                  sed -i "s|image: acrwizdev.azurecr.io/guestbook:.*|image: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.image_tag }}|g" app/k8s/deployment.yaml
                   sed -i "s|<MONGO_VM_IP>|${{ steps.infra.outputs.mongo_ip }}|g" app/k8s/deployment.yaml
 
                   echo "=== Updated Deployment ==="
