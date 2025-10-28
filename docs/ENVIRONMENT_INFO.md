@@ -1,7 +1,7 @@
 # 環境情報 - Wiz Technical Exercise
 
-**作成日**: 2025年10月29日  
-**最終更新**: 2025年10月29日  
+**作成日**: 2025 年 10 月 29 日  
+**最終更新**: 2025 年 10 月 29 日  
 **プロジェクト**: Wiz Technical Exercise - Cloud Security Demo
 
 ---
@@ -25,13 +25,13 @@
 
 ### 基本情報
 
-| 項目 | 値 |
-|------|-----|
-| **サブスクリプション名** | Visual Studio Enterprise |
-| **サブスクリプションID** | `832c4080-181c-476b-9db0-b3ce9596d40a` |
-| **テナントID** | `04879edd-d806-4f5d-86b8-d3a171c883fa` |
-| **リージョン** | Japan East |
-| **リソースグループ** | `rg-wiz-exercise` |
+| 項目                      | 値                                     |
+| ------------------------- | -------------------------------------- |
+| **サブスクリプション名**  | Visual Studio Enterprise               |
+| **サブスクリプション ID** | `832c4080-181c-476b-9db0-b3ce9596d40a` |
+| **テナント ID**           | `04879edd-d806-4f5d-86b8-d3a171c883fa` |
+| **リージョン**            | Japan East                             |
+| **リソースグループ**      | `rg-wiz-exercise`                      |
 
 ### 確認コマンド
 
@@ -46,14 +46,14 @@ az group show --name rg-wiz-exercise
 
 ### リソース一覧
 
-| リソース名 | タイプ | 用途 | 状態 |
-|----------|--------|------|------|
-| **aks-wiz-dev** | AKS Cluster | Kubernetesクラスター | ✅ Running |
-| **acrwizdev** | Container Registry | Dockerイメージ管理 | ✅ Active |
-| **vm-mongo-dev** | Virtual Machine | MongoDBサーバー | ✅ Running |
-| **vnet-wiz-dev** | Virtual Network | ネットワーク基盤 | ✅ Active |
-| **log-wiz-dev** | Log Analytics | 監視・ログ収集 | ✅ Active |
-| **stwizdevdacheo6jrka7w** | Storage Account | バックアップストレージ | ✅ Active |
+| リソース名                | タイプ             | 用途                   | 状態       |
+| ------------------------- | ------------------ | ---------------------- | ---------- |
+| **aks-wiz-dev**           | AKS Cluster        | Kubernetes クラスター  | ✅ Running |
+| **acrwizdev**             | Container Registry | Docker イメージ管理    | ✅ Active  |
+| **vm-mongo-dev**          | Virtual Machine    | MongoDB サーバー       | ✅ Running |
+| **vnet-wiz-dev**          | Virtual Network    | ネットワーク基盤       | ✅ Active  |
+| **log-wiz-dev**           | Log Analytics      | 監視・ログ収集         | ✅ Active  |
+| **stwizdevdacheo6jrka7w** | Storage Account    | バックアップストレージ | ✅ Active  |
 
 ### リソース構成図
 
@@ -126,33 +126,33 @@ External Access:
 
 ### Virtual Network
 
-| 項目 | 値 |
-|------|-----|
-| **名前** | vnet-wiz-dev |
-| **アドレス空間** | 10.0.0.0/16 |
-| **リージョン** | Japan East |
+| 項目             | 値           |
+| ---------------- | ------------ |
+| **名前**         | vnet-wiz-dev |
+| **アドレス空間** | 10.0.0.0/16  |
+| **リージョン**   | Japan East   |
 
 ### サブネット構成
 
-| サブネット名 | アドレス範囲 | 用途 | 接続リソース |
-|------------|------------|------|------------|
-| **snet-aks** | 10.0.1.0/24 | AKSノード | AKSクラスター (2ノード) |
-| **snet-vm** | 10.0.2.0/24 | 仮想マシン | MongoDB VM |
+| サブネット名 | アドレス範囲 | 用途       | 接続リソース              |
+| ------------ | ------------ | ---------- | ------------------------- |
+| **snet-aks** | 10.0.1.0/24  | AKS ノード | AKS クラスター (2 ノード) |
+| **snet-vm**  | 10.0.2.0/24  | 仮想マシン | MongoDB VM                |
 
 ### ネットワークセキュリティグループ (NSG)
 
 #### vm-mongo-dev-nsg
 
-| ルール名 | 方向 | プロトコル | ポート | ソース | 優先度 | 目的 |
-|---------|------|----------|-------|--------|--------|------|
-| SSH | Inbound | TCP | 22 | * | 300 | SSH アクセス (Vulnerable) |
-| MongoDB | Inbound | TCP | 27017 | 10.0.0.0/16 | 310 | AKSからのDB接続 |
+| ルール名 | 方向    | プロトコル | ポート | ソース      | 優先度 | 目的                      |
+| -------- | ------- | ---------- | ------ | ----------- | ------ | ------------------------- |
+| SSH      | Inbound | TCP        | 22     | \*          | 300    | SSH アクセス (Vulnerable) |
+| MongoDB  | Inbound | TCP        | 27017  | 10.0.0.0/16 | 310    | AKS からの DB 接続        |
 
-### パブリックIPアドレス
+### パブリック IP アドレス
 
-| 名前 | IPアドレス | 用途 |
-|------|----------|------|
-| **vm-mongo-dev-pip** | 172.192.25.0 | MongoDB VM |
+| 名前                         | IP アドレス  | 用途                 |
+| ---------------------------- | ------------ | -------------------- |
+| **vm-mongo-dev-pip**         | 172.192.25.0 | MongoDB VM           |
 | **ingress-nginx-controller** | 20.18.117.80 | Ingress LoadBalancer |
 
 ---
@@ -161,21 +161,21 @@ External Access:
 
 ### クラスター情報
 
-| 項目 | 値 |
-|------|-----|
-| **クラスター名** | aks-wiz-dev |
-| **Kubernetesバージョン** | 1.32.7 |
-| **リージョン** | Japan East |
-| **ネットワークプラグイン** | Azure CNI |
-| **DNS サービスIP** | 10.1.0.10 |
-| **サービスCIDR** | 10.1.0.0/16 |
-| **SKU Tier** | Free |
+| 項目                       | 値          |
+| -------------------------- | ----------- |
+| **クラスター名**           | aks-wiz-dev |
+| **Kubernetes バージョン**  | 1.32.7      |
+| **リージョン**             | Japan East  |
+| **ネットワークプラグイン** | Azure CNI   |
+| **DNS サービス IP**        | 10.1.0.10   |
+| **サービス CIDR**          | 10.1.0.0/16 |
+| **SKU Tier**               | Free        |
 
 ### ノードプール
 
-| 名前 | VMサイズ | ノード数 | OS | 状態 |
-|------|---------|---------|-----|------|
-| **nodepool1** | Standard_DS2_v2 | 2 | Ubuntu 22.04.5 LTS | ✅ Ready |
+| 名前          | VM サイズ       | ノード数 | OS                 | 状態     |
+| ------------- | --------------- | -------- | ------------------ | -------- |
+| **nodepool1** | Standard_DS2_v2 | 2        | Ubuntu 22.04.5 LTS | ✅ Ready |
 
 **ノード詳細**:
 
@@ -195,20 +195,20 @@ Node 2: aks-nodepool1-28174749-vmss000001
 
 #### Namespace: default
 
-| リソース | 名前 | レプリカ | イメージ | 状態 |
-|---------|------|---------|---------|------|
-| **Deployment** | guestbook-app | 2/2 | acrwizdev.azurecr.io/guestbook:v4 | ✅ Running |
-| **Service** | guestbook-service | ClusterIP | - | ✅ Active |
-| **Ingress** | guestbook-ingress | nginx | - | ✅ Active |
+| リソース       | 名前              | レプリカ  | イメージ                          | 状態       |
+| -------------- | ----------------- | --------- | --------------------------------- | ---------- |
+| **Deployment** | guestbook-app     | 2/2       | acrwizdev.azurecr.io/guestbook:v4 | ✅ Running |
+| **Service**    | guestbook-service | ClusterIP | -                                 | ✅ Active  |
+| **Ingress**    | guestbook-ingress | nginx     | -                                 | ✅ Active  |
 
 #### Namespace: ingress-nginx
 
-| リソース | 名前 | タイプ | EXTERNAL-IP | 状態 |
-|---------|------|--------|-------------|------|
-| **Service** | ingress-nginx-controller | LoadBalancer | 20.18.117.80 | ✅ Active |
-| **Deployment** | ingress-nginx-controller | 1/1 | - | ✅ Running |
+| リソース       | 名前                     | タイプ       | EXTERNAL-IP  | 状態       |
+| -------------- | ------------------------ | ------------ | ------------ | ---------- |
+| **Service**    | ingress-nginx-controller | LoadBalancer | 20.18.117.80 | ✅ Active  |
+| **Deployment** | ingress-nginx-controller | 1/1          | -            | ✅ Running |
 
-### Pod詳細
+### Pod 詳細
 
 ```bash
 # アプリケーションPod
@@ -246,32 +246,32 @@ kubectl logs -l app=guestbook --tail=50
 
 ### VM 基本情報
 
-| 項目 | 値 |
-|------|-----|
-| **VM名** | vm-mongo-dev |
-| **VMサイズ** | Standard_B2s (2 vCPU, 4GB RAM) |
-| **OS** | Ubuntu 20.04 LTS |
-| **パブリックIP** | 172.192.25.0 |
-| **プライベートIP** | 10.0.2.4 |
-| **管理ポート** | SSH (22) - **Vulnerable** |
+| 項目                | 値                             |
+| ------------------- | ------------------------------ |
+| **VM 名**           | vm-mongo-dev                   |
+| **VM サイズ**       | Standard_B2s (2 vCPU, 4GB RAM) |
+| **OS**              | Ubuntu 20.04 LTS               |
+| **パブリック IP**   | 172.192.25.0                   |
+| **プライベート IP** | 10.0.2.4                       |
+| **管理ポート**      | SSH (22) - **Vulnerable**      |
 
 ### MongoDB 設定
 
-| 項目 | 値 |
-|------|-----|
-| **バージョン** | MongoDB 4.4 (1年以上古い - Vulnerable) |
-| **ポート** | 27017 |
-| **認証** | 有効 |
-| **アクセス元** | Kubernetes ネットワーク (10.0.0.0/16) |
-| **データディレクトリ** | /var/lib/mongodb |
-| **ログ** | /var/log/mongodb/mongod.log |
+| 項目                   | 値                                      |
+| ---------------------- | --------------------------------------- |
+| **バージョン**         | MongoDB 4.4 (1 年以上古い - Vulnerable) |
+| **ポート**             | 27017                                   |
+| **認証**               | 有効                                    |
+| **アクセス元**         | Kubernetes ネットワーク (10.0.0.0/16)   |
+| **データディレクトリ** | /var/lib/mongodb                        |
+| **ログ**               | /var/log/mongodb/mongod.log             |
 
 ### バックアップ設定
 
 - **バックアップ先**: Azure Storage Account (`stwizdevdacheo6jrka7w`)
 - **頻度**: デイリー
-- **保持期間**: 7日間
-- **セキュリティ**: **Public Access有効 (Vulnerable)**
+- **保持期間**: 7 日間
+- **セキュリティ**: **Public Access 有効 (Vulnerable)**
 
 ### 接続情報
 
@@ -281,7 +281,7 @@ kubectl logs -l app=guestbook --tail=50
 MONGO_URI=mongodb://10.0.2.4:27017/guestbook
 ```
 
-**VM管理アクセス**:
+**VM 管理アクセス**:
 
 ```bash
 # SSH接続 (Vulnerable - Public Access)
@@ -296,10 +296,10 @@ mongo --host 10.0.2.4 --port 27017
 
 ### 意図的な脆弱性 (デモ用)
 
-- ⚠️ SSHポートがパブリックに公開
-- ⚠️ 過剰なクラウド権限 (VM作成可能)
-- ⚠️ 1年以上古いMongoDB バージョン
-- ⚠️ 1年以上古いOS バージョン
+- ⚠️ SSH ポートがパブリックに公開
+- ⚠️ 過剰なクラウド権限 (VM 作成可能)
+- ⚠️ 1 年以上古い MongoDB バージョン
+- ⚠️ 1 年以上古い OS バージョン
 
 ---
 
@@ -307,24 +307,24 @@ mongo --host 10.0.2.4 --port 27017
 
 ### ACR 基本情報
 
-| 項目 | 値 |
-|------|-----|
-| **レジストリ名** | acrwizdev |
-| **Login Server** | acrwizdev.azurecr.io |
-| **SKU** | Basic |
-| **管理者アカウント** | 無効 (Managed Identity使用) |
-| **Public Network Access** | 有効 |
+| 項目                      | 値                           |
+| ------------------------- | ---------------------------- |
+| **レジストリ名**          | acrwizdev                    |
+| **Login Server**          | acrwizdev.azurecr.io         |
+| **SKU**                   | Basic                        |
+| **管理者アカウント**      | 無効 (Managed Identity 使用) |
+| **Public Network Access** | 有効                         |
 
 ### イメージ一覧
 
-| リポジトリ | タグ | ビルド日時 | 用途 |
-|----------|------|----------|------|
-| **guestbook** | v3 | 2025-10-28 | 初期動作確認版 |
-| **guestbook** | v4 | 2025-10-28 | UI更新版 |
-| **guestbook** | latest | 2025-10-28 | 最新版エイリアス |
-| **guestbook** | f137a12... | 2025-10-29 | CI/CD自動ビルド (Commit SHA) |
+| リポジトリ    | タグ       | ビルド日時 | 用途                          |
+| ------------- | ---------- | ---------- | ----------------------------- |
+| **guestbook** | v3         | 2025-10-28 | 初期動作確認版                |
+| **guestbook** | v4         | 2025-10-28 | UI 更新版                     |
+| **guestbook** | latest     | 2025-10-28 | 最新版エイリアス              |
+| **guestbook** | f137a12... | 2025-10-29 | CI/CD 自動ビルド (Commit SHA) |
 
-### ACR操作コマンド
+### ACR 操作コマンド
 
 ```bash
 # ログイン
@@ -340,7 +340,7 @@ az acr repository show-tags --name acrwizdev --repository guestbook
 az acr build --registry acrwizdev --image guestbook:v5 .
 ```
 
-### AKSとの統合
+### AKS との統合
 
 ```bash
 # ACRをAKSにアタッチ (既に設定済み)
@@ -356,12 +356,12 @@ az aks update \
 
 ### アプリケーション構成
 
-| コンポーネント | 技術スタック | バージョン |
-|--------------|------------|----------|
-| **フロントエンド** | EJS (Embedded JavaScript) | 3.1.9 |
-| **バックエンド** | Node.js + Express | 18 / 4.18.2 |
-| **データベース** | MongoDB | 4.4 |
-| **スタイリング** | Vanilla CSS | - |
+| コンポーネント     | 技術スタック              | バージョン  |
+| ------------------ | ------------------------- | ----------- |
+| **フロントエンド** | EJS (Embedded JavaScript) | 3.1.9       |
+| **バックエンド**   | Node.js + Express         | 18 / 4.18.2 |
+| **データベース**   | MongoDB                   | 4.4         |
+| **スタイリング**   | Vanilla CSS               | -           |
 
 ### 依存関係 (package.json)
 
@@ -381,7 +381,7 @@ az aks update \
 1. **メッセージ投稿**: ユーザー名とメッセージを入力
 2. **メッセージ一覧**: MongoDB から取得して表示
 3. **ヘルスチェック**: `/health` エンドポイント
-4. **Wizファイル表示**: `/wizfile` エンドポイント (デモ用)
+4. **Wiz ファイル表示**: `/wizfile` エンドポイント (デモ用)
 
 ### 環境変数
 
@@ -390,7 +390,7 @@ PORT=3000
 MONGO_URI=mongodb://10.0.2.4:27017/guestbook
 ```
 
-### Dockerイメージ構成
+### Docker イメージ構成
 
 **Dockerfile**:
 
@@ -419,21 +419,24 @@ CMD ["npm", "start"]
 #### 1. インフラデプロイ (`infra-deploy.yml`)
 
 **トリガー**:
+
 - `infra/**` の変更
 - 手動実行 (workflow_dispatch)
 
 **ジョブ構成**:
 
 1. **Scan IaC for Security Issues**
-   - Wiz CLI によるBicepスキャン
+
+   - Wiz CLI による Bicep スキャン
    - セキュリティ脆弱性の検出
 
 2. **Deploy Azure Infrastructure**
    - Bicep によるインフラデプロイ
    - パラメータファイル: `parameters.json`
-   - 出力: インフラ情報をArtifactに保存
+   - 出力: インフラ情報を Artifact に保存
 
 **主要リソース**:
+
 - AKS クラスター
 - MongoDB VM
 - Virtual Network
@@ -443,36 +446,39 @@ CMD ["npm", "start"]
 #### 2. アプリデプロイ (`app-deploy.yml`)
 
 **トリガー**:
+
 - `app/**` の変更
 - 手動実行 (workflow_dispatch)
 
 **ジョブ構成**:
 
 1. **Scan Container Image**
-   - Trivyによるコンテナスキャン
-   - 脆弱性レポート (SARIF形式)
+
+   - Trivy によるコンテナスキャン
+   - 脆弱性レポート (SARIF 形式)
 
 2. **Build and Push to ACR**
-   - Dockerイメージビルド (Commit SHAタグ)
-   - ACRへプッシュ
+
+   - Docker イメージビルド (Commit SHA タグ)
+   - ACR へプッシュ
    - `latest` タグも同時作成
 
 3. **Deploy to AKS**
-   - Kubernetesマニフェスト更新
+   - Kubernetes マニフェスト更新
    - 動的イメージタグの適用
    - ローリングアップデート
 
 ### パイプライン実行履歴
 
-| ワークフロー | 最終実行 | 状態 | 実行時間 |
-|------------|---------|------|---------|
-| Deploy Infrastructure | 2025-10-28 | ✅ Success | 3m 29s |
-| Build and Deploy Application | 2025-10-29 | ✅ Success | 4m 46s |
+| ワークフロー                 | 最終実行   | 状態       | 実行時間 |
+| ---------------------------- | ---------- | ---------- | -------- |
+| Deploy Infrastructure        | 2025-10-28 | ✅ Success | 3m 29s   |
+| Build and Deploy Application | 2025-10-29 | ✅ Success | 4m 46s   |
 
 ### GitHub Secrets
 
-| シークレット名 | 用途 |
-|--------------|------|
+| シークレット名        | 用途                           |
+| --------------------- | ------------------------------ |
 | **AZURE_CREDENTIALS** | Azure Service Principal (JSON) |
 
 **設定内容**:
@@ -508,21 +514,21 @@ Azure デプロイ
 
 ## アクセス情報
 
-### Webアプリケーション
+### Web アプリケーション
 
-| 項目 | 値 |
-|------|-----|
-| **URL** | http://20.18.117.80 |
-| **プロトコル** | HTTP |
-| **認証** | なし |
-| **ポート** | 80 (Ingress), 3000 (Pod) |
+| 項目           | 値                       |
+| -------------- | ------------------------ |
+| **URL**        | http://20.18.117.80      |
+| **プロトコル** | HTTP                     |
+| **認証**       | なし                     |
+| **ポート**     | 80 (Ingress), 3000 (Pod) |
 
 **エンドポイント**:
 
 - `/` - メインページ (掲示板)
 - `/post` - メッセージ投稿 (POST)
 - `/health` - ヘルスチェック
-- `/wizfile` - Wizファイル表示 (デモ用)
+- `/wizfile` - Wiz ファイル表示 (デモ用)
 
 ### 管理アクセス
 
@@ -561,47 +567,50 @@ ssh azureuser@172.192.25.0
 #### 1. 予防的コントロール
 
 - ✅ **Network Security Groups (NSG)**: MongoDB アクセス制限
-- ✅ **Private Network**: AKSはプライベートサブネット
-- ✅ **ACR統合**: Managed Identity による認証
-- ✅ **MongoDB認証**: 認証有効化
+- ✅ **Private Network**: AKS はプライベートサブネット
+- ✅ **ACR 統合**: Managed Identity による認証
+- ✅ **MongoDB 認証**: 認証有効化
 
 #### 2. 検知的コントロール
 
 - ✅ **Log Analytics**: クラスター監視
 - ✅ **Container Insights**: コンテナメトリクス
-- ✅ **Activity Logs**: Azure操作ログ
+- ✅ **Activity Logs**: Azure 操作ログ
 
-#### 3. CI/CDセキュリティ
+#### 3. CI/CD セキュリティ
 
-- ✅ **Wiz CLI**: IaCスキャン (Bicep)
+- ✅ **Wiz CLI**: IaC スキャン (Bicep)
 - ✅ **Trivy**: コンテナイメージスキャン
 - ✅ **SARIF Upload**: セキュリティレポート
 
 ### 意図的な脆弱性 (デモ用)
 
-以下は**Wiz課題要件**に従った意図的な脆弱性設定です:
+以下は**Wiz 課題要件**に従った意図的な脆弱性設定です:
 
 #### 🔴 Critical
 
-1. **MongoDB VM - パブリックSSHアクセス**
-   - ポート22がインターネットに公開
-   - NSGルールで `Source: *` を許可
+1. **MongoDB VM - パブリック SSH アクセス**
+
+   - ポート 22 がインターネットに公開
+   - NSG ルールで `Source: *` を許可
 
 2. **Storage Account - Public Access**
-   - MongoDBバックアップが公開閲覧可能
+
+   - MongoDB バックアップが公開閲覧可能
    - 公開リスト可能
 
 3. **過剰なクラウド権限**
-   - VMに対してVM作成権限を付与
+   - VM に対して VM 作成権限を付与
    - 最小権限の原則に違反
 
 #### 🟡 High
 
 4. **古いソフトウェアバージョン**
-   - MongoDB 4.4 (1年以上古い)
-   - Ubuntu 20.04 LTS (1年以上古い)
 
-5. **Kubernetes - 過剰なRBAC権限**
+   - MongoDB 4.4 (1 年以上古い)
+   - Ubuntu 20.04 LTS (1 年以上古い)
+
+5. **Kubernetes - 過剰な RBAC 権限**
    - アプリコンテナにクラスタ管理者権限
    - `rbac-vulnerable.yaml` で設定
 
@@ -609,16 +618,16 @@ ssh azureuser@172.192.25.0
 
 #### Wiz CLI (IaC)
 
-- スキャン対象: Bicepファイル
+- スキャン対象: Bicep ファイル
 - 検出: 設計上の脆弱性
 - レポート: GitHub Actions Annotations
 
 #### Trivy (コンテナ)
 
-- スキャン対象: Dockerイメージ
+- スキャン対象: Docker イメージ
 - 検出: 依存関係の脆弱性
 - 重要度: CRITICAL, HIGH
-- レポート: SARIF形式でGitHub Security
+- レポート: SARIF 形式で GitHub Security
 
 ---
 
@@ -710,7 +719,7 @@ mongo --host localhost --port 27017
 
 ### よくある問題と解決方法
 
-#### 1. Podが起動しない
+#### 1. Pod が起動しない
 
 ```bash
 # Pod状態確認
@@ -739,7 +748,7 @@ kubectl get endpoints
 kubectl get svc -n ingress-nginx ingress-nginx-controller
 ```
 
-#### 3. MongoDBに接続できない
+#### 3. MongoDB に接続できない
 
 ```bash
 # VM確認
@@ -757,13 +766,13 @@ kubectl exec -it <pod-name> -- curl -v telnet://10.0.2.4:27017
 
 ## 関連ドキュメント
 
-- [AZURE_SETUP_INFO.md](./AZURE_SETUP_INFO.md) - Azure初期セットアップ情報
+- [AZURE_SETUP_INFO.md](./AZURE_SETUP_INFO.md) - Azure 初期セットアップ情報
 - [../Docs_work_history/](../Docs_work_history/) - 作業履歴
 - [../Docs_issue_point/](../Docs_issue_point/) - トラブルシューティング
 - [../README.md](../README.md) - プロジェクト概要
 
 ---
 
-**最終更新**: 2025年10月29日  
+**最終更新**: 2025 年 10 月 29 日  
 **管理者**: Wiz Technical Exercise Team  
 **ステータス**: ✅ Production Ready
