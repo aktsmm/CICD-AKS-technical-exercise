@@ -136,10 +136,11 @@ git push origin main --force
 ```
 
 **変更したファイル**:
+
 - `.gitignore` (機密情報ファイルを追加)
 - Git 履歴 (強制プッシュで上書き)
 
-**実施日時**: 2025年1月29日
+**実施日時**: 2025 年 1 月 29 日
 
 ---
 
@@ -148,10 +149,12 @@ git push origin main --force
 ### 1. プロジェクト開始時の `.gitignore` 整備
 
 **対応内容**:
+
 - プロジェクト開始直後に機密情報ファイルを `.gitignore` に追加
 - テンプレートを用意して標準化
 
 **確認コマンド**:
+
 ```powershell
 # .gitignore に機密情報パターンが含まれるか確認
 cat .gitignore | Select-String "secret|credential|password"
@@ -160,10 +163,12 @@ cat .gitignore | Select-String "secret|credential|password"
 ### 2. プリコミットフックの導入
 
 **対応内容**:
+
 - Git hooks で機密情報を自動検出
 - コミット前に警告を表示
 
 **実装例** (`.git/hooks/pre-commit`):
+
 ```bash
 #!/bin/sh
 # 機密情報パターンを検出
@@ -176,6 +181,7 @@ fi
 ### 3. Azure 認証情報の管理方法の統一
 
 **対応内容**:
+
 - GitHub Secrets で一元管理
 - ローカル参照用は `Docs_Secrets/` に記録 (`.gitignore` で除外済み)
 - ドキュメントには認証情報を記載しない
@@ -183,6 +189,7 @@ fi
 ### 4. チーム内での周知徹底
 
 **対応内容**:
+
 - 機密情報の扱い方をドキュメント化
 - `.github/copilot-instructions.md` に記載
 - 定期的な確認とレビュー
@@ -192,6 +199,7 @@ fi
 ## 📚 参考情報
 
 ### GitHub 関連
+
 - [GitHub Secret Scanning](https://docs.github.com/ja/code-security/secret-scanning/about-secret-scanning)
 - [GitHub Push Protection](https://docs.github.com/ja/code-security/secret-scanning/push-protection-for-repositories-and-organizations)
 - [Git 履歴から機密情報を削除する方法](https://docs.github.com/ja/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository)
@@ -210,13 +218,15 @@ fi
 ---
 
 **作成者**: aktsmm  
-**最終更新**: 2025年1月29日  
+**最終更新**: 2025 年 1 月 29 日  
 **関連ドキュメント**:
+
 - `Docs_Secrets/README.md` - 機密情報管理ガイドライン
 - `.github/copilot-instructions.md` - プロジェクトガイドライン
 - `Phase00-01_GitHubActions修正_2025-01-29.md` - GitHub Actions の修正履歴
 
 ---
+
 ---
 
 # その他のトラブル (参考記録)
@@ -228,7 +238,7 @@ fi
 
 ## トラブル: CodeQL Action v2 非推奨
 
-**発生日時**: 2025年1月29日  
+**発生日時**: 2025 年 1 月 29 日  
 **重要度**: 🟡 Warning  
 **ステータス**: ✅ 解決済み
 
@@ -236,6 +246,7 @@ fi
 GitHub Actions ワークフローで `github/codeql-action/upload-sarif@v2` を使用していたが、v2 が非推奨化された。
 
 **解決方法**:
+
 - `@v2` → `@v3` に更新
 - `continue-on-error: true` を追加
 
@@ -245,7 +256,7 @@ GitHub Actions ワークフローで `github/codeql-action/upload-sarif@v2` を�
 
 ## トラブル: Artifact Actions v3 非推奨
 
-**発生日時**: 2025年1月29日  
+**発生日時**: 2025 年 1 月 29 日  
 **重要度**: 🔴 Critical  
 **ステータス**: ✅ 解決済み
 
@@ -253,6 +264,7 @@ GitHub Actions ワークフローで `github/codeql-action/upload-sarif@v2` を�
 `actions/upload-artifact@v3` と `actions/download-artifact@v3` が非推奨化され、ワークフローが失敗。
 
 **解決方法**:
+
 - `@v3` → `@v4` に更新
 - ダウンロードパスを `outputs/` に変更
 
@@ -262,7 +274,7 @@ GitHub Actions ワークフローで `github/codeql-action/upload-sarif@v2` を�
 
 ## トラブル: SARIF Upload 権限エラー
 
-**発生日時**: 2025年1月29日  
+**発生日時**: 2025 年 1 月 29 日  
 **重要度**: 🟡 Warning  
 **ステータス**: ✅ 解決済み
 
@@ -270,6 +282,7 @@ GitHub Actions ワークフローで `github/codeql-action/upload-sarif@v2` を�
 GitHub Actions が Code Scanning に SARIF ファイルをアップロードする権限がない。
 
 **解決方法**:
+
 - `continue-on-error: true` を追加
 - セキュリティスキャン失敗でもデプロイ継続
 
@@ -279,7 +292,7 @@ GitHub Actions が Code Scanning に SARIF ファイルをアップロードす�
 
 ## トラブル: Checkov セキュリティスキャンの失敗
 
-**発生日時**: 2025年1月29日  
+**発生日時**: 2025 年 1 月 29 日  
 **重要度**: 🔵 Info (意図的な脆弱性)  
 **ステータス**: ✅ 解決済み
 
@@ -287,16 +300,19 @@ GitHub Actions が Code Scanning に SARIF ファイルをアップロードす�
 Checkov が 12 個のセキュリティ違反を検出。このプロジェクトは Wiz のデモ用に意図的に脆弱な構成を含む。
 
 **解決方法**:
+
 - `soft_fail: true` を設定済み
 - 検出はするがデプロイは継続
 
 **検出された主な脆弱性**:
+
 - AKS: ローカル管理者有効、ネットワークポリシー未設定
 - VM: パスワード認証使用、暗号化なし
 
 ---
 
 **このファイルの管理**:
+
 - 上記のトラブルは参考記録として保持
 - 詳細なトラブル対応は各フェーズの専用ドキュメント参照
 - 新しいトラブルは Phase 別に新規ファイルを作成
