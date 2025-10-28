@@ -13,6 +13,9 @@ param environment string = 'dev'
 @secure()
 param mongoAdminPassword string
 
+@description('デプロイタイムスタンプ (ユニークなデプロイ名生成用)')
+param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
+
 // リソースグループ作成
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: resourceGroupName
@@ -22,7 +25,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 // ネットワーキング
 module networking 'modules/networking.bicep' = {
   scope: rg
-  name: 'networking-deployment'
+  name: 'networking-${deploymentTimestamp}'
   params: {
     location: location
     environment: environment
@@ -32,7 +35,7 @@ module networking 'modules/networking.bicep' = {
 // Log Analytics (監査ログ用)
 module monitoring 'modules/monitoring.bicep' = {
   scope: rg
-  name: 'monitoring-deployment'
+  name: 'monitoring-${deploymentTimestamp}'
   params: {
     location: location
     environment: environment
@@ -42,7 +45,7 @@ module monitoring 'modules/monitoring.bicep' = {
 // MongoDB VM (脆弱な構成)
 module mongoVM 'modules/vm-mongodb.bicep' = {
   scope: rg
-  name: 'mongodb-deployment'
+  name: 'mongodb-${deploymentTimestamp}'
   params: {
     location: location
     environment: environment
@@ -57,7 +60,7 @@ module mongoVM 'modules/vm-mongodb.bicep' = {
 // Storage Account (脆弱な構成)
 module storage 'modules/storage.bicep' = {
   scope: rg
-  name: 'storage-deployment'
+  name: 'storage-${deploymentTimestamp}'
   params: {
     location: location
     environment: environment
@@ -69,7 +72,7 @@ module storage 'modules/storage.bicep' = {
 // AKSクラスター
 module aks 'modules/aks.bicep' = {
   scope: rg
-  name: 'aks-deployment'
+  name: 'aks-${deploymentTimestamp}'
   params: {
     location: location
     environment: environment
