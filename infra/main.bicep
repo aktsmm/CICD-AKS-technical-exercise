@@ -65,9 +65,8 @@ module mongoVM 'modules/vm-mongodb.bicep' = {
     subnetId: networking.outputs.mongoSubnetId
     storageAccountName: storage.outputs.storageAccountName
     backupContainerName: storage.outputs.containerName
-    // 脆弱性: SSH公開、古いOS
+    // 脆弱性: SSH公開
     allowSSHFromInternet: true
-    useOldOSVersion: true
   }
 }
 
