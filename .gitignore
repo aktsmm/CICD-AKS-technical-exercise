@@ -1,0 +1,19 @@
+# Node
+node_modules/
+npm-debug.log
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Secrets and credentials (DO NOT COMMIT)
+docs/AZURE_SETUP_INFO.md
+mongo_password.txt
+*.secret
+*.credentials
