@@ -4,11 +4,9 @@ metadata:
   name: guestbook-ingress
   namespace: default
   annotations:
-    kubernetes.io/ingress.class: azure/application-gateway
-    # Note: Requires Application Gateway Ingress Controller (AGIC) to be installed
-    # Alternative: Use nginx ingress controller for simpler setup
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
-  ingressClassName: azure-application-gateway
+  ingressClassName: nginx
   rules:
     - http:
         paths:
