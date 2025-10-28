@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  ACR_NAME: acrwizexercise
+  ACR_NAME: acrwizdev
   IMAGE_NAME: guestbook
   RESOURCE_GROUP: rg-wiz-exercise
 
