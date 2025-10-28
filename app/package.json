@@ -1,7 +1,8 @@
 {
-  "name": "wiz-technical-exercise-app",
-  "version": "0.0.1",
-  "private": true,
+  "name": "wiz-guestbook",
+  "version": "1.0.0",
+  "description": "Wiz Technical Exercise - Guestbook App",
+  "main": "app.js",
   "scripts": {
     "start": "node app.js"
   },
