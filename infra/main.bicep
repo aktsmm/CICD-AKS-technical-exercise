@@ -54,6 +54,16 @@ module storage 'modules/storage.bicep' = {
   }
 }
 
+// Azure Container Registry (脆弱な構成)
+module acr 'modules/acr.bicep' = {
+  scope: rg
+  name: 'acr-${deploymentTimestamp}'
+  params: {
+    location: location
+    environment: environment
+  }
+}
+
 // MongoDB VM (脆弱な構成)
 module mongoVM 'modules/vm-mongodb.bicep' = {
   scope: rg
