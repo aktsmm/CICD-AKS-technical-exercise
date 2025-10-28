@@ -42,21 +42,6 @@ module monitoring 'modules/monitoring.bicep' = {
   }
 }
 
-// MongoDB VM (脆弱な構成)
-module mongoVM 'modules/vm-mongodb.bicep' = {
-  scope: rg
-  name: 'mongodb-${deploymentTimestamp}'
-  params: {
-    location: location
-    environment: environment
-    adminPassword: mongoAdminPassword
-    subnetId: networking.outputs.mongoSubnetId
-    // 脆弱性: SSH公開、古いOS
-    allowSSHFromInternet: true
-    useOldOSVersion: true
-  }
-}
-
 // Storage Account (脆弱な構成)
 module storage 'modules/storage.bicep' = {
   scope: rg
@@ -66,6 +51,23 @@ module storage 'modules/storage.bicep' = {
     environment: environment
     // 脆弱性: Public Access有効
     allowPublicBlobAccess: true
+  }
+}
+
+// MongoDB VM (脆弱な構成)
+module mongoVM 'modules/vm-mongodb.bicep' = {
+  scope: rg
+  name: 'mongodb-${deploymentTimestamp}'
+  params: {
+    location: location
+    environment: environment
+    adminPassword: mongoAdminPassword
+    subnetId: networking.outputs.mongoSubnetId
+    storageAccountName: storage.outputs.storageAccountName
+    backupContainerName: storage.outputs.containerName
+    // 脆弱性: SSH公開、古いOS
+    allowSSHFromInternet: true
+    useOldOSVersion: true
   }
 }
 
@@ -87,6 +89,16 @@ module vmRoleAssignment 'modules/vm-role-assignment.bicep' = {
   name: 'vm-role-${deploymentTimestamp}'
   params: {
     vmPrincipalId: mongoVM.outputs.vmIdentityPrincipalId
+  }
+}
+
+// MongoDB VMにStorage Blob Data Contributor権限を付与（バックアップ用）
+module vmStorageRole 'modules/vm-storage-role.bicep' = {
+  scope: rg
+  name: 'vm-storage-role-${deploymentTimestamp}'
+  params: {
+    vmPrincipalId: mongoVM.outputs.vmIdentityPrincipalId
+    storageAccountName: storage.outputs.storageAccountName
   }
 }
 

@@ -17,6 +17,12 @@ param allowSSHFromInternet bool = true
 @description('古いOSバージョン使用（脆弱性）')
 param useOldOSVersion bool = true
 
+@description('Storage Account名（バックアップ先）')
+param storageAccountName string
+
+@description('バックアップコンテナ名')
+param backupContainerName string = 'backups'
+
 var vmName = 'vm-mongo-${environment}'
 var nicName = '${vmName}-nic'
 var nsgName = '${vmName}-nsg'
@@ -148,8 +154,11 @@ resource vmExtension 'Microsoft.Compute/virtualMachines/extensions@2023-07-01' =
     settings: {
       commandToExecute: '''
         #!/bin/bash
+        set -e
+        
+        # MongoDB インストール
         apt-get update
-        apt-get install -y mongodb
+        apt-get install -y mongodb mongodb-clients
         
         # 脆弱性: 認証無効、全IPからアクセス許可
         sed -i 's/bind_ip = 127.0.0.1/bind_ip = 0.0.0.0/' /etc/mongodb.conf
@@ -157,6 +166,56 @@ resource vmExtension 'Microsoft.Compute/virtualMachines/extensions@2023-07-01' =
         
         systemctl restart mongodb
         systemctl enable mongodb
+        
+        # Azure CLI インストール（バックアップ用）
+        curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+        
+        # バックアップディレクトリ作成
+        mkdir -p /var/backups/mongodb
+        
+        # バックアップスクリプト作成
+        cat > /usr/local/bin/mongodb-backup.sh << 'BACKUP_SCRIPT'
+#!/bin/bash
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/var/backups/mongodb"
+BACKUP_FILE="mongodb_backup_${TIMESTAMP}.tar.gz"
+
+# MongoDB バックアップ（認証なしでダンプ）
+mongodump --out ${BACKUP_DIR}/dump_${TIMESTAMP}
+
+# 圧縮
+cd ${BACKUP_DIR}
+tar -czf ${BACKUP_FILE} dump_${TIMESTAMP}
+rm -rf dump_${TIMESTAMP}
+
+# Azure Storage にアップロード（Managed Identity 使用）
+az storage blob upload \
+  --account-name STORAGE_ACCOUNT_NAME \
+  --container-name BACKUP_CONTAINER \
+  --name ${BACKUP_FILE} \
+  --file ${BACKUP_DIR}/${BACKUP_FILE} \
+  --auth-mode login
+
+# ローカルバックアップは7日間保持
+find ${BACKUP_DIR} -name "mongodb_backup_*.tar.gz" -mtime +7 -delete
+
+echo "Backup completed: ${BACKUP_FILE}"
+BACKUP_SCRIPT
+        
+        chmod +x /usr/local/bin/mongodb-backup.sh
+        
+        # Storage Account情報を環境変数として設定
+        sed -i "s/STORAGE_ACCOUNT_NAME/${storageAccountName}/g" /usr/local/bin/mongodb-backup.sh
+        sed -i "s/BACKUP_CONTAINER/${backupContainerName}/g" /usr/local/bin/mongodb-backup.sh
+        
+        # Managed Identity でログイン
+        az login --identity
+        
+        # Cron ジョブ設定（毎日午前2時にバックアップ）
+        echo "0 2 * * * /usr/local/bin/mongodb-backup.sh >> /var/log/mongodb-backup.log 2>&1" | crontab -
+        
+        # 初回バックアップを即座に実行
+        /usr/local/bin/mongodb-backup.sh
       '''
     }
   }
