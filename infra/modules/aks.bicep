@@ -60,5 +60,6 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
 }
 
 output clusterName string = aks.name
-output clusterFqdn string = aks.properties.fqdn
+// プライベートクラスターの場合は privateFQDN を使用 (パブリック FQDN は無効化済み)
+output clusterFqdn string = aks.properties.privateFQDN
 output kubeletIdentity string = aks.properties.identityProfile.kubeletidentity.objectId
