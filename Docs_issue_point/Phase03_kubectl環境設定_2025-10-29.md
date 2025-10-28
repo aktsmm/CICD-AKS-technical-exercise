@@ -2,13 +2,13 @@
 
 ## 📋 概要
 
-Kubernetes クラスター管理を効率化するため、kubectl コマンドラインツールを Windows 環境にインストールし、PATH 環境変数に追加しました。
+Kubernetes クラスター管理を効率化するため、kubectl コマンドラインツールを Windows 環境の PATH に追加し、簡単にコマンド実行できるようにしました。
 
 ---
 
 ## 🎯 目的
 
-- **効率化**: フルパス指定なしで kubectl コマンドを実行可能に
+- **効率化**: フルパス指定なしで kubectl コマンドを実行
 - **開発体験向上**: Kubernetes リソース管理を簡易化
 - **標準化**: 一般的な Kubernetes 管理フローに準拠
 
@@ -18,11 +18,11 @@ Kubernetes クラスター管理を効率化するため、kubectl コマンド�
 
 ### 1. kubectl の既存インストール確認
 
-kubectl は以前の Azure CLI コマンドで既にインストールされていました。
+kubectl は Azure CLI によって既にインストール済みでした。
 
 **インストール場所**:
 
-```
+```text
 C:\Users\vainf\.azure-kubectl\kubectl.exe
 ```
 
@@ -34,8 +34,10 @@ C:\Users\vainf\.azure-kubectl\kubectl.exe version --client
 
 **結果**:
 
-- Client Version: v1.34.1
-- Kustomize Version: v5.7.1
+```text
+Client Version: v1.34.1
+Kustomize Version: v5.7.1
+```
 
 ### 2. PATH 環境変数の確認
 
@@ -58,8 +60,6 @@ $kubectlPath = "C:\Users\vainf\.azure-kubectl"
 if (-not ($env:PATH -like "*$kubectlPath*")) {
     $env:PATH = "$kubectlPath;$env:PATH"
     Write-Host "kubectl PATH added for this session"
-} else {
-    Write-Host "kubectl PATH already exists"
 }
 ```
 
@@ -67,7 +67,7 @@ if (-not ($env:PATH -like "*$kubectlPath*")) {
 
 ### 4. ユーザー環境変数に永続的に追加
 
-新しい PowerShell ウィンドウでも kubectl を使えるように、ユーザー環境変数の PATH を更新しました。
+新しい PowerShell ウィンドウでも kubectl を使えるように、ユーザー環境変数を更新しました。
 
 **実行コマンド**:
 
@@ -77,7 +77,6 @@ if (-not ($env:PATH -like "*$kubectlPath*")) {
     "C:\Users\vainf\.azure-kubectl;$([System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::User))",
     [System.EnvironmentVariableTarget]::User
 )
-Write-Host "✅ User PATH permanently updated"
 ```
 
 **結果**: ✅ 永続的に PATH 設定完了
@@ -92,7 +91,7 @@ kubectl version --client
 
 **結果**:
 
-```
+```text
 Client Version: v1.34.1
 Kustomize Version: v5.7.1
 ```
@@ -106,16 +105,16 @@ Kustomize Version: v5.7.1
 ### Before（設定前）
 
 ```powershell
-# フルパスを毎回指定する必要があった
+# フルパスを毎回指定
 C:\Users\vainf\.azure-kubectl\kubectl.exe get pods
 C:\Users\vainf\.azure-kubectl\kubectl.exe get svc
-C:\Users\vainf\.azure-kubectl\kubectl.exe logs deployment/guestbook
+C:\Users\vainf\.azure-kubectl\kubectl.exe logs deployment/guestbook-app
 ```
 
 ### After（設定後）
 
 ```powershell
-# 短いコマンドで実行可能
+# シンプルなコマンドで実行可能
 kubectl get pods
 kubectl get svc
 kubectl logs deployment/guestbook-app
@@ -123,19 +122,19 @@ kubectl logs deployment/guestbook-app
 
 ---
 
-## 📚 よく使う kubectl コマンド
+## 📚 よく使う kubectl コマンド集
 
 ### クラスター情報
 
 ```powershell
-# クラスター接続設定
+# AKS認証情報取得
 az aks get-credentials --resource-group rg-wiz-exercise --name aks-wiz-dev
 
-# クラスター情報表示
+# クラスター情報
 kubectl cluster-info
 
 # ノード一覧
-kubectl get nodes
+kubectl get nodes -o wide
 ```
 
 ### Pod 管理
@@ -144,15 +143,16 @@ kubectl get nodes
 # Pod一覧
 kubectl get pods
 
-# アプリのPod確認
+# ラベルでフィルタリング
 kubectl get pods -l app=guestbook
 
-# Pod詳細
+# Pod詳細情報
 kubectl describe pod <pod-name>
 
-# Podログ
+# Podログ確認
 kubectl logs <pod-name>
 kubectl logs -l app=guestbook --tail=50
+kubectl logs -f deployment/guestbook-app  # リアルタイム監視
 ```
 
 ### Service & Ingress
@@ -161,7 +161,7 @@ kubectl logs -l app=guestbook --tail=50
 # Service一覧
 kubectl get svc
 
-# すべてのNamespaceのService
+# 全NamespaceのService
 kubectl get svc --all-namespaces
 
 # Ingress確認
@@ -171,7 +171,7 @@ kubectl get ingress
 kubectl describe ingress guestbook-ingress
 ```
 
-### デプロイ管理
+### Deployment 管理
 
 ```powershell
 # Deployment一覧
@@ -180,47 +180,66 @@ kubectl get deployments
 # Deployment詳細
 kubectl describe deployment guestbook-app
 
-# Deploymentスケーリング
+# スケーリング（レプリカ数変更）
 kubectl scale deployment guestbook-app --replicas=3
+
+# ローリングアップデート状態確認
+kubectl rollout status deployment/guestbook-app
+
+# ロールバック
+kubectl rollout undo deployment/guestbook-app
 ```
 
 ### リソース監視
 
 ```powershell
-# リソース使用状況
+# ノードのリソース使用率
 kubectl top nodes
+
+# Podのリソース使用率
 kubectl top pods
 
-# イベント確認
+# イベント確認（時系列）
 kubectl get events --sort-by='.lastTimestamp'
+
+# 特定リソースの監視（watch）
+kubectl get pods -w
 ```
 
 ### トラブルシューティング
 
 ```powershell
-# Pod内でコマンド実行
+# Pod内でシェル起動
 kubectl exec -it <pod-name> -- /bin/sh
 
-# ポートフォワード（ローカルテスト）
+# ローカルからPodへポートフォワード
 kubectl port-forward deployment/guestbook-app 8080:3000
+# → http://localhost:8080 でアクセス可能
 
-# ログをリアルタイム監視
-kubectl logs -f deployment/guestbook-app
+# ConfigMap確認
+kubectl get configmap
+kubectl describe configmap <configmap-name>
+
+# Secret確認（値は表示されない）
+kubectl get secrets
+kubectl describe secret <secret-name>
 ```
 
 ---
 
-## 🔍 技術的詳細
+## 🔍 技術的背景
 
-### PATH 環境変数の仕組み
+### PATH 環境変数のスコープ
 
-**Windows の環境変数スコープ**:
+**Windows の環境変数は 3 つのスコープで管理されます**:
 
-1. **System (マシン全体)**: すべてのユーザーに適用
-2. **User (ユーザー単位)**: 現在のユーザーのみに適用
-3. **Process (プロセス単位)**: 現在の実行プロセスのみ
+| スコープ                    | 適用範囲               | 権限要否   |
+| --------------------------- | ---------------------- | ---------- |
+| **System (マシン全体)**     | すべてのユーザー       | 管理者権限 |
+| **User (ユーザー単位)**     | 現在のユーザーのみ     | 不要       |
+| **Process (プロセス単位)**  | 現在のプロセスのみ     | 不要       |
 
-今回は **User スコープ**に追加したため、以下の特性があります:
+今回は **User スコープ**に追加したため:
 
 - ✅ 現在のユーザーのすべての新規セッションで有効
 - ✅ 他のユーザーには影響なし
@@ -228,13 +247,13 @@ kubectl logs -f deployment/guestbook-app
 
 ### PowerShell での環境変数操作
 
-**一時的な変更（現在のセッションのみ）**:
+#### 一時的な変更（現在のセッションのみ）
 
 ```powershell
 $env:PATH = "C:\new\path;$env:PATH"
 ```
 
-**永続的な変更（ユーザースコープ）**:
+#### 永続的な変更（ユーザースコープ）
 
 ```powershell
 [System.Environment]::SetEnvironmentVariable(
@@ -244,9 +263,10 @@ $env:PATH = "C:\new\path;$env:PATH"
 )
 ```
 
-**永続的な変更（システムスコープ - 管理者権限必要）**:
+#### 永続的な変更（システムスコープ）
 
 ```powershell
+# 管理者権限必要
 [System.Environment]::SetEnvironmentVariable(
     'PATH',
     "C:\new\path;$env:PATH",
@@ -256,128 +276,123 @@ $env:PATH = "C:\new\path;$env:PATH"
 
 ---
 
-## 📝 環境情報の更新
+---
 
-`docs/ENVIRONMENT_INFO.md` の kubectl コマンド例セクションに、PATH 設定後の簡易コマンドを既に記載済みです。
+## 📝 ドキュメント相互参照
 
-**該当セクション**: "kubectl コマンド例" (Line 227-240)
+`docs/ENVIRONMENT_INFO.md` にも kubectl コマンド例が記載されています。
+
+**該当セクション**: 「kubectl コマンド例」
 
 ```markdown
 # クラスター接続
-
 az aks get-credentials --resource-group rg-wiz-exercise --name aks-wiz-dev
 
-# Pod 確認
-
+# Pod確認
 kubectl get pods -l app=guestbook
 
-# Service 確認
-
+# Service確認
 kubectl get svc
 
-# Ingress 確認
-
+# Ingress確認
 kubectl get ingress
 
 # ログ確認
-
 kubectl logs -l app=guestbook --tail=50
 ```
 
 ---
 
-## 🎓 学習ポイント
+## 🚀 応用編（オプション）
 
-### kubectl の重要性
+### 1. PowerShell エイリアス設定
 
-kubectl は Kubernetes クラスター管理の標準ツールであり、以下の操作を実行できます:
+よく使うコマンドをさらに短縮できます。
 
-1. **リソース管理**: Pod、Service、Deployment などの作成・更新・削除
-2. **監視**: リアルタイムログ、メトリクス、イベント確認
-3. **デバッグ**: Pod 内コマンド実行、ポートフォワード
-4. **スケーリング**: レプリカ数の増減
-5. **ロールアウト**: デプロイメントの更新とロールバック
-
-### PATH 環境変数の重要性
-
-- **開発効率**: コマンド実行が簡潔に
-- **ドキュメント**: 共有可能な標準コマンド形式
-- **自動化**: スクリプトでの利用が容易
-
----
-
-## 🚀 次のステップ（オプション）
-
-### 1. kubectl エイリアス設定
-
-PowerShell プロファイルにエイリアスを追加してさらに効率化:
+**設定方法**:
 
 ```powershell
 # PowerShellプロファイル編集
 notepad $PROFILE
 
-# 以下を追加
+# 以下を追加して保存
 Set-Alias -Name k -Value kubectl
 
 function kgp { kubectl get pods @args }
 function kgs { kubectl get svc @args }
 function kgi { kubectl get ingress @args }
+function kd { kubectl describe @args }
 function kl { kubectl logs @args }
 ```
 
-保存後、新しいセッションで使用:
+**使用例**:
 
 ```powershell
-k get pods        # kubectl get pods
-kgp -l app=guestbook  # kubectl get pods -l app=guestbook
-kl deployment/guestbook-app  # kubectl logs deployment/guestbook-app
+k get pods                      # kubectl get pods
+kgp -l app=guestbook            # kubectl get pods -l app=guestbook
+kl deployment/guestbook-app     # kubectl logs deployment/guestbook-app
+kd deployment guestbook-app     # kubectl describe deployment guestbook-app
 ```
 
-### 2. kubectl オートコンプリート設定
+### 2. kubectl オートコンプリート
 
-PowerShell でタブ補完を有効化:
+タブキーでコマンド補完が可能になります。
 
 ```powershell
 # PowerShellプロファイルに追加
 kubectl completion powershell | Out-String | Invoke-Expression
 ```
 
-### 3. kubectx / kubens（コンテキスト切り替え）
+**効果**:
+- `kubectl get po<Tab>` → `kubectl get pods`
+- リソース名も補完候補に表示
 
-複数クラスターを管理する場合に便利:
+### 3. kubectx / kubens ツール
+
+複数のクラスター・Namespace を管理する場合に便利です。
+
+**インストール**:
 
 ```powershell
-# Scoopでインストール
+# Scoopを使用（未インストールの場合は scoop.sh を参照）
 scoop install kubectx
+```
 
-# 使用例
-kubectx              # コンテキスト一覧
-kubectx aks-wiz-dev  # コンテキスト切り替え
-kubens default       # Namespace切り替え
+**使用例**:
+
+```powershell
+# コンテキスト（クラスター）切り替え
+kubectx                    # 一覧表示
+kubectx aks-wiz-dev        # 切り替え
+
+# Namespace切り替え
+kubens                     # 一覧表示
+kubens default             # 切り替え
+kubens ingress-nginx       # Ingress Controller namespace
 ```
 
 ---
 
-## 📊 ステータス
+## 📊 完了ステータス
 
-| 項目                        | 状態    | 備考                       |
+| 項目                        | 状態    | バージョン/詳細            |
 | --------------------------- | ------- | -------------------------- |
 | **kubectl インストール**    | ✅ 完了 | v1.34.1                    |
-| **PATH 設定（セッション）** | ✅ 完了 | 現在のセッションで有効     |
+| **PATH 設定（一時）**       | ✅ 完了 | 現在のセッションで有効     |
 | **PATH 設定（永続化）**     | ✅ 完了 | User スコープに追加        |
-| **動作確認**                | ✅ 完了 | version コマンド実行成功   |
-| **ドキュメント更新**        | ✅ 完了 | ENVIRONMENT_INFO.md に記載 |
+| **動作確認**                | ✅ 完了 | `version --client` 成功    |
+| **ドキュメント更新**        | ✅ 完了 | ENVIRONMENT_INFO.md 記載   |
 
 ---
 
 ## 🔗 関連ドキュメント
 
-- [ENVIRONMENT_INFO.md](../docs/ENVIRONMENT_INFO.md) - 環境情報（kubectl コマンド例を含む）
-- [Phase02\_アプリデプロイ問題と解決\_2025-10-29.md](./Phase02_アプリデプロイ問題と解決_2025-10-29.md) - アプリデプロイトラブルシューティング
-- [Phase01\_インフラデプロイ失敗\_2025-01-29.md](./Phase01_インフラデプロイ失敗_2025-01-29.md) - インフラデプロイ履歴
+- **[ENVIRONMENT_INFO.md](../docs/ENVIRONMENT_INFO.md)** - 環境情報全体（kubectl コマンド例を含む）
+- **[Phase02_アプリデプロイ問題と解決_2025-10-29.md](./Phase02_アプリデプロイ問題と解決_2025-10-29.md)** - アプリケーションデプロイのトラブルシューティング
+- **[Phase01_インフラデプロイ失敗_2025-01-29.md](./Phase01_インフラデプロイ失敗_2025-01-29.md)** - インフラストラクチャデプロイ履歴
 
 ---
 
 **作成日**: 2025 年 10 月 29 日  
 **ステータス**: ✅ 完了  
-**影響範囲**: 開発環境のみ（ローカル PATH 設定）
+**影響範囲**: ローカル開発環境（PATH 設定のみ）
