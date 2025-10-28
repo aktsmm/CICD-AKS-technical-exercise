@@ -14,9 +14,6 @@ param subnetId string
 @description('SSH公開許可（脆弱性）')
 param allowSSHFromInternet bool = true
 
-@description('古いOSバージョン使用（脆弱性）')
-param useOldOSVersion bool = true
-
 @description('Storage Account名（バックアップ先）')
 param storageAccountName string
 
@@ -120,8 +117,8 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-07-01' = {
     storageProfile: {
       imageReference: {
         publisher: 'Canonical'
-        offer: 'UbuntuServer'
-        sku: useOldOSVersion ? '18.04-LTS' : '22.04-LTS'  // 脆弱性: 古いOS
+        offer: '0001-com-ubuntu-server-focal'  // Ubuntu 20.04 LTS (Focal Fossa)
+        sku: '20_04-lts-gen2'
         version: 'latest'
       }
       osDisk: {
