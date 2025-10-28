@@ -87,7 +87,7 @@ wiz-technical-exercise/
 
 #### 📝 重要: すべてのトラブルを記録する
 
-**問題が発生したら必ず `FIXES_SUMMARY.md` に記録してください:**
+**問題が発生したら必ず Docs_issue_point 配下に Markdown で記録してください:**
 
 ```markdown
 ## 🔴 トラブル発生 (日付)
@@ -153,6 +153,13 @@ git push origin main --force
 - https://docs.github.com/code-security/secret-scanning
 
 ````
+
+#### 作業履歴の管理
+Docs_work_history 配下にフェーズごとに作業履歴を保存してください。
+
+#### 環境情報を必ず記録
+Docs_Secrets 配下に機密情報やシークレットなどを記録。
+各フェーズでなにに使用したものか、どうやって設定したかを明記してください。
 
 #### トラブル記録のルール
 Docs_issue_point 配下にフェーズに分けてトラブルを管理してください。

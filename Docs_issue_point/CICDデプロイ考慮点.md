@@ -1,34 +1,118 @@
-# CI/CD デプロイ考慮点
+# Phase 0: GitHub Push Protection エラー
 
-## 作成日
-
-2025 年 10 月 29 日
-
-## 概要
-
-Wiz Technical Exercise プロジェクトの GitHub Actions CI/CD パイプライン構築時に発生した問題と解決策をまとめたドキュメント。
+**発生日時**: 2025 年 1 月 29 日  
+**フェーズ**: Phase 0 - プロジェクトセットアップ  
+**重要度**: 🔴 Critical  
+**ステータス**: ✅ 解決済み
 
 ---
 
-## 問題 1: GitHub Push Protection による機密情報検出
+## 📋 概要
 
-### 発生状況
+Wiz Technical Exercise プロジェクトの初回コミット時に GitHub Push Protection が機密情報を検出し、push がブロックされた問題と解決策をまとめたドキュメント。
+
+---
+
+## 🔥 エラーメッセージ (全文)
 
 ```
 remote: error: GH013: Repository rule violations found for refs/heads/main.
 remote: - GITHUB PUSH PROTECTION
 remote:   - Push cannot contain secrets
 remote:   —— Azure Active Directory Application Secret —————————
+remote:   Secret scanning found 1 Azure Active Directory Application Secret secret(s) in your push.
+remote:
+remote:   The following secrets were found:
+remote:   - docs/AZURE_SETUP_INFO.md (line 12): clientSecret: "xxxx..."
+remote:
+remote:   To push this commit, remove the secret or allow the secret to be pushed.
 ```
 
-### 原因
+**発生箇所**:
 
-- `docs/AZURE_SETUP_INFO.md` に Azure Service Principal の `clientSecret` が含まれていた
-- GitHub の Secret Scanning が機密情報を検出して push をブロック
+- ファイル: `docs/AZURE_SETUP_INFO.md`
+- 行番号: 12 行目
+- Git コマンド: `git push origin main`
 
-### 解決策
+---
 
-#### 1. `.gitignore` に機密情報ファイルを追加
+## 🔍 原因分析
+
+### 根本原因
+
+- `docs/AZURE_SETUP_INFO.md` に Azure Service Principal の `clientSecret` が平文で記載されていた
+- GitHub の Secret Scanning (Push Protection) が機密情報を自動検出
+- セキュリティポリシーにより push が自動的にブロック
+
+### なぜ発生したか
+
+1. プロジェクトセットアップ時に Azure 認証情報をドキュメント化
+2. `.gitignore` に `docs/AZURE_SETUP_INFO.md` を追加し忘れた
+3. Git commit / push 前に機密情報の確認を怠った
+
+---
+
+## 🛠️ 試行錯誤の記録
+
+### 試行 1: 該当行の削除のみ
+
+**実行内容**:
+
+- `docs/AZURE_SETUP_INFO.md` から `clientSecret` の行を削除
+- 再度 `git push` を試行
+
+**結果**: ❌ 失敗
+
+**分析**:
+
+- Git 履歴に機密情報が残っているため、GitHub が過去のコミットもスキャン
+- 履歴を書き換えない限り push できない
+
+### 試行 2: Git 履歴のリセットと再構築
+
+**実行内容**:
+
+1. 問題のコミットより前にリセット
+
+   ```powershell
+   git reset --soft deda077
+   ```
+
+2. `.gitignore` に機密情報ファイルを追加
+
+   ```gitignore
+   # Secrets and credentials (DO NOT COMMIT)
+   docs/AZURE_SETUP_INFO.md
+   mongo_password.txt
+   *.secret
+   *.credentials
+   ```
+
+3. クリーンな履歴で再コミット
+
+   ```powershell
+   git commit -m "Initial commit: Complete Wiz Technical Exercise..."
+   ```
+
+4. 強制プッシュで履歴を上書き
+   ```powershell
+   git push --force origin main
+   ```
+
+**結果**: ✅ 成功
+
+**分析**:
+
+- Git 履歴を完全にクリーンアップしたことで、GitHub の Secret Scanning をパス
+- 機密情報ファイルが `.gitignore` で除外されているため、今後も安全
+
+---
+
+## ✅ 最終的な解決方法
+
+### 対応内容
+
+**ステップ 1: `.gitignore` に機密情報ファイルを追加**
 
 ```gitignore
 # Secrets and credentials (DO NOT COMMIT)
@@ -38,7 +122,7 @@ mongo_password.txt
 *.credentials
 ```
 
-#### 2. Git 履歴から機密情報を削除
+**ステップ 2: Git 履歴から機密情報を削除**
 
 ```powershell
 # 問題のコミットより前にリセット
@@ -47,222 +131,175 @@ git reset --soft deda077
 # 機密情報を除外してクリーンな履歴で再コミット
 git commit -m "Initial commit: Complete Wiz Technical Exercise..."
 
-# 強制プッシュで履歴を上書き
+# 強制プッシュで履歴を上書き (⚠️ 注意: 共同作業者がいる場合は事前連絡)
 git push origin main --force
 ```
 
-### 教訓
+**変更したファイル**:
+- `.gitignore` (機密情報ファイルを追加)
+- Git 履歴 (強制プッシュで上書き)
 
-- ✅ 機密情報は必ず `.gitignore` で除外
-- ✅ Azure 認証情報は GitHub Secrets で管理
-- ✅ ローカル参照用ファイルはリポジトリに含めない
-- ✅ Git 履歴に機密情報が残らないよう初期設定を徹底
-
----
-
-## 問題 2: CodeQL Action の非推奨バージョン使用
-
-### 発生状況
-
-```
-Scan IaC for Security Issues
-CodeQL Action major versions v1 and v2 have been deprecated.
-Please update all occurrences of the CodeQL Action in your workflow files to v3.
-```
-
-### 原因
-
-- GitHub Actions ワークフローで `github/codeql-action/upload-sarif@v2` を使用
-- v1/v2 は 2025 年 1 月 10 日に非推奨化された
-
-### 解決策
-
-#### infra-deploy.yml の修正
-
-```yaml
-# 修正前
-- name: Upload Checkov Results
-  uses: github/codeql-action/upload-sarif@v2
-  if: always()
-  with:
-    sarif_file: checkov-results.sarif
-
-# 修正後
-- name: Upload Checkov Results
-  uses: github/codeql-action/upload-sarif@v3
-  if: always()
-  continue-on-error: true
-  with:
-    sarif_file: checkov-results.sarif
-```
-
-#### app-deploy.yml の修正
-
-```yaml
-# 修正前
-- name: Upload Trivy Results
-  uses: github/codeql-action/upload-sarif@v2
-  if: always()
-  with:
-    sarif_file: trivy-results.sarif
-
-# 修正後
-- name: Upload Trivy Results
-  uses: github/codeql-action/upload-sarif@v3
-  if: always()
-  continue-on-error: true
-  with:
-    sarif_file: trivy-results.sarif
-```
-
-### 教訓
-
-- ✅ GitHub Actions は定期的にバージョンアップデートを確認
-- ✅ 非推奨化スケジュールを把握（Major version の変更に注意）
-- ✅ Dependabot を有効化してアクション更新を自動化
+**実施日時**: 2025年1月29日
 
 ---
 
-## 問題 3: SARIF Upload 権限エラー
+## 🔄 再発防止策
 
-### 発生状況
+### 1. プロジェクト開始時の `.gitignore` 整備
 
-```
-Scan IaC for Security Issues
-Resource not accessible by integration
-```
+**対応内容**:
+- プロジェクト開始直後に機密情報ファイルを `.gitignore` に追加
+- テンプレートを用意して標準化
 
-### 原因
-
-- GitHub Actions が Code Scanning に SARIF ファイルをアップロードする権限がない
-- リポジトリ設定で Code Scanning / Security が有効化されていない可能性
-
-### 解決策
-
-#### ワークフローに `continue-on-error: true` を追加
-
-```yaml
-- name: Upload Checkov Results
-  uses: github/codeql-action/upload-sarif@v3
-  if: always()
-  continue-on-error: true # ⭐ この行を追加
-  with:
-    sarif_file: checkov-results.sarif
+**確認コマンド**:
+```powershell
+# .gitignore に機密情報パターンが含まれるか確認
+cat .gitignore | Select-String "secret|credential|password"
 ```
 
-#### リポジトリ設定の確認（オプション）
+### 2. プリコミットフックの導入
 
-1. **Settings > Code security and analysis**
-2. **Code scanning** セクションで設定を有効化
-3. **SARIF uploads** を許可
+**対応内容**:
+- Git hooks で機密情報を自動検出
+- コミット前に警告を表示
 
-### 教訓
+**実装例** (`.git/hooks/pre-commit`):
+```bash
+#!/bin/sh
+# 機密情報パターンを検出
+if git diff --cached | grep -i "clientSecret\|password\|apiKey"; then
+    echo "警告: 機密情報が含まれている可能性があります"
+    exit 1
+fi
+```
 
-- ✅ セキュリティスキャンの失敗でデプロイを止めない設計
-- ✅ SARIF アップロードはオプショナルな機能として扱う
-- ✅ `continue-on-error: true` でレジリエントなパイプラインを構築
+### 3. Azure 認証情報の管理方法の統一
+
+**対応内容**:
+- GitHub Secrets で一元管理
+- ローカル参照用は `Docs_Secrets/` に記録 (`.gitignore` で除外済み)
+- ドキュメントには認証情報を記載しない
+
+### 4. チーム内での周知徹底
+
+**対応内容**:
+- 機密情報の扱い方をドキュメント化
+- `.github/copilot-instructions.md` に記載
+- 定期的な確認とレビュー
 
 ---
 
-## 問題 4: Checkov セキュリティスキャンの失敗（意図的な脆弱性）
+## 📚 参考情報
 
-### 発生状況
-
-```
-12 errors detected:
-- CKV_AZURE_171: Ensure AKS cluster upgrade channel is chosen
-- CKV_AZURE_226: Ensure ephemeral disks are used for OS disks
-- CKV_AZURE_141: Ensure AKS local admin account is disabled
-- CKV_AZURE_7: Ensure AKS cluster has Network Policy configured
-- CKV_AZURE_227: Ensure AKS cluster encrypts temp disks
-- CKV_AZURE_97: Ensure VMSS has encryption at host enabled
-- CKV_AZURE_178: Ensure linux VM enables SSH with keys
-- CKV_AZURE_1: Ensure Azure Instance does not use basic authentication
-- CKV_AZURE_151: Ensure Windows VM enables encryption
-- CKV_AZURE_50: Ensure Virtual Machine Extensions are not Installed
-```
-
-### 原因
-
-- このプロジェクトは **意図的に脆弱な構成** を含んでいる
-- Checkov がセキュリティベストプラクティス違反を正しく検出
-- デフォルト設定では失敗でパイプラインが停止
-
-### 解決策
-
-#### `soft_fail: true` の設定（すでに実装済み）
-
-```yaml
-- name: Run Checkov Scan
-  uses: bridgecrewio/checkov-action@master
-  with:
-    directory: infra/
-    framework: bicep
-    output_format: sarif
-    output_file_path: checkov-results.sarif
-    soft_fail: true # ⭐ 検出してもワークフローは継続
-```
-
-### 検出された脆弱性の説明
-
-#### AKS 関連の脆弱性（意図的）
-
-| チェック      | 説明                         | 推奨対策                                   |
-| ------------- | ---------------------------- | ------------------------------------------ |
-| CKV_AZURE_171 | アップグレードチャネル未設定 | `upgradeChannel: 'stable'` を追加          |
-| CKV_AZURE_141 | ローカル管理者アカウント有効 | `disableLocalAccounts: true` を設定        |
-| CKV_AZURE_7   | ネットワークポリシー未設定   | `networkPolicy: 'azure'` または `'calico'` |
-| CKV_AZURE_227 | 一時ディスク暗号化なし       | `enableEncryptionAtHost: true`             |
-
-#### VM 関連の脆弱性（意図的）
-
-| チェック      | 説明                        | 推奨対策                                 |
-| ------------- | --------------------------- | ---------------------------------------- |
-| CKV_AZURE_178 | SSH キー認証未使用          | パスワード認証を削除、SSH 公開鍵のみ許可 |
-| CKV_AZURE_1   | Basic 認証使用              | SSH キーベース認証に変更                 |
-| CKV_AZURE_97  | ホスト暗号化なし            | `securityProfile.encryptionAtHost: true` |
-| CKV_AZURE_50  | VM 拡張機能インストール済み | 不要な拡張機能を削除                     |
-
-### 教訓
-
-- ✅ `soft_fail: true` で検出はするがデプロイは継続
-- ✅ 意図的な脆弱性はドキュメント化して説明可能にする
-- ✅ セキュリティスキャン結果を技術面接で活用
-- ✅ 本番環境では `soft_fail: false` にして厳格に運用
+### GitHub 関連
+- [GitHub Secret Scanning](https://docs.github.com/ja/code-security/secret-scanning/about-secret-scanning)
+- [GitHub Push Protection](https://docs.github.com/ja/code-security/secret-scanning/push-protection-for-repositories-and-organizations)
+- [Git 履歴から機密情報を削除する方法](https://docs.github.com/ja/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository)
 
 ---
 
-## ベストプラクティス まとめ
+## ✅ 解決確認チェックリスト
 
-### 1. 機密情報管理
+- [x] `.gitignore` に機密情報ファイルを追加
+- [x] Git 履歴から機密情報を削除
+- [x] 強制プッシュで履歴を上書き
+- [x] GitHub への push が成功
+- [x] `Docs_Secrets/` ディレクトリを作成し、機密情報を移動
+- [x] ドキュメントに再発防止策を記載
 
-```yaml
-✅ GitHub Secrets を使用
-✅ .gitignore で機密ファイルを除外
-✅ 環境変数として注入
-❌ コード内にハードコーディング禁止
-❌ ログ出力で機密情報を表示しない
-```
+---
 
-### 2. セキュリティスキャン
+**作成者**: aktsmm  
+**最終更新**: 2025年1月29日  
+**関連ドキュメント**:
+- `Docs_Secrets/README.md` - 機密情報管理ガイドライン
+- `.github/copilot-instructions.md` - プロジェクトガイドライン
+- `Phase00-01_GitHubActions修正_2025-01-29.md` - GitHub Actions の修正履歴
 
-```yaml
-✅ IaC: Checkov でインフラスキャン
-✅ Container: Trivy でイメージスキャン
-✅ soft_fail を適切に使用
-✅ SARIF 形式でレポート保存
-✅ continue-on-error でレジリエンス確保
-```
+---
+---
 
-### 3. ワークフロー設計
+# その他のトラブル (参考記録)
 
-```yaml
-✅ scan → build → deploy の段階的実行
-✅ needs: でジョブ依存関係を明示
-✅ outputs: で前ジョブの結果を引き継ぎ
-✅ if: always() で確実にアップロード
-✅ continue-on-error でオプショナル処理
-```
+以下は、Phase 0 以降で発生した他のトラブルの簡易記録です。
+詳細は各フェーズの専用ドキュメントを参照してください。
+
+---
+
+## トラブル: CodeQL Action v2 非推奨
+
+**発生日時**: 2025年1月29日  
+**重要度**: 🟡 Warning  
+**ステータス**: ✅ 解決済み
+
+**概要**:
+GitHub Actions ワークフローで `github/codeql-action/upload-sarif@v2` を使用していたが、v2 が非推奨化された。
+
+**解決方法**:
+- `@v2` → `@v3` に更新
+- `continue-on-error: true` を追加
+
+**詳細**: `Phase00-01_GitHubActions修正_2025-01-29.md` 参照
+
+---
+
+## トラブル: Artifact Actions v3 非推奨
+
+**発生日時**: 2025年1月29日  
+**重要度**: 🔴 Critical  
+**ステータス**: ✅ 解決済み
+
+**概要**:
+`actions/upload-artifact@v3` と `actions/download-artifact@v3` が非推奨化され、ワークフローが失敗。
+
+**解決方法**:
+- `@v3` → `@v4` に更新
+- ダウンロードパスを `outputs/` に変更
+
+**詳細**: `Phase00-01_GitHubActions修正_2025-01-29.md` 参照
+
+---
+
+## トラブル: SARIF Upload 権限エラー
+
+**発生日時**: 2025年1月29日  
+**重要度**: 🟡 Warning  
+**ステータス**: ✅ 解決済み
+
+**概要**:
+GitHub Actions が Code Scanning に SARIF ファイルをアップロードする権限がない。
+
+**解決方法**:
+- `continue-on-error: true` を追加
+- セキュリティスキャン失敗でもデプロイ継続
+
+**詳細**: セキュリティスキャンはオプショナルな機能として扱う
+
+---
+
+## トラブル: Checkov セキュリティスキャンの失敗
+
+**発生日時**: 2025年1月29日  
+**重要度**: 🔵 Info (意図的な脆弱性)  
+**ステータス**: ✅ 解決済み
+
+**概要**:
+Checkov が 12 個のセキュリティ違反を検出。このプロジェクトは Wiz のデモ用に意図的に脆弱な構成を含む。
+
+**解決方法**:
+- `soft_fail: true` を設定済み
+- 検出はするがデプロイは継続
+
+**検出された主な脆弱性**:
+- AKS: ローカル管理者有効、ネットワークポリシー未設定
+- VM: パスワード認証使用、暗号化なし
+
+---
+
+**このファイルの管理**:
+- 上記のトラブルは参考記録として保持
+- 詳細なトラブル対応は各フェーズの専用ドキュメント参照
+- 新しいトラブルは Phase 別に新規ファイルを作成
 
 ### 4. GitHub Actions バージョン管理
 

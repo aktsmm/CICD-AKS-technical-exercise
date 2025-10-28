@@ -17,3 +17,6 @@ docs/AZURE_SETUP_INFO.md
 mongo_password.txt
 *.secret
 *.credentials
+
+# 機密情報管理ディレクトリ (Phase 1 で追加)
+Docs_Secrets/
