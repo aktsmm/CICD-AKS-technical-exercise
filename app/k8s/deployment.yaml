@@ -15,12 +15,12 @@ spec:
     spec:
       containers:
         - name: guestbook
-          image: <ACR_NAME>.azurecr.io/guestbook:latest
+          image: acrwizdev.azurecr.io/guestbook:v3
           ports:
             - containerPort: 3000
           env:
             - name: MONGO_URI
-              value: "mongodb://<MONGO_VM_IP>:27017/guestbook"
+              value: "mongodb://10.0.2.4:27017/guestbook"
             - name: PORT
               value: "3000"
           resources:

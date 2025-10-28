@@ -30,52 +30,28 @@ Wiz 社の技術面接課題：意図的に脆弱なクラウド環境を構築�
 ### 1️⃣ Azure 認証
 
 ```powershell
-# Azureにログイン
 az login
-
-# サブスクリプションID取得
-$SUBSCRIPTION_ID = az account show --query id -o tsv
-Write-Host "Subscription ID: $SUBSCRIPTION_ID"
-
-# サブスクリプションを設定（複数ある場合）
-az account set --subscription $SUBSCRIPTION_ID
+az account set --subscription "<YOUR_SUBSCRIPTION_ID>"
 ```
 
 ### 2️⃣ サービスプリンシパル作成
 
 ```powershell
-# Service Principal作成（GitHub Actions用）
-$SP_OUTPUT = az ad sp create-for-rbac `
+az ad sp create-for-rbac `
   --name "sp-wiz-exercise" `
-  --role Contributor `
-  --scopes "/subscriptions/$SUBSCRIPTION_ID" `
-  --sdk-auth
-
-# JSONをファイルに保存
-$SP_OUTPUT | Out-File -FilePath "azure-credentials.json" -Encoding utf8
-
-# 確認
-Write-Host "Service Principal JSON saved to: azure-credentials.json"
-Get-Content "azure-credentials.json"
+  --role contributor `
+  --scopes /subscriptions/<YOUR_SUBSCRIPTION_ID> `
+  --sdk-auth > azure-credentials.json
 ```
 
 ### 3️⃣ ACR 作成（手動、必須）
 
 ```powershell
-# リソースグループ作成
-az group create `
-  --name "rg-wiz-exercise" `
-  --location "japaneast"
-
-# Azure Container Registry作成
+az group create --name rg-wiz-exercise --location japaneast
 az acr create `
-  --resource-group "rg-wiz-exercise" `
-  --name "acrwizexercise" `
-  --sku Standard `
-  --location "japaneast"
-
-# 作成確認
-az acr list --resource-group "rg-wiz-exercise" -o table
+  --resource-group rg-wiz-exercise `
+  --name acrwizexercise `
+  --sku Basic
 ```
 
 ### 4️⃣ GitHub シークレット設定
@@ -137,34 +113,20 @@ wiz-technical-exercise/
 ### 脆弱性確認
 
 ```powershell
-# 1. Storage Public Access 確認
-$STORAGE_NAME = az storage account list `
-  --resource-group "rg-wiz-exercise" `
-  --query "[0].name" -o tsv
-
+# Storage Public Access
+$STORAGE_NAME = "<storage-name>"
 az storage account show `
   --name $STORAGE_NAME `
-  --resource-group "rg-wiz-exercise" `
-  --query "{PublicAccess:allowBlobPublicAccess, TLS:minimumTlsVersion, HttpsOnly:supportsHttpsTrafficOnly}" `
-  -o table
+  --query allowBlobPublicAccess
 
-# 2. SSH公開確認
+# SSH公開確認
+$NSG_NAME = "vm-mongo-dev-nsg"
 az network nsg rule show `
-  --resource-group "rg-wiz-exercise" `
-  --nsg-name "nsg-mongo-dev" `
-  --name "AllowSSH" `
-  --query "{Name:name, Source:sourceAddressPrefix, Port:destinationPortRange, Access:access}" `
-  -o table
+  --resource-group rg-wiz-exercise `
+  --nsg-name $NSG_NAME `
+  --name Allow-SSH-Internet
 
-# 3. MongoDB NSG確認
-az network nsg rule show `
-  --resource-group "rg-wiz-exercise" `
-  --nsg-name "nsg-mongo-dev" `
-  --name "AllowMongoDB" `
-  --query "{Name:name, Source:sourceAddressPrefix, Port:destinationPortRange}" `
-  -o table
-
-# 4. Kubernetes RBAC確認
+# Kubernetes RBAC
 kubectl get clusterrolebindings developer-cluster-admin -o yaml
 ```
 
@@ -173,15 +135,9 @@ kubectl get clusterrolebindings developer-cluster-admin -o yaml
 ### Ingress IP の取得
 
 ```powershell
-# Application Gateway Ingress使用時
 kubectl get ingress guestbook-ingress
-
-# NGINX Ingress使用時
-kubectl get svc ingress-nginx-controller -n ingress-nginx
-
-# IPアドレスのみ取得
-$INGRESS_IP = kubectl get ingress guestbook-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-Write-Host "Application URL: http://$INGRESS_IP"
+# または
+kubectl get svc -n ingress-nginx  # NGINX使用時
 ```
 
 ブラウザでアクセス: `http://<INGRESS_IP>`
@@ -189,20 +145,12 @@ Write-Host "Application URL: http://$INGRESS_IP"
 ### wizexercise.txt 確認
 
 ```powershell
-# 1. Web経由で確認
-$INGRESS_IP = kubectl get ingress guestbook-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-Invoke-WebRequest -Uri "http://$INGRESS_IP/wizfile" -UseBasicParsing | Select-Object -ExpandProperty Content
+# Web経由
+curl http://<INGRESS_IP>/wizfile
 
-# 2. Pod内で直接確認
+# Pod内
 $POD_NAME = kubectl get pods -l app=guestbook -o jsonpath='{.items[0].metadata.name}'
 kubectl exec $POD_NAME -- cat /app/wizexercise.txt
-
-# 3. すべてのPodで確認
-kubectl get pods -l app=guestbook -o jsonpath='{.items[*].metadata.name}' | ForEach-Object {
-    $pod = $_
-    Write-Host "`n=== Pod: $pod ==="
-    kubectl exec $pod -- cat /app/wizexercise.txt
-}
 ```
 
 ## 🛠️ トラブルシューティング
@@ -221,61 +169,26 @@ kubectl apply -f app/k8s/ingress-nginx.yaml
 ### MongoDB に接続できない
 
 ```powershell
-# 1. VM IPアドレス確認
-$MONGO_IP = az vm list-ip-addresses `
-  --resource-group "rg-wiz-exercise" `
-  --name "vm-mongo-dev" `
-  --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" `
-  -o tsv
+# VM IPアドレス確認
+az vm show `
+  -g rg-wiz-exercise `
+  -n vm-mongo-dev `
+  --show-details `
+  --query publicIps -o tsv
 
-Write-Host "MongoDB VM IP: $MONGO_IP"
-
-# 2. MongoDB接続テスト (Podから)
-$POD_NAME = kubectl get pods -l app=guestbook -o jsonpath='{.items[0].metadata.name}'
-kubectl exec $POD_NAME -- nc -zv $MONGO_IP 27017
-
-# 3. Deploymentの環境変数を更新
-kubectl set env deployment/guestbook-app MONGO_URI="mongodb://${MONGO_IP}:27017/guestbook"
-
-# 4. 再起動を待つ
-kubectl rollout status deployment/guestbook-app
+# Deploymentの環境変数を更新
+kubectl set env deployment/guestbook-app MONGO_URI="mongodb://<MONGO_IP>:27017/guestbook"
 ```
 
 ## 🧹 リソース削除
 
 ```powershell
-# 1. リソースグループ内のリソース確認
-az resource list --resource-group "rg-wiz-exercise" -o table
+# すべてのリソースを削除
+az group delete --name rg-wiz-exercise --yes --no-wait
 
-# 2. すべてのAzureリソースを削除
-Write-Host "Deleting resource group: rg-wiz-exercise..."
-az group delete `
-  --name "rg-wiz-exercise" `
-  --yes `
-  --no-wait
-
-# 3. 削除状態を確認
-az group list --query "[?name=='rg-wiz-exercise']" -o table
-
-# 4. Service Principal削除
-$SP_ID = az ad sp list `
-  --display-name "sp-wiz-exercise" `
-  --query "[0].appId" `
-  -o tsv
-
-if ($SP_ID) {
-    Write-Host "Deleting Service Principal: $SP_ID"
-    az ad sp delete --id $SP_ID
-    Write-Host "Service Principal deleted successfully"
-} else {
-    Write-Host "Service Principal not found"
-}
-
-# 5. ローカルファイル削除（オプション）
-if (Test-Path "azure-credentials.json") {
-    Remove-Item "azure-credentials.json" -Force
-    Write-Host "azure-credentials.json deleted"
-}
+# サービスプリンシパル削除
+$SP_ID = az ad sp list --display-name "sp-wiz-exercise" --query "[0].appId" -o tsv
+az ad sp delete --id $SP_ID
 ```
 
 ## 📝 ライセンス
