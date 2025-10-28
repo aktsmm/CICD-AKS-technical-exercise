@@ -146,7 +146,7 @@ jobs:
                   # Deploy application
                   kubectl apply -f app/k8s/deployment.yaml
                   kubectl apply -f app/k8s/service.yaml
-                  kubectl apply -f app/k8s/ingress.yaml
+                  # Note: Ingress is skipped as we're using LoadBalancer service type
 
             - name: Wait for Deployment
               run: |
@@ -160,8 +160,5 @@ jobs:
                   echo "=== Services ==="
                   kubectl get svc guestbook-service
 
-                  echo "=== Ingress ==="
-                  kubectl get ingress guestbook-ingress
-
                   echo "=== Deployment Complete ==="
-                  echo "Note: Ingress IP may take a few minutes to provision"
+                  echo "Access the application via the LoadBalancer EXTERNAL-IP shown above"

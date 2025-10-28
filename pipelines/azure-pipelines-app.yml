@@ -116,9 +116,9 @@ jobs:
         run: |
           kubectl apply -f app/k8s/deployment.yaml
           kubectl apply -f app/k8s/service.yaml
-          kubectl apply -f app/k8s/ingress.yaml
+          # Note: Ingress is skipped as we're using LoadBalancer service type
 
-          # 脆弱なRBAC設定も適用（デモ用）
+          # 脆弱なRBAC設定も適用(デモ用)
           kubectl apply -f app/k8s/rbac-vulnerable.yaml
 
       - name: Wait for Deployment
@@ -129,4 +129,3 @@ jobs:
         run: |
           kubectl get pods
           kubectl get svc
-          kubectl get ingress
