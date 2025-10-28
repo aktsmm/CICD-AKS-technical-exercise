@@ -21,10 +21,9 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
   }
   properties: {
     dnsPrefix: clusterName
-    // プライベートクラスター設定
+    // プライベートクラスター設定を明示的に無効化
     apiServerAccessProfile: {
-      enablePrivateCluster: true
-      enablePrivateClusterPublicFQDN: false
+      enablePrivateCluster: false
     }
     agentPoolProfiles: [
       {
