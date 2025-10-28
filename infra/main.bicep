@@ -81,6 +81,23 @@ module aks 'modules/aks.bicep' = {
   }
 }
 
+// Azure Container Registry (Private Endpoint付き)
+module acr 'modules/acr.bicep' = {
+  scope: rg
+  name: 'acr-${deploymentTimestamp}'
+  params: {
+    location: location
+    environment: environment
+    vnetId: networking.outputs.vnetId
+    privateEndpointSubnetId: networking.outputs.privateEndpointSubnetId
+  }
+  dependsOn: [
+    aks
+  ]
+}
+
 output aksClusterName string = aks.outputs.clusterName
+output acrName string = acr.outputs.acrName
+output acrLoginServer string = acr.outputs.acrLoginServer
 output mongoVMPublicIP string = mongoVM.outputs.publicIP
 output storageAccountName string = storage.outputs.storageAccountName

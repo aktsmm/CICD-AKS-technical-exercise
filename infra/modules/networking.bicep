@@ -28,6 +28,13 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
           addressPrefix: '10.0.2.0/24'
         }
       }
+      {
+        name: 'snet-private-endpoints'
+        properties: {
+          addressPrefix: '10.0.3.0/24'
+          privateEndpointNetworkPolicies: 'Disabled'
+        }
+      }
     ]
   }
 }
@@ -35,3 +42,4 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
 output vnetId string = vnet.id
 output aksSubnetId string = vnet.properties.subnets[0].id
 output mongoSubnetId string = vnet.properties.subnets[1].id
+output privateEndpointSubnetId string = vnet.properties.subnets[2].id

@@ -21,6 +21,11 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
   }
   properties: {
     dnsPrefix: clusterName
+    // プライベートクラスター設定
+    apiServerAccessProfile: {
+      enablePrivateCluster: true
+      enablePrivateClusterPublicFQDN: false
+    }
     agentPoolProfiles: [
       {
         name: 'nodepool1'
