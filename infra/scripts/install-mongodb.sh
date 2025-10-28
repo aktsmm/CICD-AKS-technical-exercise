@@ -3,8 +3,12 @@ set -ex  # 詳細ログ出力を有効化
 
 echo "=== Starting MongoDB Installation ==="
 
+# apt リストのクリーンアップと再初期化
+rm -rf /var/lib/apt/lists/*
+apt-get clean
+
 # MongoDB インストール (Ubuntu リポジトリから)
-apt-get update
+apt-get update -o Acquire::AllowInsecureRepositories=false -o Acquire::AllowDowngradeToInsecureRepositories=false
 DEBIAN_FRONTEND=noninteractive apt-get install -y mongodb || {
   echo "ERROR: Failed to install mongodb package"
   exit 1
