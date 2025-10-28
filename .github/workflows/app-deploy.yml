@@ -100,19 +100,30 @@ jobs:
             - name: Get Infrastructure Details
               id: infra
               run: |
-                  if [ -f infra-outputs.txt ]; then
-                    source infra-outputs.txt
+                  # Try to load from artifact first
+                  if [ -f outputs/infra-outputs.txt ]; then
+                    echo "Loading from artifact..."
+                    source outputs/infra-outputs.txt
                   else
+                    echo "Artifact not found, querying Azure directly..."
                     # Fallback: Query Azure directly
                     AKS_CLUSTER_NAME=$(az aks list -g ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
                     MONGO_VM_IP=$(az vm list-ip-addresses -g ${{ env.RESOURCE_GROUP }} -n vm-mongo-dev --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" -o tsv)
                   fi
+
+                  echo "AKS Cluster: ${AKS_CLUSTER_NAME}"
+                  echo "MongoDB VM IP: ${MONGO_VM_IP}"
 
                   echo "aks_name=${AKS_CLUSTER_NAME}" >> $GITHUB_OUTPUT
                   echo "mongo_ip=${MONGO_VM_IP}" >> $GITHUB_OUTPUT
 
             - name: Set AKS Context
               run: |
+                  if [ -z "${{ steps.infra.outputs.aks_name }}" ]; then
+                    echo "Error: AKS cluster name is empty. Please run infra-deploy workflow first."
+                    exit 1
+                  fi
+
                   az aks get-credentials \
                     --resource-group ${{ env.RESOURCE_GROUP }} \
                     --name ${{ steps.infra.outputs.aks_name }} \
