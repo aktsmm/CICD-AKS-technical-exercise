@@ -62,6 +62,7 @@ jobs:
                       location=${{ env.LOCATION }}
                       mongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }}
                   deploymentName: infra-deployment-${{ github.run_number }}
+                  failOnStdErr: false
 
             - name: Get Deployment Outputs
               id: outputs
