@@ -81,23 +81,15 @@ module aks 'modules/aks.bicep' = {
   }
 }
 
-// Azure Container Registry (Private Endpoint付き)
-module acr 'modules/acr.bicep' = {
+// 脆弱性: MongoDB VMに過剰なクラウド権限(Contributor)を付与
+module vmRoleAssignment 'modules/vm-role-assignment.bicep' = {
   scope: rg
-  name: 'acr-${deploymentTimestamp}'
+  name: 'vm-role-${deploymentTimestamp}'
   params: {
-    location: location
-    environment: environment
-    vnetId: networking.outputs.vnetId
-    privateEndpointSubnetId: networking.outputs.privateEndpointSubnetId
+    vmPrincipalId: mongoVM.outputs.vmIdentityPrincipalId
   }
-  dependsOn: [
-    aks
-  ]
 }
 
 output aksClusterName string = aks.outputs.clusterName
-output acrName string = acr.outputs.acrName
-output acrLoginServer string = acr.outputs.acrLoginServer
 output mongoVMPublicIP string = mongoVM.outputs.publicIP
 output storageAccountName string = storage.outputs.storageAccountName

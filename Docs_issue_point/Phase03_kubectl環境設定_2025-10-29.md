@@ -233,11 +233,11 @@ kubectl describe secret <secret-name>
 
 **Windows の環境変数は 3 つのスコープで管理されます**:
 
-| スコープ                    | 適用範囲               | 権限要否   |
-| --------------------------- | ---------------------- | ---------- |
-| **System (マシン全体)**     | すべてのユーザー       | 管理者権限 |
-| **User (ユーザー単位)**     | 現在のユーザーのみ     | 不要       |
-| **Process (プロセス単位)**  | 現在のプロセスのみ     | 不要       |
+| スコープ                   | 適用範囲           | 権限要否   |
+| -------------------------- | ------------------ | ---------- |
+| **System (マシン全体)**    | すべてのユーザー   | 管理者権限 |
+| **User (ユーザー単位)**    | 現在のユーザーのみ | 不要       |
+| **Process (プロセス単位)** | 現在のプロセスのみ | 不要       |
 
 今回は **User スコープ**に追加したため:
 
@@ -286,18 +286,23 @@ $env:PATH = "C:\new\path;$env:PATH"
 
 ```markdown
 # クラスター接続
+
 az aks get-credentials --resource-group rg-wiz-exercise --name aks-wiz-dev
 
-# Pod確認
+# Pod 確認
+
 kubectl get pods -l app=guestbook
 
-# Service確認
+# Service 確認
+
 kubectl get svc
 
-# Ingress確認
+# Ingress 確認
+
 kubectl get ingress
 
 # ログ確認
+
 kubectl logs -l app=guestbook --tail=50
 ```
 
@@ -344,6 +349,7 @@ kubectl completion powershell | Out-String | Invoke-Expression
 ```
 
 **効果**:
+
 - `kubectl get po<Tab>` → `kubectl get pods`
 - リソース名も補完候補に表示
 
@@ -375,21 +381,21 @@ kubens ingress-nginx       # Ingress Controller namespace
 
 ## 📊 完了ステータス
 
-| 項目                        | 状態    | バージョン/詳細            |
-| --------------------------- | ------- | -------------------------- |
-| **kubectl インストール**    | ✅ 完了 | v1.34.1                    |
-| **PATH 設定（一時）**       | ✅ 完了 | 現在のセッションで有効     |
-| **PATH 設定（永続化）**     | ✅ 完了 | User スコープに追加        |
-| **動作確認**                | ✅ 完了 | `version --client` 成功    |
-| **ドキュメント更新**        | ✅ 完了 | ENVIRONMENT_INFO.md 記載   |
+| 項目                     | 状態    | バージョン/詳細          |
+| ------------------------ | ------- | ------------------------ |
+| **kubectl インストール** | ✅ 完了 | v1.34.1                  |
+| **PATH 設定（一時）**    | ✅ 完了 | 現在のセッションで有効   |
+| **PATH 設定（永続化）**  | ✅ 完了 | User スコープに追加      |
+| **動作確認**             | ✅ 完了 | `version --client` 成功  |
+| **ドキュメント更新**     | ✅ 完了 | ENVIRONMENT_INFO.md 記載 |
 
 ---
 
 ## 🔗 関連ドキュメント
 
 - **[ENVIRONMENT_INFO.md](../docs/ENVIRONMENT_INFO.md)** - 環境情報全体（kubectl コマンド例を含む）
-- **[Phase02_アプリデプロイ問題と解決_2025-10-29.md](./Phase02_アプリデプロイ問題と解決_2025-10-29.md)** - アプリケーションデプロイのトラブルシューティング
-- **[Phase01_インフラデプロイ失敗_2025-01-29.md](./Phase01_インフラデプロイ失敗_2025-01-29.md)** - インフラストラクチャデプロイ履歴
+- **[Phase02\_アプリデプロイ問題と解決\_2025-10-29.md](./Phase02_アプリデプロイ問題と解決_2025-10-29.md)** - アプリケーションデプロイのトラブルシューティング
+- **[Phase01\_インフラデプロイ失敗\_2025-01-29.md](./Phase01_インフラデプロイ失敗_2025-01-29.md)** - インフラストラクチャデプロイ履歴
 
 ---
 

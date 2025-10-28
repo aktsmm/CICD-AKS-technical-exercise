@@ -62,7 +62,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' = {
           protocol: 'Tcp'
           sourcePortRange: '*'
           destinationPortRange: '27017'
-          sourceAddressPrefix: '*'  // 脆弱性: MongoDB全開放
+          sourceAddressPrefix: '10.0.0.0/16'  // 修正: VNet内(Kubernetesネットワーク)からのみ許可
           destinationAddressPrefix: '*'
         }
       }
@@ -99,6 +99,9 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-05-01' = {
 resource vm 'Microsoft.Compute/virtualMachines@2023-07-01' = {
   name: vmName
   location: location
+  identity: {
+    type: 'SystemAssigned'  // 脆弱性: 過剰な権限付与のためManaged Identityを有効化
+  }
   properties: {
     hardwareProfile: {
       vmSize: 'Standard_B2s'
@@ -161,3 +164,4 @@ resource vmExtension 'Microsoft.Compute/virtualMachines/extensions@2023-07-01' =
 
 output publicIP string = publicIP.properties.ipAddress
 output privateIP string = nic.properties.ipConfigurations[0].properties.privateIPAddress
+output vmIdentityPrincipalId string = vm.identity.principalId
