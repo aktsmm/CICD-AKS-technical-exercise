@@ -118,7 +118,7 @@ C:\Users\vainf\.azure-kubectl\kubectl.exe logs deployment/guestbook
 # 短いコマンドで実行可能
 kubectl get pods
 kubectl get svc
-kubectl logs deployment/guestbook
+kubectl logs deployment/guestbook-app
 ```
 
 ---
@@ -178,10 +178,10 @@ kubectl describe ingress guestbook-ingress
 kubectl get deployments
 
 # Deployment詳細
-kubectl describe deployment guestbook
+kubectl describe deployment guestbook-app
 
 # Deploymentスケーリング
-kubectl scale deployment guestbook --replicas=3
+kubectl scale deployment guestbook-app --replicas=3
 ```
 
 ### リソース監視
@@ -202,10 +202,10 @@ kubectl get events --sort-by='.lastTimestamp'
 kubectl exec -it <pod-name> -- /bin/sh
 
 # ポートフォワード（ローカルテスト）
-kubectl port-forward deployment/guestbook 8080:3000
+kubectl port-forward deployment/guestbook-app 8080:3000
 
 # ログをリアルタイム監視
-kubectl logs -f deployment/guestbook
+kubectl logs -f deployment/guestbook-app
 ```
 
 ---
@@ -330,7 +330,7 @@ function kl { kubectl logs @args }
 ```powershell
 k get pods        # kubectl get pods
 kgp -l app=guestbook  # kubectl get pods -l app=guestbook
-kl deployment/guestbook  # kubectl logs deployment/guestbook
+kl deployment/guestbook-app  # kubectl logs deployment/guestbook-app
 ```
 
 ### 2. kubectl オートコンプリート設定
