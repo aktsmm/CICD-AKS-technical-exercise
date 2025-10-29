@@ -132,6 +132,37 @@ jobs:
                     exit 1
                   fi
 
+                  # AKS がプロビジョニング完了するまで待機
+                  echo "Waiting for AKS cluster to be ready..."
+                  max_attempts=30
+                  attempt=1
+                  
+                  while [ $attempt -le $max_attempts ]; do
+                    state=$(az aks show \
+                      --resource-group ${{ env.RESOURCE_GROUP }} \
+                      --name ${{ steps.infra.outputs.aks_name }} \
+                      --query provisioningState -o tsv)
+                    
+                    echo "Attempt $attempt/$max_attempts: AKS provisioning state = $state"
+                    
+                    if [ "$state" == "Succeeded" ]; then
+                      echo "AKS cluster is ready!"
+                      break
+                    elif [ "$state" == "Failed" ]; then
+                      echo "Error: AKS provisioning failed"
+                      exit 1
+                    fi
+                    
+                    if [ $attempt -eq $max_attempts ]; then
+                      echo "Error: Timeout waiting for AKS to be ready"
+                      exit 1
+                    fi
+                    
+                    echo "Waiting 30 seconds..."
+                    sleep 30
+                    attempt=$((attempt + 1))
+                  done
+
                   az aks get-credentials \
                     --resource-group ${{ env.RESOURCE_GROUP }} \
                     --name ${{ steps.infra.outputs.aks_name }} \
