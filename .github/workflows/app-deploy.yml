@@ -8,6 +8,12 @@ on:
             - "app/**"
             - ".github/workflows/app-deploy.yml"
     workflow_dispatch:
+    workflow_run:
+        workflows: ["Deploy Infrastructure"]
+        types:
+            - completed
+        branches:
+            - main
 
 env:
     ACR_NAME: acrwizdev
@@ -18,6 +24,8 @@ jobs:
     scan-container:
         name: Scan Container Image
         runs-on: ubuntu-latest
+        # Infrastructure デプロイが成功した場合のみ実行
+        if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
         steps:
             - name: Checkout Code
               uses: actions/checkout@v4
