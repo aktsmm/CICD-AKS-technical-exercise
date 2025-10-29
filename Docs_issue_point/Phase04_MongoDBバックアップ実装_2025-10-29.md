@@ -21,11 +21,12 @@ MongoDB VM に自動バックアップ機能を実装し、デイリーで Azure
 **ファイル**: `/usr/local/bin/mongodb-backup.sh`
 
 **主な機能**:
+
 - MongoDB データベース全体を `mongodump` でダンプ
 - `tar.gz` 形式で圧縮
 - タイムスタンプ付きファイル名で保存
 - Azure Storage に Managed Identity を使用してアップロード
-- 7日以上前のローカルバックアップを自動削除
+- 7 日以上前のローカルバックアップを自動削除
 
 **スクリプト内容**:
 
@@ -59,7 +60,7 @@ echo "Backup completed: ${BACKUP_FILE}"
 
 ### 2. Cron ジョブの設定
 
-**スケジュール**: 毎日午前2時に自動実行
+**スケジュール**: 毎日午前 2 時に自動実行
 
 ```bash
 # Crontab エントリ
@@ -89,7 +90,7 @@ resource storageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-
   name: guid(storageAccount.id, vmPrincipalId, storageBlobDataContributorRoleId)
   scope: storageAccount
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions',
       'ba92f5b4-2d11-453d-a403-e96b0029c9fe')  // Storage Blob Data Contributor
     principalId: vmPrincipalId
     principalType: 'ServicePrincipal'
@@ -122,17 +123,17 @@ VM セットアップ完了後、初回バックアップを即座に実行:
 
 ## 📊 バックアップ仕様
 
-| 項目 | 内容 |
-|------|------|
-| **実行頻度** | 毎日午前2時（JST） |
-| **バックアップツール** | `mongodump`（MongoDB 公式ツール） |
-| **圧縮形式** | `tar.gz` |
-| **ファイル名形式** | `mongodb_backup_YYYYMMDD_HHMMSS.tar.gz` |
-| **ローカル保存先** | `/var/backups/mongodb/` |
-| **クラウド保存先** | Azure Storage Account (`backups` コンテナ) |
-| **認証方式** | Managed Identity（パスワード不要） |
-| **ローカル保持期間** | 7日間 |
-| **ログファイル** | `/var/log/mongodb-backup.log` |
+| 項目                   | 内容                                       |
+| ---------------------- | ------------------------------------------ |
+| **実行頻度**           | 毎日午前 2 時（JST）                       |
+| **バックアップツール** | `mongodump`（MongoDB 公式ツール）          |
+| **圧縮形式**           | `tar.gz`                                   |
+| **ファイル名形式**     | `mongodb_backup_YYYYMMDD_HHMMSS.tar.gz`    |
+| **ローカル保存先**     | `/var/backups/mongodb/`                    |
+| **クラウド保存先**     | Azure Storage Account (`backups` コンテナ) |
+| **認証方式**           | Managed Identity（パスワード不要）         |
+| **ローカル保持期間**   | 7 日間                                     |
+| **ログファイル**       | `/var/log/mongodb-backup.log`              |
 
 ---
 
@@ -150,13 +151,13 @@ graph LR
 
 ### 詳細ステップ
 
-1. **Cron トリガー**: 毎日午前2時に Cron が起動
+1. **Cron トリガー**: 毎日午前 2 時に Cron が起動
 2. **MongoDB ダンプ**: `mongodump` コマンドでデータベース全体をダンプ
 3. **圧縮**: `tar -czf` で圧縮してディスク容量を節約
-4. **Azure へアップロード**: 
+4. **Azure へアップロード**:
    - Managed Identity で認証（`az login --identity`）
    - `az storage blob upload` でファイルをアップロード
-5. **古いファイル削除**: `find -mtime +7` で7日以上前のローカルファイルを削除
+5. **古いファイル削除**: `find -mtime +7` で 7 日以上前のローカルファイルを削除
 6. **ログ記録**: 実行結果を `/var/log/mongodb-backup.log` に追記
 
 ---
@@ -176,6 +177,7 @@ resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@20
 ```
 
 **影響**:
+
 - ✅ 要件を満たす: バックアップ先のストレージは公開閲覧・公開リスト可能
 - ⚠️ セキュリティリスク: 誰でもバックアップファイルをダウンロード可能
 
@@ -199,6 +201,7 @@ sed -i 's/bind_ip = 127.0.0.1/bind_ip = 0.0.0.0/' /etc/mongodb.conf
 ```
 
 **バックアップへの影響**:
+
 - `mongodump` コマンドで認証不要でダンプ可能
 - バックアップファイルに認証情報は含まれない
 
@@ -286,6 +289,7 @@ echo $?  # 0 なら成功
 ### 問題 1: バックアップスクリプトが実行されない
 
 **症状**:
+
 ```bash
 crontab -l  # Cron ジョブが表示されない
 ```
@@ -297,7 +301,7 @@ crontab -l  # Cron ジョブが表示されない
 ```bash
 # VM 拡張機能のステータス確認
 az vm extension list \
-  --resource-group rg-wiz-exercise \
+  --resource-group rg-wiz-exercise2 \
   --vm-name vm-mongo-dev \
   --query "[?name=='install-mongodb'].{Name:name, Status:provisioningState}" \
   --output table
@@ -308,7 +312,7 @@ az vm extension list \
 ```bash
 # VM 拡張機能を再実行
 az vm extension set \
-  --resource-group rg-wiz-exercise \
+  --resource-group rg-wiz-exercise2 \
   --vm-name vm-mongo-dev \
   --name CustomScript \
   --publisher Microsoft.Azure.Extensions \
@@ -318,6 +322,7 @@ az vm extension set \
 ### 問題 2: Azure Storage へのアップロードが失敗する
 
 **症状**:
+
 ```bash
 tail /var/log/mongodb-backup.log
 # エラー: AuthorizationPermissionMismatch
@@ -331,7 +336,7 @@ tail /var/log/mongodb-backup.log
 # ロール割り当てを確認
 az role assignment list \
   --assignee <VM_PRINCIPAL_ID> \
-  --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-wiz-exercise/providers/Microsoft.Storage/storageAccounts/<STORAGE_NAME> \
+  --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-wiz-exercise2/providers/Microsoft.Storage/storageAccounts/<STORAGE_NAME> \
   --output table
 ```
 
@@ -342,12 +347,13 @@ az role assignment list \
 az role assignment create \
   --assignee <VM_PRINCIPAL_ID> \
   --role "Storage Blob Data Contributor" \
-  --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-wiz-exercise/providers/Microsoft.Storage/storageAccounts/<STORAGE_NAME>
+  --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-wiz-exercise2/providers/Microsoft.Storage/storageAccounts/<STORAGE_NAME>
 ```
 
 ### 問題 3: mongodump コマンドが見つからない
 
 **症状**:
+
 ```bash
 /usr/local/bin/mongodb-backup.sh
 # エラー: mongodump: command not found
@@ -370,6 +376,7 @@ which mongodump
 ### 問題 4: ディスク容量不足
 
 **症状**:
+
 ```bash
 df -h
 # /dev/sda1       30G  29G  1.0G  97% /
@@ -394,6 +401,7 @@ du -sh /var/backups/mongodb
 ### セキュリティ改善
 
 1. **Storage Account のプライベート化**:
+
    ```bicep
    properties: {
      allowBlobPublicAccess: false  // 公開アクセス無効化
@@ -402,6 +410,7 @@ du -sh /var/backups/mongodb
    ```
 
 2. **バックアップの暗号化**:
+
    ```bash
    # GPG で暗号化してからアップロード
    gpg --symmetric --cipher-algo AES256 ${BACKUP_FILE}
@@ -417,6 +426,7 @@ du -sh /var/backups/mongodb
 ### 運用改善
 
 1. **バックアップ通知**:
+
    ```bash
    # Azure Logic Apps や SendGrid でメール通知
    curl -X POST https://<LOGIC_APP_URL> \
@@ -425,6 +435,7 @@ du -sh /var/backups/mongodb
    ```
 
 2. **バックアップの検証**:
+
    ```bash
    # mongorestore でリストア可能か確認
    mongorestore --host localhost --port 27018 --archive=${BACKUP_FILE}
@@ -460,34 +471,34 @@ du -sh /var/backups/mongodb
 
 ## 📊 完了ステータス
 
-| 項目 | 状態 | 備考 |
-|------|------|------|
+| 項目                           | 状態    | 備考                               |
+| ------------------------------ | ------- | ---------------------------------- |
 | **バックアップスクリプト作成** | ✅ 完了 | `/usr/local/bin/mongodb-backup.sh` |
-| **Cron ジョブ設定** | ✅ 完了 | 毎日午前2時実行 |
-| **Azure CLI インストール** | ✅ 完了 | Managed Identity 認証対応 |
-| **Managed Identity 設定** | ✅ 完了 | SystemAssigned Identity |
-| **Storage ロール割り当て** | ✅ 完了 | Storage Blob Data Contributor |
-| **初回バックアップ実行** | ✅ 完了 | VM セットアップ時に実行 |
-| **公開アクセス設定** | ✅ 完了 | 意図的な脆弱性（要件） |
+| **Cron ジョブ設定**            | ✅ 完了 | 毎日午前 2 時実行                  |
+| **Azure CLI インストール**     | ✅ 完了 | Managed Identity 認証対応          |
+| **Managed Identity 設定**      | ✅ 完了 | SystemAssigned Identity            |
+| **Storage ロール割り当て**     | ✅ 完了 | Storage Blob Data Contributor      |
+| **初回バックアップ実行**       | ✅ 完了 | VM セットアップ時に実行            |
+| **公開アクセス設定**           | ✅ 完了 | 意図的な脆弱性（要件）             |
 
 ---
 
 ## 🔗 関連ドキュメント
 
 - **[ENVIRONMENT_INFO.md](../docs/ENVIRONMENT_INFO.md)** - 環境情報全体
-- **[Phase01_インフラデプロイ失敗_2025-01-29.md](./Phase01_インフラデプロイ失敗_2025-01-29.md)** - インフラデプロイ履歴
-- **[Phase02_アプリデプロイ問題と解決_2025-10-29.md](./Phase02_アプリデプロイ問題と解決_2025-10-29.md)** - アプリケーションデプロイ
-- **[Phase03_kubectl環境設定_2025-10-29.md](./Phase03_kubectl環境設定_2025-10-29.md)** - kubectl 環境設定
+- **[Phase01\_インフラデプロイ失敗\_2025-01-29.md](./Phase01_インフラデプロイ失敗_2025-01-29.md)** - インフラデプロイ履歴
+- **[Phase02\_アプリデプロイ問題と解決\_2025-10-29.md](./Phase02_アプリデプロイ問題と解決_2025-10-29.md)** - アプリケーションデプロイ
+- **[Phase03_kubectl 環境設定\_2025-10-29.md](./Phase03_kubectl環境設定_2025-10-29.md)** - kubectl 環境設定
 
 ---
 
 ## 🔄 変更履歴
 
-| 日付 | 変更内容 | コミット |
-|------|---------|---------|
-| 2025-10-29 | MongoDB バックアップ機能を実装 | 5804dae |
-| 2025-10-29 | vm-storage-role.bicep モジュール追加 | 5804dae |
-| 2025-10-29 | Cron ジョブとバックアップスクリプト作成 | 5804dae |
+| 日付       | 変更内容                                | コミット |
+| ---------- | --------------------------------------- | -------- |
+| 2025-10-29 | MongoDB バックアップ機能を実装          | 5804dae  |
+| 2025-10-29 | vm-storage-role.bicep モジュール追加    | 5804dae  |
+| 2025-10-29 | Cron ジョブとバックアップスクリプト作成 | 5804dae  |
 
 ---
 

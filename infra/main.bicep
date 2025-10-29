@@ -1,7 +1,7 @@
 targetScope = 'subscription'
 
 @description('リソースグループ名')
-param resourceGroupName string = 'rg-wiz-exercise'
+param resourceGroupName string = 'rg-wiz-exercise2'
 
 @description('デプロイ先リージョン')
 param location string = 'japaneast'
@@ -13,7 +13,7 @@ param environment string = 'dev'
 @secure()
 param mongoAdminPassword string
 
-@description('デプロイタイムスタンプ (ユニークなデプロイ名生成用)')
+@description('デプロイタイムスタンプ (ユニークなデプロイ名生成)')
 param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
 
 // リソースグループ作成
