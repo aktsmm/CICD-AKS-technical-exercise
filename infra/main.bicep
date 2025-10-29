@@ -1,7 +1,7 @@
 targetScope = 'subscription'
 
 @description('リソースグループ名')
-param resourceGroupName string = 'rg-wiz-exercise-1'
+param resourceGroupName string = 'rg-wiz-exercise01'
 
 @description('デプロイ先リージョン')
 param location string = 'japaneast'
@@ -124,3 +124,5 @@ module aksAcrRole 'modules/aks-acr-role.bicep' = {
 output aksClusterName string = aks.outputs.clusterName
 output mongoVMPublicIP string = mongoVM.outputs.publicIP
 output storageAccountName string = storage.outputs.storageAccountName
+output acrName string = acr.outputs.acrName
+output acrLoginServer string = acr.outputs.acrLoginServer

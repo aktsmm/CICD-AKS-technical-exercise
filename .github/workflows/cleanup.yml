@@ -1,9 +1,9 @@
-name: 🧹 Cleanup Old Workflow Runs (Keep 5 latest)
+name: 🧹 Cleanup Failed or Pending Runs (Keep last 5 successful)
 
 on:
-    workflow_dispatch: # 手動実行
+    workflow_dispatch:
     schedule:
-        - cron: "0 * * * *" # 毎時実行（任意）
+        - cron: "0 * * * *" # 毎時実行（UTC）
 
 permissions:
     actions: write
@@ -13,22 +13,25 @@ jobs:
     cleanup:
         runs-on: ubuntu-latest
         steps:
-            - name: Delete all but last 5 workflow runs
+            - name: Delete only failed or in_progress workflow runs
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   REPO="aktsmm/CICD-AKS-technical-exercise"
 
-                  echo "🧾 Fetching all workflow runs..."
-                  RUN_IDS=$(gh api repos/$REPO/actions/runs --paginate -q '.workflow_runs[].id')
+                  echo "🧾 Fetching workflow runs..."
+                  RUNS=$(gh api repos/$REPO/actions/runs --paginate -q '.workflow_runs[] | {id: .id, status: .status, conclusion: .conclusion}')
 
-                  COUNT=0
-                  for RUN_ID in $RUN_IDS; do
-                    COUNT=$((COUNT+1))
-                    if [ $COUNT -gt 5 ]; then
-                      echo "🧹 Deleting old run ID: $RUN_ID ..."
-                      gh api repos/$REPO/actions/runs/$RUN_ID -X DELETE || echo "⚠️ Skipped run $RUN_ID"
+                  echo "$RUNS" | jq -c '.' | while read -r run; do
+                    ID=$(echo $run | jq -r '.id')
+                    STATUS=$(echo $run | jq -r '.status')
+                    CONCLUSION=$(echo $run | jq -r '.conclusion')
+
+                    # 削除対象条件：failed, cancelled, or in_progress
+                    if [[ "$CONCLUSION" == "failure" || "$CONCLUSION" == "cancelled" || "$STATUS" == "in_progress" ]]; then
+                      echo "🧹 Deleting failed/pending run ID: $ID ($STATUS/$CONCLUSION)"
+                      gh api repos/$REPO/actions/runs/$ID -X DELETE || echo "⚠️ Skipped run $ID"
                     else
-                      echo "✅ Keeping run ID: $RUN_ID (Top $COUNT)"
+                      echo "✅ Keeping run ID: $ID ($STATUS/$CONCLUSION)"
                     fi
                   done

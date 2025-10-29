@@ -4,7 +4,9 @@ param location string
 @description('環境名')
 param environment string
 
-var acrName = 'acrwiz${environment}'
+// ランダムな文字列を生成（リソースグループIDとロケーションのハッシュから6文字）
+var uniqueSuffix = uniqueString(resourceGroup().id, location)
+var acrName = 'acrwiz${environment}${substring(uniqueSuffix, 0, 6)}'
 
 // Azure Container Registry
 resource acr 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
