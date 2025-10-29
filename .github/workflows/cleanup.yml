@@ -1,0 +1,30 @@
+name: 🧹 Cleanup Old Workflow Runs (Keep 5 latest)
+
+on:
+    workflow_dispatch: # 手動実行
+    schedule:
+        - cron: "0 * * * *" # 毎時実行（任意）
+
+jobs:
+    cleanup:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Delete all but last 5 workflow runs
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  REPO="aktsmm/CICD-AKS-technical-exercise"
+
+                  echo "🧾 Fetching all workflow runs..."
+                  RUN_IDS=$(gh api repos/$REPO/actions/runs --paginate -q '.workflow_runs[].id')
+
+                  COUNT=0
+                  for RUN_ID in $RUN_IDS; do
+                    COUNT=$((COUNT+1))
+                    if [ $COUNT -gt 5 ]; then
+                      echo "🧹 Deleting old run ID: $RUN_ID ..."
+                      gh api repos/$REPO/actions/runs/$RUN_ID -X DELETE
+                    else
+                      echo "✅ Keeping run ID: $RUN_ID (Top $COUNT)"
+                    fi
+                  done
