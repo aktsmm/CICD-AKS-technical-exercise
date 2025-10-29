@@ -111,6 +111,16 @@ module vmStorageRole 'modules/vm-storage-role.bicep' = {
   }
 }
 
+// AKS に ACR からイメージを pull する権限を付与
+module aksAcrRole 'modules/aks-acr-role.bicep' = {
+  scope: rg
+  name: 'aks-acr-role-${deploymentTimestamp}'
+  params: {
+    kubeletIdentityPrincipalId: aks.outputs.kubeletIdentity
+    acrName: acr.outputs.acrName
+  }
+}
+
 output aksClusterName string = aks.outputs.clusterName
 output mongoVMPublicIP string = mongoVM.outputs.publicIP
 output storageAccountName string = storage.outputs.storageAccountName
