@@ -111,7 +111,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-07-01' = {
     }
     osProfile: {
       computerName: vmName
-      adminUsername: 'azureuser'  // Hardcoded for demo vulnerability purposes
+      adminUsername: 'azureuser'  // Hardcoded for demo vulnerability purposes!
       adminPassword: adminPassword
     }
     storageProfile: {
