@@ -17,7 +17,7 @@ on:
 
 env:
     IMAGE_NAME: guestbook
-    RESOURCE_GROUP: rg-wiz-exercise01
+    RESOURCE_GROUP: rg-wiz-exercise-a
 
 jobs:
     scan-container:

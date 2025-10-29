@@ -367,10 +367,10 @@ az ad sp create-for-rbac --name sp-wiz-exercise-github `
   --sdk-auth
 
 # 2. Resource Group 作成
-az group create --name rg-wiz-exercise01 --location japaneast
+az group create --name rg-wiz-exercise-a --location japaneast
 
 # 3. ACR 作成
-az acr create --resource-group rg-wiz-exercise01 `
+az acr create --resource-group rg-wiz-exercise-a `
   --name acrwizexercise `
   --sku Standard
 
@@ -387,7 +387,7 @@ az acr create --resource-group rg-wiz-exercise01 `
 git push origin main
 
 # 2. インフラデプロイ完了後、ACR と AKS を統合
-az aks update --resource-group rg-wiz-exercise01 `
+az aks update --resource-group rg-wiz-exercise-a `
   --name aks-wiz-exercise `
   --attach-acr acrwizexercise
 
