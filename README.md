@@ -1,4 +1,4 @@
-# 🧙‍♂️ Wiz Technical Exercise
+# 🧙‍♂️ CICD-AKS-Technical Exercise
 
 Wiz 社の技術面接課題：意図的に脆弱なクラウド環境を構築し、セキュリティリスクをデモンストレーションするプロジェクト
 
