@@ -11,7 +11,7 @@
   "parameters": {
     "resourceGroupName": {
       "type": "string",
-      "defaultValue": "rg-wiz-exercise2",
+      "defaultValue": "rg-wiz-exercise01",
       "metadata": {
         "description": "リソースグループ名"
       }
