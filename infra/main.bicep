@@ -1,7 +1,7 @@
 targetScope = 'subscription'
 
 @description('リソースグループ名')
-param resourceGroupName string = 'rg-wiz-exercise01'
+param resourceGroupName string = 'rg-wiz-exercise'
 
 @description('デプロイ先リージョン')
 param location string = 'japaneast'
