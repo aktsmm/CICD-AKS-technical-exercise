@@ -84,15 +84,22 @@ jobs:
                     --query properties.outputs.storageAccountName.value \
                     -o tsv)
 
+                  ACR_NAME=$(az deployment sub show \
+                    --name $DEPLOYMENT_NAME \
+                    --query properties.outputs.acrName.value \
+                    -o tsv)
+
                   echo "aks_name=$AKS_NAME" >> $GITHUB_OUTPUT
                   echo "mongo_ip=$MONGO_IP" >> $GITHUB_OUTPUT
                   echo "storage_name=$STORAGE_NAME" >> $GITHUB_OUTPUT
+                  echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
 
             - name: Save Outputs as Artifacts
               run: |
                   mkdir -p outputs
                   echo "AKS_CLUSTER_NAME=${{ steps.outputs.outputs.aks_name }}" > outputs/infra-outputs.txt
                   echo "MONGO_VM_IP=${{ steps.outputs.outputs.mongo_ip }}" >> outputs/infra-outputs.txt
+                  echo "ACR_NAME=${{ steps.outputs.outputs.acr_name }}" >> outputs/infra-outputs.txt
                   echo "STORAGE_ACCOUNT_NAME=${{ steps.outputs.outputs.storage_name }}" >> outputs/infra-outputs.txt
 
             - name: Upload Outputs
