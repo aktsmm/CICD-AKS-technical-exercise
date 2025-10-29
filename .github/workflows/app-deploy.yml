@@ -18,7 +18,7 @@ on:
 env:
     ACR_NAME: acrwizdev
     IMAGE_NAME: guestbook
-    RESOURCE_GROUP: rg-wiz-exercise-01
+    RESOURCE_GROUP: rg-wiz-exercise-001
 
 jobs:
     scan-container:
@@ -136,7 +136,7 @@ jobs:
                   echo "Waiting for AKS cluster to be ready..."
                   max_attempts=30
                   attempt=1
-                  
+
                   while [ $attempt -le $max_attempts ]; do
                     state=$(az aks show \
                       --resource-group ${{ env.RESOURCE_GROUP }} \
