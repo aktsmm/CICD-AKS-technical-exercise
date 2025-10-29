@@ -47,9 +47,9 @@ az ad sp create-for-rbac `
 ### 3️⃣ ACR 作成（手動、必須）
 
 ```powershell
-az group create --name rg-wiz-exercise-01 --location japaneast
+az group create --name rg-wiz-exercise-1 --location japaneast
 az acr create `
-  --resource-group rg-wiz-exercise-01 `
+  --resource-group rg-wiz-exercise-1 `
   --name acrwizexercise `
   --sku Basic
 ```
@@ -67,7 +67,7 @@ GitHub Repository Settings > Secrets and variables > Actions
 ```powershell
 git init
 git add .
-git commit -m "Initial commit: Wiz Technical Exercise"
+git commit -m "Initial commit: CICD-AKS-Technical Exercise"
 git branch -M main
 git remote add origin https://github.com/<YOUR_USERNAME>/wiz-technical-exercise.git
 git push -u origin main
@@ -122,7 +122,7 @@ az storage account show `
 # SSH公開確認
 $NSG_NAME = "vm-mongo-dev-nsg"
 az network nsg rule show `
-  --resource-group rg-wiz-exercise-01 `
+  --resource-group rg-wiz-exercise-1 `
   --nsg-name $NSG_NAME `
   --name Allow-SSH-Internet
 
@@ -171,7 +171,7 @@ kubectl apply -f app/k8s/ingress-nginx.yaml
 ```powershell
 # VM IPアドレス確認
 az vm show `
-  -g rg-wiz-exercise-01 `
+  -g rg-wiz-exercise-1 `
   -n vm-mongo-dev `
   --show-details `
   --query publicIps -o tsv
@@ -184,7 +184,7 @@ kubectl set env deployment/guestbook-app MONGO_URI="mongodb://<MONGO_IP>:27017/g
 
 ```powershell
 # すべてのリソースを削除
-az group delete --name rg-wiz-exercise-01 --yes --no-wait
+az group delete --name rg-wiz-exercise-1 --yes --no-wait
 
 # サービスプリンシパル削除
 $SP_ID = az ad sp list --display-name "sp-wiz-exercise" --query "[0].appId" -o tsv
@@ -193,4 +193,4 @@ az ad sp delete --id $SP_ID
 
 ## 📝 ライセンス
 
-このプロジェクトは Wiz Technical Exercise のデモ用です。
+このプロジェクトは CICD-AKS-Technical Exercise のデモ用です。

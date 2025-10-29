@@ -1,6 +1,6 @@
 # Microsoft Docs 検証レポート
 
-**プロジェクト**: Wiz Technical Exercise  
+**プロジェクト**: CICD-AKS-Technical Exercise  
 **検証日**: 2025 年 10 月 28 日  
 **検証範囲**: Azure AKS, Bicep, GitHub Actions, セキュリティベストプラクティス
 

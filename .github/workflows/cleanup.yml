@@ -5,6 +5,10 @@ on:
     schedule:
         - cron: "0 * * * *" # 毎時実行（任意）
 
+permissions:
+    actions: write
+    contents: read
+
 jobs:
     cleanup:
         runs-on: ubuntu-latest
@@ -23,7 +27,7 @@ jobs:
                     COUNT=$((COUNT+1))
                     if [ $COUNT -gt 5 ]; then
                       echo "🧹 Deleting old run ID: $RUN_ID ..."
-                      gh api repos/$REPO/actions/runs/$RUN_ID -X DELETE
+                      gh api repos/$REPO/actions/runs/$RUN_ID -X DELETE || echo "⚠️ Skipped run $RUN_ID"
                     else
                       echo "✅ Keeping run ID: $RUN_ID (Top $COUNT)"
                     fi

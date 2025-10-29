@@ -1,6 +1,6 @@
 # .github/copilot-instructions.md
 
-# GitHub Copilot Instructions for Wiz Technical Exercise
+# GitHub Copilot Instructions for CICD-AKS-Technical Exercise
 
 ## プロジェクト概要
 
@@ -367,10 +367,10 @@ az ad sp create-for-rbac --name sp-wiz-exercise-github `
   --sdk-auth
 
 # 2. Resource Group 作成
-az group create --name rg-wiz-exercise-01 --location japaneast
+az group create --name rg-wiz-exercise-1 --location japaneast
 
 # 3. ACR 作成
-az acr create --resource-group rg-wiz-exercise-01 `
+az acr create --resource-group rg-wiz-exercise-1 `
   --name acrwizexercise `
   --sku Standard
 
@@ -387,7 +387,7 @@ az acr create --resource-group rg-wiz-exercise-01 `
 git push origin main
 
 # 2. インフラデプロイ完了後、ACR と AKS を統合
-az aks update --resource-group rg-wiz-exercise-01 `
+az aks update --resource-group rg-wiz-exercise-1 `
   --name aks-wiz-exercise `
   --attach-acr acrwizexercise
 
@@ -483,5 +483,5 @@ az aks update --resource-group rg-wiz-exercise-01 `
 ---
 
 **最終更新**: 2025 年 10 月 29 日  
-**プロジェクト**: Wiz Technical Exercise  
+**プロジェクト**: CICD-AKS-Technical Exercise  
 **用途**: 技術面接課題 / セキュリティデモ

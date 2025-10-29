@@ -9,7 +9,7 @@
 
 ## 📋 概要
 
-Wiz Technical Exercise プロジェクトの初回コミット時に GitHub Push Protection が機密情報を検出し、push がブロックされた問題と解決策をまとめたドキュメント。
+CICD-AKS-Technical Exercise プロジェクトの初回コミット時に GitHub Push Protection が機密情報を検出し、push がブロックされた問題と解決策をまとめたドキュメント。
 
 ---
 
@@ -91,7 +91,7 @@ remote:   To push this commit, remove the secret or allow the secret to be pushe
 3. クリーンな履歴で再コミット
 
    ```powershell
-   git commit -m "Initial commit: Complete Wiz Technical Exercise..."
+   git commit -m "Initial commit: Complete CICD-AKS-Technical Exercise..."
    ```
 
 4. 強制プッシュで履歴を上書き
@@ -129,7 +129,7 @@ mongo_password.txt
 git reset --soft deda077
 
 # 機密情報を除外してクリーンな履歴で再コミット
-git commit -m "Initial commit: Complete Wiz Technical Exercise..."
+git commit -m "Initial commit: Complete CICD-AKS-Technical Exercise..."
 
 # 強制プッシュで履歴を上書き (⚠️ 注意: 共同作業者がいる場合は事前連絡)
 git push origin main --force
@@ -392,7 +392,7 @@ az provider list --query "[?registrationState=='Registered'].namespace" -o table
 az role assignment list --assignee <CLIENT_ID> --query "[].{Role:roleDefinitionName, Scope:scope}" -o table
 
 # ACR 確認
-az acr show --name acrwizexercise --resource-group rg-wiz-exercise-01
+az acr show --name acrwizexercise --resource-group rg-wiz-exercise-1
 
 # GitHub Secrets 確認（マスクされていることを確認）
 # Settings > Secrets and variables > Actions
@@ -413,4 +413,4 @@ az acr show --name acrwizexercise --resource-group rg-wiz-exercise-01
 
 **最終更新**: 2025 年 10 月 29 日  
 **作成者**: GitHub Copilot  
-**プロジェクト**: Wiz Technical Exercise
+**プロジェクト**: CICD-AKS-Technical Exercise

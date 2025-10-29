@@ -1,8 +1,8 @@
-# 環境情報 - Wiz Technical Exercise
+# 環境情報 - CICD-AKS-Technical Exercise
 
 **作成日**: 2025 年 10 月 29 日  
 **最終更新**: 2025 年 10 月 29 日  
-**プロジェクト**: Wiz Technical Exercise - Cloud Security Demo
+**プロジェクト**: CICD-AKS-Technical Exercise - Cloud Security Demo
 
 ---
 
@@ -31,13 +31,13 @@
 | **サブスクリプション ID** | `832c4080-181c-476b-9db0-b3ce9596d40a` |
 | **テナント ID**           | `04879edd-d806-4f5d-86b8-d3a171c883fa` |
 | **リージョン**            | Japan East                             |
-| **リソースグループ**      | `rg-wiz-exercise-01`                   |
+| **リソースグループ**      | `rg-wiz-exercise-1`                    |
 
 ### 確認コマンド
 
 ```bash
 az account show
-az group show --name rg-wiz-exercise-01
+az group show --name rg-wiz-exercise-1
 ```
 
 ---
@@ -63,7 +63,7 @@ az group show --name rg-wiz-exercise-01
 │         (Visual Studio Enterprise)                       │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐  │
-│  │  Resource Group: rg-wiz-exercise-01                 │  │
+│  │  Resource Group: rg-wiz-exercise-1                 │  │
 │  │                                                  │  │
 │  │  ┌──────────────────────────────────────────┐  │  │
 │  │  │  Virtual Network: vnet-wiz-dev           │  │  │
@@ -225,7 +225,7 @@ ingress-nginx-controller-66cb9865b5-dbwbk   1/1     Running   48m
 
 ```bash
 # クラスター接続
-az aks get-credentials --resource-group rg-wiz-exercise-01 --name aks-wiz-dev
+az aks get-credentials --resource-group rg-wiz-exercise-1 --name aks-wiz-dev
 
 # Pod確認
 kubectl get pods -l app=guestbook
@@ -345,7 +345,7 @@ az acr build --registry acrwizdev --image guestbook:v5 .
 ```bash
 # ACRをAKSにアタッチ (既に設定済み)
 az aks update \
-  --resource-group rg-wiz-exercise-01 \
+  --resource-group rg-wiz-exercise-1 \
   --name aks-wiz-dev \
   --attach-acr acrwizdev
 ```
@@ -535,14 +535,14 @@ Azure デプロイ
 #### Azure ポータル
 
 - URL: https://portal.azure.com
-- リソースグループ: `rg-wiz-exercise-01`
+- リソースグループ: `rg-wiz-exercise-1`
 
 #### AKS クラスター
 
 ```bash
 # kubectl アクセス設定
 az aks get-credentials \
-  --resource-group rg-wiz-exercise-01 \
+  --resource-group rg-wiz-exercise-1 \
   --name aks-wiz-dev \
   --overwrite-existing
 
@@ -640,16 +640,16 @@ ssh azureuser@172.192.25.0
 az account show
 
 # リソースグループ確認
-az group show --name rg-wiz-exercise-01
+az group show --name rg-wiz-exercise-1
 
 # 全リソース一覧
-az resource list --resource-group rg-wiz-exercise-01 --output table
+az resource list --resource-group rg-wiz-exercise-1 --output table
 
 # AKS詳細
-az aks show --resource-group rg-wiz-exercise-01 --name aks-wiz-dev
+az aks show --resource-group rg-wiz-exercise-1 --name aks-wiz-dev
 
 # VM詳細
-az vm show --resource-group rg-wiz-exercise-01 --name vm-mongo-dev
+az vm show --resource-group rg-wiz-exercise-1 --name vm-mongo-dev
 
 # ACR詳細
 az acr show --name acrwizdev
@@ -659,7 +659,7 @@ az acr show --name acrwizdev
 
 ```bash
 # クラスター接続
-az aks get-credentials --resource-group rg-wiz-exercise-01 --name aks-wiz-dev
+az aks get-credentials --resource-group rg-wiz-exercise-1 --name aks-wiz-dev
 
 # ノード確認
 kubectl get nodes -o wide
@@ -752,11 +752,11 @@ kubectl get svc -n ingress-nginx ingress-nginx-controller
 
 ```bash
 # VM確認
-az vm show --resource-group rg-wiz-exercise-01 --name vm-mongo-dev
-az vm get-instance-view --resource-group rg-wiz-exercise-01 --name vm-mongo-dev
+az vm show --resource-group rg-wiz-exercise-1 --name vm-mongo-dev
+az vm get-instance-view --resource-group rg-wiz-exercise-1 --name vm-mongo-dev
 
 # ネットワーク確認
-az network nsg rule list --resource-group rg-wiz-exercise-01 --nsg-name vm-mongo-dev-nsg
+az network nsg rule list --resource-group rg-wiz-exercise-1 --nsg-name vm-mongo-dev-nsg
 
 # Pod内から接続テスト
 kubectl exec -it <pod-name> -- curl -v telnet://10.0.2.4:27017
@@ -774,5 +774,5 @@ kubectl exec -it <pod-name> -- curl -v telnet://10.0.2.4:27017
 ---
 
 **最終更新**: 2025 年 10 月 29 日  
-**管理者**: Wiz Technical Exercise Team  
+**管理者**: CICD-AKS-Technical Exercise Team  
 **ステータス**: ✅ Production Ready

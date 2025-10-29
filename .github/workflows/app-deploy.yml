@@ -18,7 +18,7 @@ on:
 env:
     ACR_NAME: acrwizdev
     IMAGE_NAME: guestbook
-    RESOURCE_GROUP: rg-wiz-exercise-01
+    RESOURCE_GROUP: rg-wiz-exercise-1
 
 jobs:
     scan-container:
