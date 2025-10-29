@@ -21,11 +21,10 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
   }
   properties: {
     dnsPrefix: clusterName
-    // プライベートクラスター設定: API サーバーは VNet 内からのみアクセス可能
+    // パブリッククラスター設定: GitHub Actions からデプロイ可能
+    // アプリケーションへのアクセスは LoadBalancer で制御
     apiServerAccessProfile: {
-      enablePrivateCluster: true
-      enablePrivateClusterPublicFQDN: false
-      privateDNSZone: 'system'  // AKS が自動で Private DNS Zone を作成
+      enablePrivateCluster: false
     }
     agentPoolProfiles: [
       {
@@ -60,6 +59,6 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
 }
 
 output clusterName string = aks.name
-// プライベートクラスターの場合は privateFQDN を使用 (パブリック FQDN は無効化済み)
-output clusterFqdn string = aks.properties.privateFQDN
+// パブリッククラスターなので通常の FQDN を使用
+output clusterFqdn string = aks.properties.fqdn
 output kubeletIdentity string = aks.properties.identityProfile.kubeletidentity.objectId
