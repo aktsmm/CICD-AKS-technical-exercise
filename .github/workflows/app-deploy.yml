@@ -303,15 +303,15 @@ jobs:
               run: |
                   echo "=== Installing cert-manager ==="
                   kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.yaml
-                  
+
                   echo "=== Waiting for cert-manager to be ready ==="
                   kubectl wait --namespace cert-manager \
                     --for=condition=ready pod \
                     --selector=app.kubernetes.io/instance=cert-manager \
                     --timeout=120s || echo "⚠️ cert-manager not ready yet (will continue)"
-                  
+
                   sleep 10
-                  
+
                   echo "=== Creating Self-Signed ClusterIssuer ==="
                   cat <<EOF | kubectl apply -f -
                   apiVersion: cert-manager.io/v1
@@ -321,24 +321,24 @@ jobs:
                   spec:
                     selfSigned: {}
                   EOF
-                  
+
                   echo "=== Getting Ingress IP ==="
                   INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-                  
+
                   if [ -z "$INGRESS_IP" ]; then
                     echo "⏳ Waiting for External IP..."
                     sleep 30
                     INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
                   fi
-                  
+
                   if [ -z "$INGRESS_IP" ]; then
                     echo "❌ Could not get Ingress IP. Skipping HTTPS setup."
                     exit 0
                   fi
-                  
+
                   DOMAIN="${INGRESS_IP}.nip.io"
                   echo "📡 Using domain: ${DOMAIN}"
-                  
+
                   echo "=== Updating Ingress with TLS ==="
                   cat <<EOF | kubectl apply -f -
                   apiVersion: networking.k8s.io/v1
@@ -376,7 +376,7 @@ jobs:
                                   port:
                                     number: 80
                   EOF
-                  
+
                   echo "=== Waiting for certificate ==="
                   sleep 15
                   kubectl get certificate
@@ -405,9 +405,9 @@ jobs:
                   echo "Access Flow:"
                   echo "  [User] → [Azure Load Balancer] → [Ingress Controller (TLS)] → [Service] → [Pod]"
                   echo ""
-                  
+
                   INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-                  
+
                   if [ ! -z "$INGRESS_IP" ]; then
                     DOMAIN="${INGRESS_IP}.nip.io"
                     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
