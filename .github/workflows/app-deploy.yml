@@ -23,7 +23,7 @@ permissions:
 
 env:
     IMAGE_NAME: guestbook
-    RESOURCE_GROUP: rg-bbs-icd-aks01
+    RESOURCE_GROUP: rg-bbs-icd-aks001
 
 jobs:
     scan-container:
@@ -239,7 +239,8 @@ jobs:
               run: |
                   # Deployment - use dynamic image tag from build
                   ACR_NAME="${{ needs.build-push.outputs.acr_name }}"
-                  sed -i "s|image: acrwiz.*\.azurecr\.io/guestbook:.*|image: ${ACR_NAME}.azurecr.io/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.image_tag }}|g" app/k8s/deployment.yaml
+                  sed -i "s|<ACR_NAME>|${ACR_NAME}|g" app/k8s/deployment.yaml
+                  sed -i "s|<IMAGE_TAG>|${{ needs.build-push.outputs.image_tag }}|g" app/k8s/deployment.yaml
                   sed -i "s|<MONGO_VM_IP>|${{ steps.infra.outputs.mongo_ip }}|g" app/k8s/deployment.yaml
 
                   echo "=== Updated Deployment ==="
