@@ -1,4 +1,4 @@
-name: 🧹 Cleanup Workflow Runs (Delete latest 5 older than 1h)
+name: 🧹 Cleanup Workflow Runs (Keep only latest 5)
 
 on:
     workflow_dispatch:
@@ -13,28 +13,23 @@ jobs:
     cleanup:
         runs-on: ubuntu-latest
         steps:
-            - name: Delete latest 5 workflow runs older than 1h
+            - name: Delete all but latest 5 workflow runs
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   REPO="aktsmm/CICD-AKS-technical-exercise"
-                  NOW=$(date -u +"%s")       # 現在UTC時刻
-                  THRESHOLD=$((60 * 60))     # 1時間（秒）
 
                   echo "🧾 Fetching workflow runs..."
-                  # workflow runs を新しい順に取得
                   RUNS=$(gh api repos/$REPO/actions/runs --paginate -q '.workflow_runs[] | {id: .id, status: .status, conclusion: .conclusion, created_at: .created_at}' | jq -s 'sort_by(.created_at) | reverse')
 
-                  # 1時間以上経過している run を抽出し、上位5件だけ削除
-                  TARGETS=$(echo "$RUNS" | jq -c --arg now "$NOW" --argjson th "$THRESHOLD" '
-                    map(select((($now|tonumber) - (.created_at|fromdate|tonumber)) >= $th))[:5]
-                  ')
+                  # 5件目以降を削除対象にする
+                  TARGETS=$(echo "$RUNS" | jq -c '.[5:]')
 
                   COUNT=$(echo "$TARGETS" | jq 'length')
-                  echo "🧹 Found $COUNT runs eligible for deletion."
+                  echo "🧹 Found $COUNT old runs to delete."
 
                   if (( COUNT == 0 )); then
-                    echo "✅ No runs to delete. Exiting."
+                    echo "✅ No old runs to delete. Exiting."
                     exit 0
                   fi
 
@@ -44,8 +39,6 @@ jobs:
                     CONCLUSION=$(echo "$run" | jq -r '.conclusion')
                     CREATED_AT=$(echo "$run" | jq -r '.created_at')
 
-                    AGE_MIN=$(( (NOW - $(date -d "$CREATED_AT" +"%s")) / 60 ))
-
-                    echo "🧹 Deleting run ID: $ID ($STATUS/$CONCLUSION, ${AGE_MIN}min old)"
+                    echo "🧹 Deleting old run ID: $ID ($STATUS/$CONCLUSION, created $CREATED_AT)"
                     gh api repos/$REPO/actions/runs/$ID -X DELETE || echo "⚠️ Failed to delete run $ID"
                   done
