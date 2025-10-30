@@ -20,7 +20,7 @@ on:
 
 env:
     IMAGE_NAME: guestbook
-    RESOURCE_GROUP: rg-cicd-bbs
+    RESOURCE_GROUP: rg-cicd-bbs2
 
 jobs:
     scan-container:
