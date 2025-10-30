@@ -15,7 +15,7 @@ permissions:
 
 env:
     AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    RESOURCE_GROUP: rg-bbs-cicd-aks001001
+    RESOURCE_GROUP: rg-bbs-cicd-aks
     LOCATION: japaneast
 
 jobs:
@@ -81,7 +81,7 @@ jobs:
 
                   MONGO_IP=$(az deployment sub show \
                     --name $DEPLOYMENT_NAME \
-                    --query properties.outputs.mongoVMPublicIP.value \
+                    --query properties.outputs.mongoVMPrivateIP.value \
                     -o tsv)
 
                   STORAGE_NAME=$(az deployment sub show \

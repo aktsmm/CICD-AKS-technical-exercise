@@ -1,7 +1,7 @@
 targetScope = 'subscription'
 
 @description('リソースグループ名')
-param resourceGroupName string = 'rg-bbs-cicd-aks001001'
+param resourceGroupName string = 'rg-bbs-cicd-aks'
 
 @description('デプロイ先リージョン')
 param location string = 'japaneast'
@@ -123,6 +123,7 @@ module aksAcrRole 'modules/aks-acr-role.bicep' = {
 
 output aksClusterName string = aks.outputs.clusterName
 output mongoVMPublicIP string = mongoVM.outputs.publicIP
+output mongoVMPrivateIP string = mongoVM.outputs.privateIP
 output storageAccountName string = storage.outputs.storageAccountName
 output acrName string = acr.outputs.acrName
 output acrLoginServer string = acr.outputs.acrLoginServer
