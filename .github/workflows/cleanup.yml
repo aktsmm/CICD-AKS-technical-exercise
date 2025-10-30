@@ -6,6 +6,7 @@ on:
             - main
         paths:
             - "app/**"
+            - "infra/**"
             - ".github/workflows/cleanup.yml"
 
     workflow_dispatch:
