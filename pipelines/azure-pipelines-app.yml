@@ -11,7 +11,7 @@ on:
 env:
   ACR_NAME: acrdev
   IMAGE_NAME: guestbook
-  RESOURCE_GROUP: rg-bbs-cicd-aks001
+  RESOURCE_GROUP: rg-bbs-cicd-aks-01
 
 jobs:
   scan-container:

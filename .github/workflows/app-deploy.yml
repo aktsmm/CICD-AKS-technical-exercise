@@ -23,7 +23,7 @@ permissions:
 
 env:
     IMAGE_NAME: guestbook
-    RESOURCE_GROUP: rg-bbs-cicd-aks001
+    RESOURCE_GROUP: rg-bbs-cicd-aks-01
 
 jobs:
     scan-container:
@@ -170,10 +170,10 @@ jobs:
               id: infra
               run: |
                   echo "Querying Azure for infrastructure details..."
-                  
+
                   # AKSクラスター名を取得
                   AKS_CLUSTER_NAME=$(az aks list -g ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
-                  
+
                   # MongoDB VMのプライベートIPを取得（VNet内通信用）
                   MONGO_VM_IP=$(az vm list-ip-addresses -g ${{ env.RESOURCE_GROUP }} -n vm-mongo-dev --query "[0].virtualMachine.network.privateIpAddresses[0]" -o tsv)
 
