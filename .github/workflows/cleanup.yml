@@ -1,4 +1,4 @@
-name: 🧹 Cleanup Workflow Runs (Keep only latest 5)
+name: 🧹 Cleanup Workflow Runs (Keep only latest 5 + delete failed recent runs)
 
 on:
     push:
@@ -21,26 +21,26 @@ jobs:
     cleanup:
         runs-on: ubuntu-latest
         steps:
-            - name: Delete all but latest 5 workflow runs
+            - name: Delete old or failed workflow runs
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   REPO="aktsmm/CICD-AKS-technical-exercise"
 
                   echo "🧾 Fetching workflow runs..."
-                  # ワークフロー実行一覧を新しい順に取得
                   RUNS=$(gh api repos/$REPO/actions/runs --paginate \
                     -q '.workflow_runs[] | {id: .id, status: .status, conclusion: .conclusion, created_at: .created_at}' \
                     | jq -s 'sort_by(.created_at) | reverse')
 
-                  # 5件目以降を削除対象にする
-                  TARGETS=$(echo "$RUNS" | jq -c '.[5:]')
+                  echo "🧩 Selecting deletion targets..."
+                  # 最新5件を残すが、5件以内でも failure / cancelled / timed_out / conclusion=null は削除対象
+                  TARGETS=$(echo "$RUNS" | jq -c '[.[] | select((.conclusion == "failure") or (.conclusion == "cancelled") or (.conclusion == "timed_out") or (.conclusion == null))] + (.[5:] | .[])')
 
                   COUNT=$(echo "$TARGETS" | jq 'length')
-                  echo "🧹 Found $COUNT old runs to delete."
+                  echo "🧹 Found $COUNT runs to delete."
 
                   if (( COUNT == 0 )); then
-                    echo "✅ No old runs to delete. Exiting."
+                    echo "✅ No runs to delete. Exiting."
                     exit 0
                   fi
 
@@ -50,6 +50,6 @@ jobs:
                     CONCLUSION=$(echo "$run" | jq -r '.conclusion')
                     CREATED_AT=$(echo "$run" | jq -r '.created_at')
 
-                    echo "🧹 Deleting old run ID: $ID ($STATUS/$CONCLUSION, created $CREATED_AT)"
+                    echo "🧹 Deleting run ID: $ID ($STATUS/$CONCLUSION, created $CREATED_AT)"
                     gh api repos/$REPO/actions/runs/$ID -X DELETE || echo "⚠️ Failed to delete run $ID"
                   done
