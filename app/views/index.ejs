@@ -199,7 +199,8 @@
           <div class="message-header">
             <span class="message-author">👤 <%= msg.name %></span>
             <span class="message-date"
-              >🕒 <%= new Date(msg.createdAt).toLocaleString('ja-JP') %></span
+              >🕒 <%= new Date(msg.createdAt).toLocaleString('ja-JP', {
+              timeZone: 'Asia/Tokyo' }) %> JST</span
             >
           </div>
           <div class="message-content"><%= msg.message %></div>
