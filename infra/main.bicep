@@ -9,7 +9,7 @@ param location string = 'japaneast'
 @description('環境名')
 param environment string = 'dev'
 
-@description('MongoDB管理者パスワード')
+@description('MongoDB管理者pass')
 @secure()
 param mongoAdminPassword string
 
