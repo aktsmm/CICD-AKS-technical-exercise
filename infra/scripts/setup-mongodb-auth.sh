@@ -112,7 +112,7 @@ else
     " || echo "WARNING: User creation failed"
     
     # 認証を再度有効化
-    sudo sed -i 's/#authorization: enabled/authorization: enabled/' "$MONGO_CONF"
+    sudo sed -i 's/#authorization: enabled/  authorization: enabled/' "$MONGO_CONF"
     sudo systemctl restart $SERVICE_NAME
     sleep 5
     
