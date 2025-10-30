@@ -330,7 +330,7 @@ Error: Unable to find file 'infra-outputs.txt'
 7. Network Interface (vm-mongo-dev-nic)
 8. Virtual Machine (vm-mongo-dev)
 9. OS Disk (vm-mongo-dev_OsDisk)
-10. AKS Cluster (aksdev)
+10. AKS Cluster (aks-dev)
 11. VM Extension (vm-mongo-dev/install-mongodb)
 12. Container Insights (ContainerInsights)
 

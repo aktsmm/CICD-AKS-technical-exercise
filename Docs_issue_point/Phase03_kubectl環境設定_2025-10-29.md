@@ -128,7 +128,7 @@ kubectl logs deployment/guestbook-app
 
 ```powershell
 # AKS認証情報取得
-az aks get-credentials --resource-group rg-cicd-aks-bbs-01 --name aksdev
+az aks get-credentials --resource-group <RESOURCE_GROUP_NAME> --name aks-dev
 
 # クラスター情報
 kubectl cluster-info
@@ -287,7 +287,7 @@ $env:PATH = "C:\new\path;$env:PATH"
 ```markdown
 # クラスター接続
 
-az aks get-credentials --resource-group rg-cicd-aks-bbs-01 --name aksdev
+az aks get-credentials --resource-group <RESOURCE_GROUP_NAME> --name aks-dev
 
 # Pod 確認
 
@@ -369,7 +369,7 @@ scoop install kubectx
 ```powershell
 # コンテキスト（クラスター）切り替え
 kubectx                    # 一覧表示
-kubectx aksdev        # 切り替え
+kubectx aks-dev        # 切り替え
 
 # Namespace切り替え
 kubens                     # 一覧表示

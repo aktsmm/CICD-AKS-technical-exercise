@@ -301,7 +301,7 @@ crontab -l  # Cron ジョブが表示されない
 ```bash
 # VM 拡張機能のステータス確認
 az vm extension list \
-  --resource-group rg-cicd-aks-bbs-01 \
+  --resource-group <RESOURCE_GROUP_NAME> \
   --vm-name vm-mongo-dev \
   --query "[?name=='install-mongodb'].{Name:name, Status:provisioningState}" \
   --output table
@@ -312,7 +312,7 @@ az vm extension list \
 ```bash
 # VM 拡張機能を再実行
 az vm extension set \
-  --resource-group rg-cicd-aks-bbs-01 \
+  --resource-group <RESOURCE_GROUP_NAME> \
   --vm-name vm-mongo-dev \
   --name CustomScript \
   --publisher Microsoft.Azure.Extensions \
@@ -336,7 +336,7 @@ tail /var/log/mongodb-backup.log
 # ロール割り当てを確認
 az role assignment list \
   --assignee <VM_PRINCIPAL_ID> \
-  --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-cicd-bbs/providers/Microsoft.Storage/storageAccounts/<STORAGE_NAME> \
+  --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.Storage/storageAccounts/<STORAGE_NAME> \
   --output table
 ```
 
@@ -347,7 +347,7 @@ az role assignment list \
 az role assignment create \
   --assignee <VM_PRINCIPAL_ID> \
   --role "Storage Blob Data Contributor" \
-  --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-cicd-bbs/providers/Microsoft.Storage/storageAccounts/<STORAGE_NAME>
+  --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.Storage/storageAccounts/<STORAGE_NAME>
 ```
 
 ### 問題 3: mongodump コマンドが見つからない

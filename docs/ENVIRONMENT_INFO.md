@@ -31,13 +31,13 @@
 | **サブスクリプション ID** | `832c4080-181c-476b-9db0-b3ce9596d40a` |
 | **テナント ID**           | `04879edd-d806-4f5d-86b8-d3a171c883fa` |
 | **リージョン**            | Japan East                             |
-| **リソースグループ**      | `rg-cicd-aks-bbs-01`                   |
+| **リソースグループ**      | `<RESOURCE_GROUP_NAME>`                |
 
 ### 確認コマンド
 
 ```bash
 az account show
-az group show --name rg-cicd-aks-bbs-01
+az group show --name <RESOURCE_GROUP_NAME>
 ```
 
 ---
@@ -48,7 +48,7 @@ az group show --name rg-cicd-aks-bbs-01
 
 | リソース名                | タイプ             | 用途                   | 状態       |
 | ------------------------- | ------------------ | ---------------------- | ---------- |
-| **aksdev**                | AKS Cluster        | Kubernetes クラスター  | ✅ Running |
+| **aks-dev**               | AKS Cluster        | Kubernetes クラスター  | ✅ Running |
 | **acrwizdev**             | Container Registry | Docker イメージ管理    | ✅ Active  |
 | **vm-mongo-dev**          | Virtual Machine    | MongoDB サーバー       | ✅ Running |
 | **vnetdev**               | Virtual Network    | ネットワーク基盤       | ✅ Active  |
@@ -63,7 +63,7 @@ az group show --name rg-cicd-aks-bbs-01
 │         (Visual Studio Enterprise)                       │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐  │
-│  │  Resource Group: rg-cicd-aks-bbs-01                 │  │
+│  │  Resource Group: <RESOURCE_GROUP_NAME>                 │  │
 │  │                                                  │  │
 │  │  ┌──────────────────────────────────────────┐  │  │
 │  │  │  Virtual Network: vnetdev           │  │  │
@@ -74,7 +74,7 @@ az group show --name rg-cicd-aks-bbs-01
 │  │  │  │                                 │   │  │  │
 │  │  │  │  ┌──────────────────────────┐  │   │  │  │
 │  │  │  │  │ AKS Cluster              │  │   │  │  │
-│  │  │  │  │ aksdev              │  │   │  │  │
+│  │  │  │  │ aks-dev              │  │   │  │  │
 │  │  │  │  │ - 2 Nodes (Standard_DS2) │  │   │  │  │
 │  │  │  │  │ - Kubernetes 1.32        │  │   │  │  │
 │  │  │  │  │                          │  │   │  │  │
@@ -163,7 +163,7 @@ External Access:
 
 | 項目                       | 値          |
 | -------------------------- | ----------- |
-| **クラスター名**           | aksdev      |
+| **クラスター名**           | aks-dev     |
 | **Kubernetes バージョン**  | 1.32.7      |
 | **リージョン**             | Japan East  |
 | **ネットワークプラグイン** | Azure CNI   |
@@ -225,7 +225,7 @@ ingress-nginx-controller-66cb9865b5-dbwbk   1/1     Running   48m
 
 ```bash
 # クラスター接続
-az aks get-credentials --resource-group rg-cicd-aks-bbs-01 --name aksdev
+az aks get-credentials --resource-group <RESOURCE_GROUP_NAME> --name aks-dev
 
 # Pod確認
 kubectl get pods -l app=guestbook
@@ -345,8 +345,8 @@ az acr build --registry acrwizdev --image guestbook:v5 .
 ```bash
 # ACRをAKSにアタッチ (既に設定済み)
 az aks update \
-  --resource-group rg-cicd-aks-bbs-01 \
-  --name aksdev \
+  --resource-group <RESOURCE_GROUP_NAME> \
+  --name aks-dev \
   --attach-acr acrwizdev
 ```
 
@@ -535,15 +535,15 @@ Azure デプロイ
 #### Azure ポータル
 
 - URL: https://portal.azure.com
-- リソースグループ: `rg-cicd-bbs`
+- リソースグループ: `<RESOURCE_GROUP_NAME>`
 
 #### AKS クラスター
 
 ```bash
 # kubectl アクセス設定
 az aks get-credentials \
-  --resource-group rg-cicd-aks-bbs-01 \
-  --name aksdev \
+  --resource-group <RESOURCE_GROUP_NAME> \
+  --name aks-dev \
   --overwrite-existing
 
 # ダッシュボード (オプション)
@@ -640,16 +640,16 @@ ssh azureuser@172.192.25.0
 az account show
 
 # リソースグループ確認
-az group show --name rg-cicd-aks-bbs-01
+az group show --name <RESOURCE_GROUP_NAME>
 
 # 全リソース一覧
-az resource list --resource-group rg-cicd-aks-bbs-01 --output table
+az resource list --resource-group <RESOURCE_GROUP_NAME> --output table
 
 # AKS詳細
-az aks show --resource-group rg-cicd-aks-bbs-01 --name aksdev
+az aks show --resource-group <RESOURCE_GROUP_NAME> --name aks-dev
 
 # VM詳細
-az vm show --resource-group rg-cicd-aks-bbs-01 --name vm-mongo-dev
+az vm show --resource-group <RESOURCE_GROUP_NAME> --name vm-mongo-dev
 
 # ACR詳細
 az acr show --name acrwizdev
@@ -659,7 +659,7 @@ az acr show --name acrwizdev
 
 ```bash
 # クラスター接続
-az aks get-credentials --resource-group rg-cicd-aks-bbs-01 --name aksdev
+az aks get-credentials --resource-group <RESOURCE_GROUP_NAME> --name aks-dev
 
 # ノード確認
 kubectl get nodes -o wide
@@ -752,11 +752,11 @@ kubectl get svc -n ingress-nginx ingress-nginx-controller
 
 ```bash
 # VM確認
-az vm show --resource-group rg-cicd-aks-bbs-01 --name vm-mongo-dev
-az vm get-instance-view --resource-group rg-cicd-aks-bbs-01 --name vm-mongo-dev
+az vm show --resource-group <RESOURCE_GROUP_NAME> --name vm-mongo-dev
+az vm get-instance-view --resource-group <RESOURCE_GROUP_NAME> --name vm-mongo-dev
 
 # ネットワーク確認
-az network nsg rule list --resource-group rg-cicd-aks-bbs-01 --nsg-name vm-mongo-dev-nsg
+az network nsg rule list --resource-group <RESOURCE_GROUP_NAME> --nsg-name vm-mongo-dev-nsg
 
 # Pod内から接続テスト
 kubectl exec -it <pod-name> -- curl -v telnet://10.0.2.4:27017

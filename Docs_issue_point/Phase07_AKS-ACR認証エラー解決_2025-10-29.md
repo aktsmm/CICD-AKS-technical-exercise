@@ -149,7 +149,7 @@ module aksAcrRole 'modules/aks-acr-role.bicep' = {
 
 ```
 1. ACR 作成 (acrwizdev)
-2. AKS 作成 (aksdev)
+2. AKS 作成 (aks-dev)
    └─ Kubelet Identity 自動作成
 3. ロール割り当て作成
    └─ AKS Kubelet Identity → ACR (AcrPull)
@@ -174,11 +174,11 @@ module aksAcrRole 'modules/aks-acr-role.bicep' = {
 
 ```bash
 # AKS の Kubelet Identity を取得
-az aks show --resource-group rg-cicd-aks-bbs-01 --name aksdev \
+az aks show --resource-group <RESOURCE_GROUP_NAME> --name aks-dev \
   --query identityProfile.kubeletidentity.objectId -o tsv
 
 # ACR のロール割り当てを確認
-az role assignment list --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-cicd-bbs/providers/Microsoft.ContainerRegistry/registries/acrwizdev \
+az role assignment list --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.ContainerRegistry/registries/acrwizdev \
   --query "[?roleDefinitionName=='AcrPull'].{Principal:principalId,Role:roleDefinitionName}"
 ```
 
@@ -212,7 +212,7 @@ Normal  Started    Started container guestbook
 
 ```bicep
 // パターン A: attach-acr を使用 (推奨)
-az aks update -n aksdev -g rg-cicd-aks-bbs-01 --attach-acr acrwizdev
+az aks update -n aks-dev -g <RESOURCE_GROUP_NAME> --attach-acr acrwizdev
 
 // パターン B: ロール割り当てを明示的に作成 (今回採用)
 module aksAcrRole 'modules/aks-acr-role.bicep' = { ... }
