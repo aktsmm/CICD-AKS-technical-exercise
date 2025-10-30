@@ -6,7 +6,7 @@ Wiz 社の技術面接課題：意図的に脆弱なクラウド環境を構築�
 
 ### 構成要素
 
-- **AKS (Azure Kubernetes Service)** - コンテナ化された掲示板アプリ
+- **AKS (Azure Kubernetes Service)** - コンテナ化された BBS App
 - **VM (MongoDB)** - Ubuntu 18.04 + MongoDB データベース
 - **Storage Account** - バックアップ用 Blob Storage
 - **Azure Monitor** - 監査ログ収集
@@ -47,9 +47,9 @@ az ad sp create-for-rbac `
 ### 3️⃣ ACR 作成（手動、必須）
 
 ```powershell
-az group create --name rg-wiz-exercise-a --location japaneast
+az group create --name rg-cicd-aks --location japaneast
 az acr create `
-  --resource-group rg-wiz-exercise-a `
+  --resource-group rg-cicd-aks `
   --name acrwizexercise `
   --sku Basic
 ```
@@ -122,7 +122,7 @@ az storage account show `
 # SSH公開確認
 $NSG_NAME = "vm-mongo-dev-nsg"
 az network nsg rule show `
-  --resource-group rg-wiz-exercise-a `
+  --resource-group rg-cicd-aks `
   --nsg-name $NSG_NAME `
   --name Allow-SSH-Internet
 
@@ -171,7 +171,7 @@ kubectl apply -f app/k8s/ingress-nginx.yaml
 ```powershell
 # VM IPアドレス確認
 az vm show `
-  -g rg-wiz-exercise-a `
+  -g rg-cicd-aks `
   -n vm-mongo-dev `
   --show-details `
   --query publicIps -o tsv
@@ -184,7 +184,7 @@ kubectl set env deployment/guestbook-app MONGO_URI="mongodb://<MONGO_IP>:27017/g
 
 ```powershell
 # すべてのリソースを削除
-az group delete --name rg-wiz-exercise-a --yes --no-wait
+az group delete --name rg-cicd-aks --yes --no-wait
 
 # サービスプリンシパル削除
 $SP_ID = az ad sp list --display-name "sp-wiz-exercise" --query "[0].appId" -o tsv

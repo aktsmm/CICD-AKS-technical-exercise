@@ -128,7 +128,7 @@ kubectl logs deployment/guestbook-app
 
 ```powershell
 # AKS認証情報取得
-az aks get-credentials --resource-group rg-wiz-exercise-a --name aks-wiz-dev
+az aks get-credentials --resource-group rg-cicd-aks --name aks-wiz-dev
 
 # クラスター情報
 kubectl cluster-info
@@ -287,7 +287,7 @@ $env:PATH = "C:\new\path;$env:PATH"
 ```markdown
 # クラスター接続
 
-az aks get-credentials --resource-group rg-wiz-exercise-a --name aks-wiz-dev
+az aks get-credentials --resource-group rg-cicd-aks --name aks-wiz-dev
 
 # Pod 確認
 

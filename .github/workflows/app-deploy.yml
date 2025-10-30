@@ -17,7 +17,7 @@ on:
 
 env:
     IMAGE_NAME: guestbook
-    RESOURCE_GROUP: rg-wiz-exercise-a
+    RESOURCE_GROUP: rg-cicd-aks
 
 jobs:
     scan-container:
