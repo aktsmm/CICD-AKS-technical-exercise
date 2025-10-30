@@ -54,79 +54,18 @@ app.post("/post", async (req, res) => {
   res.redirect("/");
 });
 
-// ルート: wizexercise.txt表示（デモ用）
+// ルート: wizexercise.txt表示（デモ用・HTMLプレビュー）
 app.get("/wizfile", (req, res) => {
-  // 動的にコンテンツを生成
-  const publicUrl =
-    process.env.PUBLIC_URL || req.get("host") || "localhost:3000";
-  const protocol = publicUrl.includes("localhost") ? "http" : "http";
-  const baseUrl = `${protocol}://${publicUrl}`;
-
-  const content = `氏名: yamapan
-日付: 2025-10-28
-CICD-AKS-Technical Exercise
-
-===================================
-このファイルへのアクセス方法:
-===================================
-
-【方法1】kubectl exec コマンド（コンテナ内部確認）
-$ kubectl exec -it $(kubectl get pod -l app=guestbook -o jsonpath='{.items[0].metadata.name}') -- cat /app/wizexercise.txt
-
-【方法2】ブラウザから直接アクセス
-URL: ${baseUrl}/wizexercise.txt
-
-【方法3】curl コマンド
-$ curl ${baseUrl}/wizexercise.txt
-
-【方法4】HTMLプレビュー版
-URL: ${baseUrl}/wizfile
-
----
-Generated at: ${new Date().toLocaleString("ja-JP", {
-    timeZone: "Asia/Tokyo",
-  })} JST
-Current Host: ${req.get("host")}`;
-
+  const filePath = path.join(__dirname, "wizexercise.txt");
+  const content = fs.readFileSync(filePath, "utf-8");
   res.send(`<pre>${content}</pre>`);
 });
 
-// ルート: wizexercise.txtを直接提供（動的生成）
+// ルート: wizexercise.txtを直接提供（静的ファイル）
 app.get("/wizexercise.txt", (req, res) => {
-  // 動的にコンテンツを生成
-  const publicUrl =
-    process.env.PUBLIC_URL || req.get("host") || "localhost:3000";
-  const protocol = publicUrl.includes("localhost") ? "http" : "http";
-  const baseUrl = `${protocol}://${publicUrl}`;
-
-  const content = `氏名: yamapan
-日付: 2025-10-28
-CICD-AKS-Technical Exercise
-
-===================================
-このファイルへのアクセス方法:
-===================================
-
-【方法1】kubectl exec コマンド（コンテナ内部確認）
-$ kubectl exec -it $(kubectl get pod -l app=guestbook -o jsonpath='{.items[0].metadata.name}') -- cat /app/wizexercise.txt
-
-【方法2】ブラウザから直接アクセス
-URL: ${baseUrl}/wizexercise.txt
-
-【方法3】curl コマンド
-$ curl ${baseUrl}/wizexercise.txt
-
-【方法4】HTMLプレビュー版
-URL: ${baseUrl}/wizfile
-
----
-Generated at: ${new Date().toLocaleString("ja-JP", {
-    timeZone: "Asia/Tokyo",
-  })} JST
-Current Host: ${req.get("host")}`;
-
+  const filePath = path.join(__dirname, "wizexercise.txt");
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.send(content);
+  res.sendFile(filePath);
 });
 
 // ヘルスチェック
