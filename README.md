@@ -8,7 +8,7 @@
 
 - **AKS (Azure Kubernetes Service)** - コンテナ化された BBS App
 - **VM (MongoDB)** - Ubuntu 20.04 + MongoDB 4.4 データベース
-- **ACR (Azure Container Registry)** - Dockerイメージレジストリ
+- **ACR (Azure Container Registry)** - Docker イメージレジストリ
 - **Storage Account** - バックアップ用 Blob Storage
 - **Azure Monitor** - 監査ログ収集
 
@@ -189,19 +189,23 @@
 
 ### 前提条件
 
-- Azure CLI インストール済み
-- Azure サブスクリプション
-- GitHub アカウント
-- kubectl, docker インストール済み
+- **Azure CLI** インストール済み ([インストールガイド](https://docs.microsoft.com/ja-jp/cli/azure/install-azure-cli))
+- **Azure サブスクリプション** (無料試用版可)
+- **GitHub アカウント**
+- **Git** インストール済み
 
-### 1️⃣ Azure 認証
+### 1️⃣ リポジトリのフォーク
+
+このリポジトリを自分のGitHubアカウントにフォークします。
+
+### 2️⃣ Azure 認証
 
 ```powershell
 az login
 az account set --subscription "<YOUR_SUBSCRIPTION_ID>"
 ```
 
-### 2️⃣ サービスプリンシパル作成
+### 3️⃣ サービスプリンシパル作成
 
 ```powershell
 az ad sp create-for-rbac `
@@ -211,36 +215,51 @@ az ad sp create-for-rbac `
   --sdk-auth > azure-credentials.json
 ```
 
-### 3️⃣ ACR 作成（手動、必須）
-
-```powershell
-az group create --name rg-cicd-bbs2 --location japaneast
-az acr create `
-  --resource-group rg-cicd-bbs2 `
-  --name acrwizexercise `
-  --sku Basic
-```
+生成された `azure-credentials.json` の内容をコピーします。
 
 ### 4️⃣ GitHub シークレット設定
 
-GitHub Repository Settings > Secrets and variables > Actions
+フォークしたリポジトリで: **Settings** > **Secrets and variables** > **Actions** > **New repository secret**
 
-- `AZURE_CREDENTIALS`: azure-credentials.json の内容
-- `AZURE_SUBSCRIPTION_ID`: サブスクリプション ID
-- `MONGO_ADMIN_PASSWORD`: MongoDB 管理者パスワード
+| Secret名 | 値 |
+|----------|-----|
+| `AZURE_CREDENTIALS` | azure-credentials.json の内容全体 |
+| `AZURE_SUBSCRIPTION_ID` | Azureサブスクリプション ID |
+| `MONGO_ADMIN_PASSWORD` | MongoDB管理者パスワード (任意の文字列) |
 
-### 5️⃣ デプロイ
+### 5️⃣ ワークフロー実行
+
+**Actions** タブ > **Deploy Infrastructure** > **Run workflow** をクリック
+
+または、コードを変更してpush:
 
 ```powershell
-git init
+git clone https://github.com/<YOUR_USERNAME>/CICD-AKS-technical-exercise.git
+cd CICD-AKS-technical-exercise
+
+# 任意の変更を加える
 git add .
-git commit -m "Initial commit: CICD-AKS-Technical Exercise"
-git branch -M main
-git remote add origin https://github.com/<YOUR_USERNAME>/wiz-technical-exercise.git
-git push -u origin main
+git commit -m "Trigger deployment"
+git push
 ```
 
-GitHub Actions が自動的にデプロイを開始します。
+GitHub Actions が自動的に:
+1. **インフラデプロイ** (AKS, ACR, MongoDB VM, Storage など)
+2. **アプリケーションデプロイ** (Docker build & push, kubectl apply)
+
+を実行します。デプロイには約**15-20分**かかります。
+
+### 6️⃣ アプリケーションへアクセス
+
+```powershell
+# AKS認証情報取得
+az aks get-credentials --resource-group rg-cicd-aks --name aks-wiz-dev --overwrite-existing
+
+# External IP取得
+kubectl get svc guestbook-service -n default
+```
+
+ブラウザで `http://<EXTERNAL-IP>` を開きます。
 
 ## 📂 ディレクトリ構造
 
@@ -305,8 +324,11 @@ wiz-technical-exercise/
 ### 脆弱性確認
 
 ```powershell
+# リソースグループ名を設定
+$RG_NAME = "rg-cicd-aks"
+
 # Storage Public Access
-$STORAGE_NAME = "<storage-name>"
+$STORAGE_NAME = (az storage account list --resource-group $RG_NAME --query "[0].name" -o tsv)
 az storage account show `
   --name $STORAGE_NAME `
   --query allowBlobPublicAccess
@@ -314,9 +336,14 @@ az storage account show `
 # SSH公開確認
 $NSG_NAME = "vm-mongo-dev-nsg"
 az network nsg rule show `
-  --resource-group rg-cicd-bbs2 `
+  --resource-group $RG_NAME `
   --nsg-name $NSG_NAME `
   --name Allow-SSH-Internet
+
+# MongoDB認証なし確認
+$MONGO_IP = (az vm show -g $RG_NAME -n vm-mongo-dev --show-details --query publicIps -o tsv)
+# 認証なしで接続可能 (脆弱性)
+mongosh "mongodb://${MONGO_IP}:27017/guestbook"
 
 # Kubernetes RBAC
 kubectl get clusterrolebindings developer-cluster-admin -o yaml
@@ -324,65 +351,99 @@ kubectl get clusterrolebindings developer-cluster-admin -o yaml
 
 ## 📊 アプリケーションアクセス
 
-### Ingress IP の取得
+### LoadBalancer External IP の取得
 
 ```powershell
-kubectl get ingress guestbook-ingress
-# または
-kubectl get svc -n ingress-nginx  # NGINX使用時
+# AKSクラスター認証情報を取得
+az aks get-credentials --resource-group rg-cicd-aks --name aks-wiz-dev --overwrite-existing
+
+# External IPを確認
+kubectl get svc guestbook-service -n default
 ```
 
-ブラウザでアクセス: `http://<INGRESS_IP>`
+ブラウザでアクセス: `http://<EXTERNAL-IP>`
 
 ### wizexercise.txt 確認
 
 ```powershell
-# Web経由
-curl http://<INGRESS_IP>/wizfile
-
-# Pod内
-$POD_NAME = kubectl get pods -l app=guestbook -o jsonpath='{.items[0].metadata.name}'
+# Pod内ファイル確認
+$POD_NAME = (kubectl get pods -l app=guestbook -o jsonpath='{.items[0].metadata.name}')
 kubectl exec $POD_NAME -- cat /app/wizexercise.txt
 ```
 
 ## 🛠️ トラブルシューティング
 
-### Ingress が動作しない
+### LoadBalancer External IP が pending のまま
 
 ```powershell
-# NGINX Ingress Controller インストール
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.1/deploy/static/provider/cloud/deploy.yaml
+# Service状態確認
+kubectl get svc guestbook-service -n default
 
-# NGINX版Ingressに切り替え
-kubectl delete ingress guestbook-ingress
-kubectl apply -f app/k8s/ingress-nginx.yaml
+# AKS LoadBalancer設定確認
+kubectl describe svc guestbook-service -n default
+
+# 通常2-3分で割り当て完了
 ```
 
 ### MongoDB に接続できない
 
 ```powershell
 # VM IPアドレス確認
-az vm show `
-  -g rg-cicd-bbs2 `
+$MONGO_IP = (az vm show `
+  -g rg-cicd-aks `
   -n vm-mongo-dev `
   --show-details `
-  --query publicIps -o tsv
+  --query publicIps -o tsv)
 
-# Deploymentの環境変数を更新
-kubectl set env deployment/guestbook-app MONGO_URI="mongodb://<MONGO_IP>:27017/guestbook"
+# NSG確認 (Port 27017が開いているか)
+az network nsg rule list `
+  --resource-group rg-cicd-aks `
+  --nsg-name vm-mongo-dev-nsg `
+  --query "[?destinationPortRange=='27017']"
+
+# Deploymentの環境変数を確認
+kubectl get deployment guestbook-app -o yaml | grep MONGO_URI
+```
+
+### ACR認証エラー
+
+```powershell
+# AKS Managed IdentityにAcrPull権限があるか確認
+$AKS_KUBELET_ID = (az aks show -g rg-cicd-aks -n aks-wiz-dev --query identityProfile.kubeletidentity.objectId -o tsv)
+$ACR_ID = (az acr show -g rg-cicd-aks -n $(az acr list -g rg-cicd-aks --query "[0].name" -o tsv) --query id -o tsv)
+
+az role assignment list --assignee $AKS_KUBELET_ID --scope $ACR_ID
 ```
 
 ## 🧹 リソース削除
 
 ```powershell
 # すべてのリソースを削除
-az group delete --name rg-cicd-bbs2 --yes --no-wait
+az group delete --name rg-cicd-aks --yes --no-wait
 
 # サービスプリンシパル削除
-$SP_ID = az ad sp list --display-name "sp-wiz-exercise" --query "[0].appId" -o tsv
+$SP_ID = (az ad sp list --display-name "sp-wiz-exercise" --query "[0].appId" -o tsv)
 az ad sp delete --id $SP_ID
 ```
 
-## 📝 ライセンス
+## � 関連ドキュメント
 
-このプロジェクトは CICD-AKS-Technical Exercise のデモ用です。
+- [環境情報](docs/ENVIRONMENT_INFO.md) - デプロイ環境の詳細
+- [トラブルシューティング履歴](Docs_issue_point/) - Phase 02-11の問題解決記録
+- [Azureセットアップ](docs/AZURE_SETUP_INFO.md) - Azure構成手順
+
+## ⚠️ セキュリティに関する注意
+
+このプロジェクトは**教育目的**で意図的に脆弱性を含んでいます:
+
+- ✅ **デモ環境専用** - 本番環境では使用しないでください
+- ✅ **定期的な削除** - 使用後は必ずリソースを削除してください
+- ✅ **コスト管理** - AKS/VM稼働でコストが発生します
+
+## �📝 ライセンス
+
+このプロジェクトはMITライセンスの下で公開されています。詳細は [LICENSE](LICENSE) を参照してください。
+
+## 🤝 コントリビューション
+
+Issue や Pull Request は歓迎します！
