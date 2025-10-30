@@ -23,7 +23,7 @@ permissions:
 
 env:
     IMAGE_NAME: guestbook
-    RESOURCE_GROUP: rg-bbs-cicd-aks
+    RESOURCE_GROUP: rg-bbs-cicd-aks001
 
 jobs:
     scan-container:
