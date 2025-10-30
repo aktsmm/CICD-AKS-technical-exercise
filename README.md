@@ -11,7 +11,7 @@
 - **ACR (Azure Container Registry)** - Docker イメージレジストリ
 - **Storage Account** - バックアップ用 Blob Storage
 - **Azure Monitor** - 監査ログ収集
-- **Azure Load Balancer** - L4ロードバランシング（Ingress Controller 用）
+- **Azure Load Balancer** - L4 ロードバランシング（Ingress Controller 用）
 
 ### 意図的な脆弱性
 
@@ -646,6 +646,7 @@ kubectl get svc -n ingress-nginx ingress-nginx-controller
 ブラウザで `http://<INGRESS-EXTERNAL-IP>` を開きます。
 
 **アクセスフロー**:
+
 ```
 User → Azure Load Balancer → Ingress Controller (NGINX) → Service (ClusterIP) → Pod
 ```
@@ -714,16 +715,16 @@ wiz-technical-exercise/
 
 #### Kubernetes 上の Web アプリケーション
 
-| 要件 | 実装状況 | 確認方法 |
-|------|---------|---------|
-| ✅ アプリはコンテナ化、MongoDB使用 | **完了** | `kubectl get pods -l app=guestbook` |
-| ✅ Kubernetes クラスタはプライベートサブネット | **完了** | AKS subnet: 10.0.1.0/24 |
-| ✅ MongoDB接続情報は環境変数で指定 | **完了** | `kubectl get deploy guestbook-app -o yaml \| grep MONGO_URI` |
-| ✅ wizexercise.txt がコンテナ内に存在 | **完了** | `kubectl exec <POD> -- cat /app/wizexercise.txt` |
-| ✅ クラスタ管理者権限を付与 | **完了** | `kubectl get clusterrolebindings developer-cluster-admin` |
-| ✅ Ingress + LoadBalancer で公開 | **完了** | `kubectl get svc -n ingress-nginx ingress-nginx-controller` |
-| ✅ kubectl コマンドによる操作デモ可能 | **完了** | `az aks get-credentials` でアクセス |
-| ✅ データが MongoDB に保存されることを証明 | **完了** | ブラウザでメッセージ投稿 → MongoDB クエリで確認 |
+| 要件                                           | 実装状況 | 確認方法                                                     |
+| ---------------------------------------------- | -------- | ------------------------------------------------------------ |
+| ✅ アプリはコンテナ化、MongoDB 使用            | **完了** | `kubectl get pods -l app=guestbook`                          |
+| ✅ Kubernetes クラスタはプライベートサブネット | **完了** | AKS subnet: 10.0.1.0/24                                      |
+| ✅ MongoDB 接続情報は環境変数で指定            | **完了** | `kubectl get deploy guestbook-app -o yaml \| grep MONGO_URI` |
+| ✅ wizexercise.txt がコンテナ内に存在          | **完了** | `kubectl exec <POD> -- cat /app/wizexercise.txt`             |
+| ✅ クラスタ管理者権限を付与                    | **完了** | `kubectl get clusterrolebindings developer-cluster-admin`    |
+| ✅ Ingress + LoadBalancer で公開               | **完了** | `kubectl get svc -n ingress-nginx ingress-nginx-controller`  |
+| ✅ kubectl コマンドによる操作デモ可能          | **完了** | `az aks get-credentials` でアクセス                          |
+| ✅ データが MongoDB に保存されることを証明     | **完了** | ブラウザでメッセージ投稿 → MongoDB クエリで確認              |
 
 #### トラフィックフロー
 
@@ -788,6 +789,7 @@ kubectl describe ingress guestbook-ingress
 ```
 
 **アクセス**:
+
 - URL: `http://<INGRESS-EXTERNAL-IP>`
 - トラフィックフロー: `User → Azure LB (L4) → Ingress Controller (L7) → ClusterIP Service → Pod`
 

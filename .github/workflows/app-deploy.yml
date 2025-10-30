@@ -245,14 +245,14 @@ jobs:
                   # 1. Deploy Ingress Controller (if not exists)
                   echo "=== Deploying NGINX Ingress Controller ==="
                   kubectl apply -f app/k8s/ingress-nginx-controller.yaml
-                  
+
                   # Wait for Ingress Controller to be ready
                   echo "=== Waiting for Ingress Controller (2 min) ==="
                   kubectl wait --namespace ingress-nginx \
                     --for=condition=ready pod \
                     --selector=app.kubernetes.io/component=controller \
                     --timeout=120s || echo "⚠️ Ingress Controller not ready yet (will continue)"
-                  
+
                   # 2. Apply vulnerable RBAC (demo purpose)
                   echo "=== Deploying Vulnerable RBAC ==="
                   kubectl apply -f app/k8s/rbac-vulnerable.yaml
@@ -261,7 +261,7 @@ jobs:
                   echo "=== Deploying Application ==="
                   kubectl apply -f app/k8s/deployment.yaml
                   kubectl apply -f app/k8s/service.yaml
-                  
+
                   # 4. Deploy Ingress resource
                   echo "=== Deploying Ingress ==="
                   kubectl apply -f app/k8s/ingress.yaml
@@ -306,10 +306,10 @@ jobs:
 
                   echo "=== Services ==="
                   kubectl get svc guestbook-service
-                  
+
                   echo "=== Ingress Controller Service ==="
                   kubectl get svc -n ingress-nginx ingress-nginx-controller
-                  
+
                   echo "=== Ingress Resources ==="
                   kubectl get ingress guestbook-ingress
                   kubectl describe ingress guestbook-ingress

@@ -13,7 +13,7 @@ spec:
       labels:
         app: guestbook
     spec:
-      serviceAccountName: default  # Cluster Admin権限を持つServiceAccount
+      serviceAccountName: default # Cluster Admin権限を持つServiceAccount
       containers:
         - name: guestbook
           image: <ACR_NAME>.azurecr.io/guestbook:<IMAGE_TAG>

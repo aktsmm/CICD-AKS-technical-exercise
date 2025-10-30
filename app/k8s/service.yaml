@@ -4,7 +4,7 @@ metadata:
   name: guestbook-service
   namespace: default
 spec:
-  type: ClusterIP  # Ingress経由でアクセス
+  type: ClusterIP # Ingress経由でアクセス
   selector:
     app: guestbook
   ports:
