@@ -40,8 +40,12 @@ echo "=== Waiting for MongoDB to be ready ==="
 MAX_RETRIES=30
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  if mongo --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
-    echo "✅ MongoDB is ready!"
+    # MongoDB起動確認
+  if ! mongo admin --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
+    echo "❌ ERROR: MongoDB is not running after initial startup"
+    exit 1
+  fi
+  echo "✅ MongoDB is ready!"
     break
   fi
   RETRY_COUNT=$((RETRY_COUNT + 1))
@@ -112,11 +116,13 @@ EOF
 
   # 認証のテスト
   echo "=== Testing MongoDB Authentication ==="
-  mongo admin -u "${MONGO_ADMIN_USER}" -p "${MONGO_ADMIN_PASSWORD}" --eval "db.adminCommand({ listDatabases: 1 })" && \
-    echo "✅ MongoDB Authentication is working!" || \
-    echo "❌ Authentication test failed"
-
-else
+  # 最終認証テスト
+  sleep 3
+  if ! mongo admin -u "${MONGO_ADMIN_USER}" -p "${MONGO_ADMIN_PASSWORD}" --eval "db.adminCommand({ listDatabases: 1 })"; then
+    echo "❌ ERROR: MongoDB authentication test failed"
+    exit 1
+  fi
+  echo "✅ MongoDB Authentication is working!"else
   echo "⚠️ MongoDB authentication is already enabled"
   
   # 認証が有効でもユーザーが存在しない可能性があるのでテスト
@@ -142,8 +148,13 @@ else
       sleep 2
     done
     
+    if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+      echo "❌ ERROR: MongoDB failed to start within 60 seconds"
+      exit 1
+    fi
+    
     # ユーザー作成
-    mongo admin --eval "
+    if ! mongo admin --eval "
       db.createUser({
         user: '${MONGO_ADMIN_USER}',
         pwd: '${MONGO_ADMIN_PASSWORD}',
@@ -154,7 +165,11 @@ else
           { role: 'readWriteAnyDatabase', db: 'admin' }
         ]
       })
-    " || echo "WARNING: User creation failed"
+    "; then
+      echo "❌ ERROR: User creation failed"
+      exit 1
+    fi
+    echo "✅ User created successfully"
     
     # 認証を再度有効化
     sudo sed -i 's/#authorization: enabled/  authorization: enabled/' "$MONGO_CONF"
@@ -176,9 +191,11 @@ else
     sleep 5
     
     # 再テスト
-    mongo admin -u "${MONGO_ADMIN_USER}" -p "${MONGO_ADMIN_PASSWORD}" --eval "db.adminCommand({ listDatabases: 1 })" && \
-      echo "✅ MongoDB Authentication is now working!" || \
-      echo "❌ Authentication test still failed"
+    if ! mongo admin -u "${MONGO_ADMIN_USER}" -p "${MONGO_ADMIN_PASSWORD}" --eval "db.adminCommand({ listDatabases: 1 })"; then
+      echo "❌ ERROR: MongoDB authentication test failed after user creation"
+      exit 1
+    fi
+    echo "✅ MongoDB Authentication is now working!"
   else
     echo "✅ Admin user already exists and is working"
   fi
