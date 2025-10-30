@@ -9,11 +9,6 @@ on:
             - ".github/workflows/infra-deploy.yml"
     workflow_dispatch:
 
-# GitHub Token権限の明示的な設定
-permissions:
-    contents: read
-    security-events: write  # SARIF upload用
-
 env:
     AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     RESOURCE_GROUP: rg-cicd-aks-bbs
@@ -34,8 +29,6 @@ jobs:
                   framework: bicep
                   output_format: sarif
                   output_file_path: checkov-results.sarif
-                  # 意図的な脆弱性をスキップ (.checkov.yml を使用)
-                  config_file: .checkov.yml
                   soft_fail: true
 
             - name: Upload Checkov Results

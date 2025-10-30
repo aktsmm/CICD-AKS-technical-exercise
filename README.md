@@ -326,24 +326,6 @@ wiz-technical-exercise/
 
 ## 🔐 セキュリティ検証
 
-### CI/CDパイプラインのセキュリティスキャン
-
-このプロジェクトは**意図的な脆弱性**を含むため、セキュリティスキャンで以下の警告が表示されます:
-
-#### Checkov (IaC Scanner)
-
-`.checkov.yml` でスキップ設定済み:
-
-| チェックID | 内容 | 理由 |
-|-----------|------|------|
-| CKV_AZURE_141 | AKS local admin disabled | デモ用に有効化 |
-| CKV_AZURE_7 | AKS Network Policy | デモ用に未設定 |
-| CKV_AZURE_34 | Blob public access | 意図的に有効化 ⚠️ |
-| CKV_AZURE_35 | Storage network deny | 意図的に全許可 ⚠️ |
-| CKV_AZURE_3 | HTTPS only | HTTP許可 ⚠️ |
-
-これらは**教育目的**の脆弱性であり、本番環境では絶対に使用しないでください。
-
 ### 脆弱性確認
 
 ```powershell
