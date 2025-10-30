@@ -37,7 +37,7 @@
 
 ```bash
 az account show
-az group show --name rg-cicd-bbs2
+az group show --name rg-cicd-aks-bbs
 ```
 
 ---
@@ -63,7 +63,7 @@ az group show --name rg-cicd-bbs2
 │         (Visual Studio Enterprise)                       │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐  │
-│  │  Resource Group: rg-cicd-bbs2                 │  │
+│  │  Resource Group: rg-cicd-aks-bbs                 │  │
 │  │                                                  │  │
 │  │  ┌──────────────────────────────────────────┐  │  │
 │  │  │  Virtual Network: vnet-wiz-dev           │  │  │
@@ -225,7 +225,7 @@ ingress-nginx-controller-66cb9865b5-dbwbk   1/1     Running   48m
 
 ```bash
 # クラスター接続
-az aks get-credentials --resource-group rg-cicd-bbs2 --name aks-wiz-dev
+az aks get-credentials --resource-group rg-cicd-aks-bbs --name aks-wiz-dev
 
 # Pod確認
 kubectl get pods -l app=guestbook
@@ -345,7 +345,7 @@ az acr build --registry acrwizdev --image guestbook:v5 .
 ```bash
 # ACRをAKSにアタッチ (既に設定済み)
 az aks update \
-  --resource-group rg-cicd-bbs2 \
+  --resource-group rg-cicd-aks-bbs \
   --name aks-wiz-dev \
   --attach-acr acrwizdev
 ```
@@ -542,7 +542,7 @@ Azure デプロイ
 ```bash
 # kubectl アクセス設定
 az aks get-credentials \
-  --resource-group rg-cicd-bbs2 \
+  --resource-group rg-cicd-aks-bbs \
   --name aks-wiz-dev \
   --overwrite-existing
 
@@ -640,16 +640,16 @@ ssh azureuser@172.192.25.0
 az account show
 
 # リソースグループ確認
-az group show --name rg-cicd-bbs2
+az group show --name rg-cicd-aks-bbs
 
 # 全リソース一覧
-az resource list --resource-group rg-cicd-bbs2 --output table
+az resource list --resource-group rg-cicd-aks-bbs --output table
 
 # AKS詳細
-az aks show --resource-group rg-cicd-bbs2 --name aks-wiz-dev
+az aks show --resource-group rg-cicd-aks-bbs --name aks-wiz-dev
 
 # VM詳細
-az vm show --resource-group rg-cicd-bbs2 --name vm-mongo-dev
+az vm show --resource-group rg-cicd-aks-bbs --name vm-mongo-dev
 
 # ACR詳細
 az acr show --name acrwizdev
@@ -659,7 +659,7 @@ az acr show --name acrwizdev
 
 ```bash
 # クラスター接続
-az aks get-credentials --resource-group rg-cicd-bbs2 --name aks-wiz-dev
+az aks get-credentials --resource-group rg-cicd-aks-bbs --name aks-wiz-dev
 
 # ノード確認
 kubectl get nodes -o wide
@@ -752,11 +752,11 @@ kubectl get svc -n ingress-nginx ingress-nginx-controller
 
 ```bash
 # VM確認
-az vm show --resource-group rg-cicd-bbs2 --name vm-mongo-dev
-az vm get-instance-view --resource-group rg-cicd-bbs2 --name vm-mongo-dev
+az vm show --resource-group rg-cicd-aks-bbs --name vm-mongo-dev
+az vm get-instance-view --resource-group rg-cicd-aks-bbs --name vm-mongo-dev
 
 # ネットワーク確認
-az network nsg rule list --resource-group rg-cicd-bbs2 --nsg-name vm-mongo-dev-nsg
+az network nsg rule list --resource-group rg-cicd-aks-bbs --nsg-name vm-mongo-dev-nsg
 
 # Pod内から接続テスト
 kubectl exec -it <pod-name> -- curl -v telnet://10.0.2.4:27017

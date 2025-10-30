@@ -194,7 +194,7 @@
 - **GitHub アカウント**
 - **Git** インストール済み
 
-> **Note**: このREADMEでは `<YOUR_RG_NAME>` をリソースグループ名のプレースホルダーとして使用しています。
+> **Note**: この README では `<YOUR_RG_NAME>` をリソースグループ名のプレースホルダーとして使用しています。
 > 実際のリソースグループ名は `infra/main.bicep` の `targetScope` と `rg` モジュールで定義されています。
 > デフォルト: `rg-cicd-aks` (環境によって変更可能)
 
