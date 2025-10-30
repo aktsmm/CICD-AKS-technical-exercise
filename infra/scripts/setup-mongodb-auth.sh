@@ -119,7 +119,9 @@ EOF
     echo "❌ ERROR: MongoDB authentication test failed"
     exit 1
   fi
-  echo "✅ MongoDB Authentication is working!"else
+  echo "✅ MongoDB Authentication is working!"
+
+else
   echo "⚠️ MongoDB authentication is already enabled"
   
   # 認証が有効でもユーザーが存在しない可能性があるのでテスト
