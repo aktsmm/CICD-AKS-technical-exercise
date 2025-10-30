@@ -1,6 +1,13 @@
 name: 🧹 Cleanup Workflow Runs (Keep only latest 5)
 
 on:
+    push:
+        branches:
+            - main
+        paths:
+            - "app/**"
+            - ".github/workflows/cleanup.yml"
+
     workflow_dispatch:
     schedule:
         - cron: "0 */12 * * *" # 12時間ごとに実行（UTC）
@@ -20,7 +27,10 @@ jobs:
                   REPO="aktsmm/CICD-AKS-technical-exercise"
 
                   echo "🧾 Fetching workflow runs..."
-                  RUNS=$(gh api repos/$REPO/actions/runs --paginate -q '.workflow_runs[] | {id: .id, status: .status, conclusion: .conclusion, created_at: .created_at}' | jq -s 'sort_by(.created_at) | reverse')
+                  # ワークフロー実行一覧を新しい順に取得
+                  RUNS=$(gh api repos/$REPO/actions/runs --paginate \
+                    -q '.workflow_runs[] | {id: .id, status: .status, conclusion: .conclusion, created_at: .created_at}' \
+                    | jq -s 'sort_by(.created_at) | reverse')
 
                   # 5件目以降を削除対象にする
                   TARGETS=$(echo "$RUNS" | jq -c '.[5:]')
