@@ -20,7 +20,7 @@ spec:
             - containerPort: 3000
           env:
             - name: MONGO_URI
-              value: "mongodb://10.0.2.4:27017/guestbook"
+              value: "mongodb://<MONGO_VM_IP>:27017/guestbook"
             - name: PORT
               value: "3000"
           resources:

@@ -238,12 +238,41 @@ jobs:
 
             - name: Wait for Deployment
               run: |
-                  kubectl rollout status deployment/guestbook-app --timeout=5m
+                  echo "=== Checking Deployment Status ==="
+                  kubectl get deployment guestbook-app
+
+                  echo "=== Checking Pods ==="
+                  kubectl get pods -l app=guestbook
+
+                  echo "=== Waiting for Rollout (5 min timeout) ==="
+                  kubectl rollout status deployment/guestbook-app --timeout=5m || {
+                    echo "❌ Rollout failed or timed out. Debugging..."
+                    
+                    echo "=== Pod Details ==="
+                    kubectl get pods -l app=guestbook -o wide
+                    
+                    echo "=== Pod Events ==="
+                    kubectl get events --sort-by='.lastTimestamp' | grep -i guestbook || echo "No events found"
+                    
+                    echo "=== Pod Describe (if any pods exist) ==="
+                    POD_NAME=$(kubectl get pods -l app=guestbook -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+                    if [ ! -z "$POD_NAME" ]; then
+                      kubectl describe pod $POD_NAME
+                      
+                      echo "=== Pod Logs ==="
+                      kubectl logs $POD_NAME --tail=50 || echo "No logs available"
+                    fi
+                    
+                    echo "=== Deployment Describe ==="
+                    kubectl describe deployment guestbook-app
+                    
+                    exit 1
+                  }
 
             - name: Get Service Information
               run: |
                   echo "=== Pods ==="
-                  kubectl get pods -l app=guestbook
+                  kubectl get pods -l app=guestbook -o wide
 
                   echo "=== Services ==="
                   kubectl get svc guestbook-service
