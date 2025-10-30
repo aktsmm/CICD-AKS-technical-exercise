@@ -4,7 +4,7 @@ param location string
 @description('環境名')
 param environment string
 
-var workspaceName = 'log-${environment}
+var workspaceName = 'log-${environment}'
 
 // Log Analytics Workspace
 resource workspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {

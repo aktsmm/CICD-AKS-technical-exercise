@@ -10,7 +10,7 @@ on:
 
 env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  RESOURCE_GROUP: rg-cicd-aks-bbs
+  RESOURCE_GROUP: rg-cicd-aks-bbs-001
   LOCATION: japaneast
 
 jobs:
