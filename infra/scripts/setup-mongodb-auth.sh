@@ -35,6 +35,25 @@ fi
 echo "Using MongoDB service: $SERVICE_NAME"
 echo "Using config file: $MONGO_CONF"
 
+# MongoDB が起動するまで待機
+echo "=== Waiting for MongoDB to be ready ==="
+MAX_RETRIES=30
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  if mongo --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
+    echo "✅ MongoDB is ready!"
+    break
+  fi
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+  echo "Waiting for MongoDB... ($RETRY_COUNT/$MAX_RETRIES)"
+  sleep 2
+done
+
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+  echo "❌ ERROR: MongoDB did not start within expected time"
+  exit 1
+fi
+
 # 認証がまだ有効でない場合のみ設定（コメントアウトされた行は除外）
 if ! grep -q "^[[:space:]]*authorization:[[:space:]]*enabled" "$MONGO_CONF"; then
   echo "=== Creating MongoDB Admin User ==="
@@ -76,7 +95,20 @@ EOF
 
   echo "=== Restarting MongoDB with Authentication ==="
   systemctl restart $SERVICE_NAME
-  sleep 5
+  
+  # MongoDB再起動後の待機
+  echo "=== Waiting for MongoDB to restart ==="
+  MAX_RETRIES=30
+  RETRY_COUNT=0
+  while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if mongo --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
+      echo "✅ MongoDB is ready after restart!"
+      break
+    fi
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo "Waiting for MongoDB restart... ($RETRY_COUNT/$MAX_RETRIES)"
+    sleep 2
+  done
 
   # 認証のテスト
   echo "=== Testing MongoDB Authentication ==="
@@ -95,7 +127,20 @@ else
     # 一時的に認証を無効化
     sudo sed -i 's/^[[:space:]]*authorization:[[:space:]]*enabled/#authorization: enabled/' "$MONGO_CONF"
     sudo systemctl restart $SERVICE_NAME
-    sleep 5
+    
+    # MongoDB再起動待機
+    echo "=== Waiting for MongoDB to restart (auth disabled) ==="
+    MAX_RETRIES=30
+    RETRY_COUNT=0
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+      if mongo --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
+        echo "✅ MongoDB is ready!"
+        break
+      fi
+      RETRY_COUNT=$((RETRY_COUNT + 1))
+      echo "Waiting... ($RETRY_COUNT/$MAX_RETRIES)"
+      sleep 2
+    done
     
     # ユーザー作成
     mongo admin --eval "
@@ -114,6 +159,20 @@ else
     # 認証を再度有効化
     sudo sed -i 's/#authorization: enabled/  authorization: enabled/' "$MONGO_CONF"
     sudo systemctl restart $SERVICE_NAME
+    
+    # MongoDB再起動待機（認証有効化後）
+    echo "=== Waiting for MongoDB to restart (auth enabled) ==="
+    MAX_RETRIES=30
+    RETRY_COUNT=0
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+      if mongo --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
+        echo "✅ MongoDB is ready!"
+        break
+      fi
+      RETRY_COUNT=$((RETRY_COUNT + 1))
+      echo "Waiting... ($RETRY_COUNT/$MAX_RETRIES)"
+      sleep 2
+    done
     sleep 5
     
     # 再テスト

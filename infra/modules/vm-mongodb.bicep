@@ -164,7 +164,7 @@ resource vmExtension 'Microsoft.Compute/virtualMachines/extensions@2023-07-01' =
       ]
     }
     protectedSettings: {
-      commandToExecute: 'bash install-mongodb.sh && sleep 10 && MONGO_ADMIN_PASSWORD="${mongoAdminPassword}" bash setup-mongodb-auth.sh && MONGO_ADMIN_PASSWORD="${mongoAdminPassword}" bash setup-backup.sh ${storageAccountName} ${backupContainerName}'
+      commandToExecute: 'bash install-mongodb.sh && MONGO_ADMIN_PASSWORD="${mongoAdminPassword}" bash setup-mongodb-auth.sh && MONGO_ADMIN_PASSWORD="${mongoAdminPassword}" bash setup-backup.sh ${storageAccountName} ${backupContainerName}'
     }
   }
 }
