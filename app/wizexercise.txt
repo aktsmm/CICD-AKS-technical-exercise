@@ -10,10 +10,17 @@ CICD-AKS-Technical Exercise
 $ kubectl exec -it $(kubectl get pod -l app=guestbook -o jsonpath='{.items[0].metadata.name}') -- cat /app/wizexercise.txt
 
 【方法2】ブラウザから直接アクセス
-URL: http://135.149.87.151/wizexercise.txt
+URL: http://<INGRESS_IP>/wizexercise.txt
 
 【方法3】curl コマンド
-$ curl http://135.149.87.151/wizexercise.txt
+$ curl http://<INGRESS_IP>/wizexercise.txt
 
 【方法4】HTMLプレビュー版
-URL: http://135.149.87.151/wizfile
+URL: http://<INGRESS_IP>/wizfile
+
+---
+Note: <INGRESS_IP> は環境により異なります。
+Webアクセス時は自動的に現在のIPが表示されます。
+
+取得方法:
+$ kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
