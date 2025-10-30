@@ -799,11 +799,13 @@ $SP_ID = (az ad sp list --display-name "spexercise" --query "[0].appId" -o tsv)
 az ad sp delete --id $SP_ID
 ```
 
-## � 関連ドキュメント
+## 📚 関連ドキュメント
 
 - [環境情報](docs/ENVIRONMENT_INFO.md) - デプロイ環境の詳細
 - [トラブルシューティング履歴](Docs_issue_point/) - Phase 02-11 の問題解決記録
 - [Azure セットアップ](docs/AZURE_SETUP_INFO.md) - Azure 構成手順
+- **[GitHub Secrets 設定](Docs_Secrets/GitHub_Secrets_Configuration.md)** - 必須Secrets設定ガイド
+- **[GitHub Variables 設定](Docs_Secrets/GitHub_Variables_Setup.md)** - リソースグループ名などの設定ガイド
 
 ## ⚠️ セキュリティに関する注意
 
