@@ -366,6 +366,15 @@ jobs:
                                   name: guestbook-service
                                   port:
                                     number: 80
+                      - http:
+                          paths:
+                            - path: /
+                              pathType: Prefix
+                              backend:
+                                service:
+                                  name: guestbook-service
+                                  port:
+                                    number: 80
                   EOF
                   
                   echo "=== Waiting for certificate ==="
