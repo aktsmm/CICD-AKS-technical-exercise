@@ -166,26 +166,16 @@ jobs:
               with:
                   creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-            - name: Download Infra Outputs
-              uses: actions/download-artifact@v4
-              with:
-                  name: infra-outputs
-              continue-on-error: true
-
             - name: Get Infrastructure Details
               id: infra
               run: |
-                  # Try to load from artifact first
-                  if [ -f outputs/infra-outputs.txt ]; then
-                    echo "Loading from artifact..."
-                    source outputs/infra-outputs.txt
-                  else
-                    echo "Artifact not found, querying Azure directly..."
-                    # Fallback: Query Azure directly
-                    AKS_CLUSTER_NAME=$(az aks list -g ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
-                    # VNet内通信用にプライベートIPを取得
-                    MONGO_VM_IP=$(az vm list-ip-addresses -g ${{ env.RESOURCE_GROUP }} -n vm-mongo-dev --query "[0].virtualMachine.network.privateIpAddresses[0]" -o tsv)
-                  fi
+                  echo "Querying Azure for infrastructure details..."
+                  
+                  # AKSクラスター名を取得
+                  AKS_CLUSTER_NAME=$(az aks list -g ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
+                  
+                  # MongoDB VMのプライベートIPを取得（VNet内通信用）
+                  MONGO_VM_IP=$(az vm list-ip-addresses -g ${{ env.RESOURCE_GROUP }} -n vm-mongo-dev --query "[0].virtualMachine.network.privateIpAddresses[0]" -o tsv)
 
                   echo "AKS Cluster: ${AKS_CLUSTER_NAME}"
                   echo "MongoDB VM IP: ${MONGO_VM_IP}"
