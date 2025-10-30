@@ -34,6 +34,12 @@ LOG_FILE="/var/log/mongodb-backup.log"
 
 echo "[$(date)] Starting backup..." | tee -a "$LOG_FILE"
 
+# Managed Identityで再ログイン（セッション切れ対策）
+echo "[$(date)] Logging in with Managed Identity..." | tee -a "$LOG_FILE"
+az login --identity 2>&1 | tee -a "$LOG_FILE" || {
+  echo "[$(date)] WARNING: Managed Identity login failed" | tee -a "$LOG_FILE"
+}
+
 mongodump --out ${BACKUP_DIR}/dump_${TIMESTAMP} 2>&1 | tee -a "$LOG_FILE" || {
   echo "[$(date)] ERROR: mongodump failed" | tee -a "$LOG_FILE"
   exit 0
@@ -54,7 +60,7 @@ az storage blob upload \
 }
 
 find ${BACKUP_DIR} -name "mongodb_backup_*.tar.gz" -mtime +7 -delete
-echo "[$(date)] Backup completed: ${BACKUP_FILE}" | tee -a "$LOG_FILE"
+echo "[$(date)] Backup completed and uploaded: ${BACKUP_FILE}" | tee -a "$LOG_FILE"
 EOF
 
 echo "=== Configuring Backup Script ==="
