@@ -100,13 +100,32 @@ jobs:
                       attempt=$((attempt + 1))
                   done
 
-                  # ACRの取得
-                  ACR_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
+                  # ACRの取得（最大20回リトライ、30秒間隔 = 最大10分待機）
+                  max_acr_attempts=20
+                  acr_attempt=1
+                  ACR_NAME=""
 
-                  if [ -z "$ACR_NAME" ]; then
-                      echo "❌ No ACR found in resource group ${{ env.RESOURCE_GROUP }}"
-                      exit 1
-                  fi
+                  while [ $acr_attempt -le $max_acr_attempts ]; do
+                      echo "🔍 Attempt $acr_attempt/$max_acr_attempts: Checking ACR..."
+                      
+                      ACR_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
+                      
+                      if [ -n "$ACR_NAME" ]; then
+                          echo "✅ ACR found: ${ACR_NAME}"
+                          break
+                      fi
+                      
+                      if [ $acr_attempt -eq $max_acr_attempts ]; then
+                          echo "❌ No ACR found in resource group ${{ env.RESOURCE_GROUP }} after $max_acr_attempts attempts!"
+                          echo "Infrastructure deployment may still be in progress."
+                          echo "💡 Hint: ACR creation typically takes 5-10 minutes after resource group creation."
+                          exit 1
+                      fi
+                      
+                      echo "⏳ ACR not found yet. Waiting 30 seconds... (This is normal, ACR creation takes time)"
+                      sleep 30
+                      acr_attempt=$((acr_attempt + 1))
+                  done
 
                   echo "ACR Name: ${ACR_NAME}"
                   echo "acr_name=${ACR_NAME}" >> $GITHUB_OUTPUT
