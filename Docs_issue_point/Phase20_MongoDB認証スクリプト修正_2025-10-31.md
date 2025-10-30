@@ -883,6 +883,247 @@ fi
 
 ---
 
+## Problem 6: Bash 構文エラー (2025-10-31 追加)
+
+### 症状
+
+**GitHub Actions デプロイ時**:
+
+```
+VMExtensionProvisioningError: VM has reported a failure when processing extension 'install-mongodb'
+Error message: 'Enable failed: failed to execute command: command terminated with exit status=2
+setup-mongodb-auth.sh: line 50: syntax error near unexpected token `fi'
+```
+
+### 根本原因
+
+**エラーハンドリング追加時の構造破壊 (commit dabe689)**:
+
+```bash
+# ❌ 間違い
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  if ! mongo admin --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
+    echo "❌ ERROR: MongoDB is not running after initial startup"
+    exit 1
+  fi
+  echo "✅ MongoDB is ready!"
+  break
+  fi  # ← 余分な fi
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+done
+```
+
+**問題点**:
+
+1. `if` 内で `break` した後に余分な `fi` がある
+2. ロジックが逆転（失敗時に exit、成功時にメッセージ＋ break の順序が不適切）
+
+### 修正内容 (commit 24fe747)
+
+```bash
+# ✅ 正しい構造
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  if mongo admin --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
+    echo "✅ MongoDB is ready!"
+    break
+  fi  # ← 正しい位置
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+  echo "Waiting for MongoDB... ($RETRY_COUNT/$MAX_RETRIES)"
+  sleep 2
+done
+```
+
+**変更点**:
+
+- `if !` → `if` に修正（成功時に break する正しいロジック）
+- 余分な `fi` と `break` の位置を修正
+- エラーチェックはループ終了後に実施
+
+---
+
+## Problem 7: else 前の改行欠如 (2025-10-31 追加)
+
+### 症状
+
+**Bash 構文チェックエラー**:
+
+```bash
+./setup-mongodb-auth.sh: line 141: syntax error near unexpected token `else'
+./setup-mongodb-auth.sh: line 141: `  echo "✅ MongoDB Authentication is working!"else'
+```
+
+### 根本原因
+
+**Line 126 の改行漏れ (commit 24fe747 直後)**:
+
+```bash
+# ❌ 間違い
+  echo "✅ MongoDB Authentication is working!"else
+  echo "⚠️ MongoDB authentication is already enabled"
+```
+
+**Bash の文法**:
+
+- `else` は独立した行として記述する必要がある
+- 同一行に複数のステートメントを配置できない
+
+### 修正内容 (commit 968341e)
+
+```bash
+# ✅ 正しい構造
+  echo "✅ MongoDB Authentication is working!"
+
+else
+  echo "⚠️ MongoDB authentication is already enabled"
+```
+
+**変更点**:
+
+- `echo` と `else` の間に改行追加
+
+---
+
+## 最終リファクタリング (2025-10-31)
+
+### 変更内容 (commit 282f8c9)
+
+**改善点**:
+
+1. **全ログを `/var/log/mongodb-auth-setup.log` に記録**
+
+   ```bash
+   echo "=== MongoDB ready ===" | tee -a /var/log/mongodb-auth-setup.log
+   ```
+
+2. **複雑なフォールバック処理削除**
+
+   - 既存ユーザー再作成ロジックを削除
+   - 初回セットアップに集中
+
+3. **セキュリティ強化**
+
+   ```bash
+   unset MONGO_ADMIN_PASSWORD  # メモリからパスワード削除
+   ```
+
+4. **sed の `\n` 問題を 2 段階処理で解決**
+
+   ```bash
+   # ❌ 問題のあるコード
+   sed -i 's/^#security:/security:\n  authorization: enabled/' "$MONGO_CONF"
+
+   # ✅ 修正後
+   sed -i 's/^#security:/security:/' "$MONGO_CONF"
+   sed -i '/^security:/a\  authorization: enabled' "$MONGO_CONF"
+   ```
+
+**統計**:
+
+- 123 行削除、28 行追加
+- スクリプトサイズ: 205 行 → 110 行（46%削減）
+
+---
+
+## 付録: リソースグループ一括削除スクリプト
+
+**用途**: テスト環境の迅速なクリーンアップ
+
+**ファイル**: `Scripts/ResourceDelete.ps1`
+
+```powershell
+# ===============================================
+# ⚡ 指定サブスクリプション内で、指定文字列を含むリソースグループを並列削除
+# PowerShell 7.x 対応
+# ===============================================
+
+# 🔧 設定パラメータ（必要に応じて変更）
+$subscriptionId = "832c4080-181c-476b-9db0-b3ce9596d40a"
+$keyword = "aks"                           # 削除対象に含めたいキーワード
+$maxParallel = 8                            # 並列削除数（5〜8 推奨）
+$force = $true                              # 確認スキップ
+
+# サブスクリプション設定
+az account set --subscription $subscriptionId | Out-Null
+Write-Host "🎯 対象サブスクリプション: $subscriptionId"
+Write-Host "🔍 リソースグループ名に '$keyword' を含むものを検索中..." -ForegroundColor Cyan
+
+# ターゲットリスト抽出
+$allGroups = az group list --query "[].name" -o tsv
+$targetGroups = $allGroups | Where-Object { $_ -match "(?i)$keyword" }
+
+if (-not $targetGroups) {
+    Write-Host "✅ '$keyword' を含むリソースグループは見つかりませんでした。" -ForegroundColor Green
+    return
+}
+
+Write-Host "🧾 削除対象リソースグループ（$($targetGroups.Count) 件）:" -ForegroundColor Yellow
+$targetGroups | ForEach-Object { Write-Host " - $_" }
+
+# 確認 or 強制削除
+if (-not $force) {
+    $confirmation = Read-Host "⚠️ 本当に削除しますか？ (yes/no)"
+    if ($confirmation -ne "yes") {
+        Write-Host "🚫 削除を中止しました。" -ForegroundColor Gray
+        return
+    }
+} else {
+    Write-Host "⚡ 強制削除モードで実行します（確認なし）" -ForegroundColor Red
+}
+
+# 並列削除処理（PowerShell 7.x）
+$targetGroups | ForEach-Object -Parallel {
+    $rg = $_
+    Write-Host "🗑 [$($using:subscriptionId)] $rg の削除を開始..." -ForegroundColor Red
+    az group delete -n $rg --subscription $using:subscriptionId --yes --no-wait
+} -ThrottleLimit $maxParallel
+
+Write-Host "✨ 全削除リクエストを送信しました（最大 $maxParallel 並列）" -ForegroundColor Green
+```
+
+**使用例**:
+
+```powershell
+# Scripts ディレクトリから実行
+cd d:\00_temp\wizwork\Scripts
+.\ResourceDelete.ps1
+
+# 実行結果例
+🎯 対象サブスクリプション: 832c4080-181c-476b-9db0-b3ce9596d40a
+🔍 リソースグループ名に 'aks' を含むものを検索中...
+🧾 削除対象リソースグループ（3 件）:
+ - rg-bbs-cicd-aks-00001
+ - rg-bbs-cicd-aks001
+ - rg-bbs-cicd-aks1111
+⚡ 強制削除モードで実行します（確認なし）
+🗑 [832c4080-...] rg-bbs-cicd-aks-00001 の削除を開始...
+🗑 [832c4080-...] rg-bbs-cicd-aks001 の削除を開始...
+🗑 [832c4080-...] rg-bbs-cicd-aks1111 の削除を開始...
+✨ 全削除リクエストを送信しました（最大 8 並列）
+```
+
+**機能**:
+
+- ✅ 並列削除（最大 8 並列）で高速化
+- ✅ キーワードマッチング（大文字小文字区別なし）
+- ✅ 強制モード（`$force = $true`）で確認スキップ
+- ✅ PowerShell 7.x の `-Parallel` 機能活用
+
+**注意事項**:
+
+- ⚠️ `--no-wait` を使用しているため、削除完了を待たずに次へ進む
+- ⚠️ 削除状態確認: `az group list --query "[?starts_with(name, 'rg-bbs-cicd-aks')].{Name:name, State:properties.provisioningState}" -o table`
+
+---
+
 **作成者**: GitHub Copilot  
 **作成日時**: 2025-10-31  
+**最終更新**: 2025-10-31 (Problem 6, 7 追加、リファクタリング、削除スクリプト追加)
+
+```
+
+---
+
+**作成者**: GitHub Copilot
+**作成日時**: 2025-10-31
 **最終更新**: 2025-10-31 (YAML インデント問題追加)
+```
