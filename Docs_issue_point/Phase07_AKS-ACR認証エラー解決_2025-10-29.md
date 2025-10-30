@@ -174,7 +174,7 @@ module aksAcrRole 'modules/aks-acr-role.bicep' = {
 
 ```bash
 # AKS の Kubelet Identity を取得
-az aks show --resource-group rg-cicd-aks-bbs --name aksdev \
+az aks show --resource-group rg-cicd-aks-bbs-01 --name aksdev \
   --query identityProfile.kubeletidentity.objectId -o tsv
 
 # ACR のロール割り当てを確認
@@ -212,7 +212,7 @@ Normal  Started    Started container guestbook
 
 ```bicep
 // パターン A: attach-acr を使用 (推奨)
-az aks update -n aksdev -g rg-cicd-aks-bbs --attach-acr acrwizdev
+az aks update -n aksdev -g rg-cicd-aks-bbs-01 --attach-acr acrwizdev
 
 // パターン B: ロール割り当てを明示的に作成 (今回採用)
 module aksAcrRole 'modules/aks-acr-role.bicep' = { ... }
