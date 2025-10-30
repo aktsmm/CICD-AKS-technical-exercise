@@ -40,7 +40,16 @@ const Message = mongoose.model("Message", messageSchema);
 app.get("/", async (req, res) => {
   try {
     const messages = await Message.find().sort({ createdAt: -1 });
-    res.render("index", { messages });
+    // クライアントのIPアドレスを取得
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown';
+    // サーバーのホスト情報を取得
+    const serverHost = req.get('host') || 'localhost:3000';
+    
+    res.render("index", { 
+      messages,
+      clientIp,
+      serverHost
+    });
   } catch (err) {
     res.status(500).send("エラーが発生しました");
   }

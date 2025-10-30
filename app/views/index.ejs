@@ -187,10 +187,11 @@
           <span>AKS Demo Environment</span>
           <span class="badge">VULNERABLE</span>
           <a href="/wizexercise.txt" class="secret-link">[Secret File]</a>
+          <span style="color: #ffff00; margin-left: 10px;">📡 <%= serverHost %></span>
         </div>
       </div>
 
-      <div class="stats">■ Total Posts: <%= messages.length %> | Online: 1</div>
+      <div class="stats">■ Total Posts: <%= messages.length %> | Online: 1 | Your IP: <%= clientIp %></div>
 
       <div class="form-section">
         <h2>■ 新規投稿</h2>
