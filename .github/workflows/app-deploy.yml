@@ -299,6 +299,80 @@ jobs:
                     exit 1
                   }
 
+            - name: Setup HTTPS with cert-manager
+              run: |
+                  echo "=== Installing cert-manager ==="
+                  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.yaml
+                  
+                  echo "=== Waiting for cert-manager to be ready ==="
+                  kubectl wait --namespace cert-manager \
+                    --for=condition=ready pod \
+                    --selector=app.kubernetes.io/instance=cert-manager \
+                    --timeout=120s || echo "⚠️ cert-manager not ready yet (will continue)"
+                  
+                  sleep 10
+                  
+                  echo "=== Creating Self-Signed ClusterIssuer ==="
+                  cat <<EOF | kubectl apply -f -
+                  apiVersion: cert-manager.io/v1
+                  kind: ClusterIssuer
+                  metadata:
+                    name: selfsigned-issuer
+                  spec:
+                    selfSigned: {}
+                  EOF
+                  
+                  echo "=== Getting Ingress IP ==="
+                  INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                  
+                  if [ -z "$INGRESS_IP" ]; then
+                    echo "⏳ Waiting for External IP..."
+                    sleep 30
+                    INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                  fi
+                  
+                  if [ -z "$INGRESS_IP" ]; then
+                    echo "❌ Could not get Ingress IP. Skipping HTTPS setup."
+                    exit 0
+                  fi
+                  
+                  DOMAIN="${INGRESS_IP}.nip.io"
+                  echo "📡 Using domain: ${DOMAIN}"
+                  
+                  echo "=== Updating Ingress with TLS ==="
+                  cat <<EOF | kubectl apply -f -
+                  apiVersion: networking.k8s.io/v1
+                  kind: Ingress
+                  metadata:
+                    name: guestbook-ingress
+                    namespace: default
+                    annotations:
+                      nginx.ingress.kubernetes.io/rewrite-target: /
+                      cert-manager.io/cluster-issuer: selfsigned-issuer
+                  spec:
+                    ingressClassName: nginx
+                    tls:
+                      - hosts:
+                          - ${DOMAIN}
+                        secretName: guestbook-tls-cert
+                    rules:
+                      - host: ${DOMAIN}
+                        http:
+                          paths:
+                            - path: /
+                              pathType: Prefix
+                              backend:
+                                service:
+                                  name: guestbook-service
+                                  port:
+                                    number: 80
+                  EOF
+                  
+                  echo "=== Waiting for certificate ==="
+                  sleep 15
+                  kubectl get certificate
+                  kubectl describe certificate guestbook-tls-cert || echo "Certificate being created..."
+
             - name: Get Service Information
               run: |
                   echo "=== Pods ==="
@@ -314,14 +388,27 @@ jobs:
                   kubectl get ingress guestbook-ingress
                   kubectl describe ingress guestbook-ingress
 
+                  echo "=== Certificate Status ==="
+                  kubectl get certificate guestbook-tls-cert || echo "No certificate found"
+
                   echo ""
                   echo "=== 🎉 Deployment Complete ==="
                   echo "Access Flow:"
-                  echo "  [User] → [Azure Load Balancer] → [Ingress Controller] → [Service] → [Pod]"
+                  echo "  [User] → [Azure Load Balancer] → [Ingress Controller (TLS)] → [Service] → [Pod]"
                   echo ""
+                  
                   INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                  
                   if [ ! -z "$INGRESS_IP" ]; then
-                    echo "🌐 Access URL: http://$INGRESS_IP"
+                    DOMAIN="${INGRESS_IP}.nip.io"
+                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                    echo "🌐 Access URLs:"
+                    echo "   HTTPS: https://${DOMAIN}"
+                    echo "   HTTP:  http://${INGRESS_IP}"
+                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                    echo ""
+                    echo "⚠️  Note: Using self-signed certificate"
+                    echo "   Your browser will show a security warning - this is expected for demo."
                   else
                     echo "⏳ Waiting for External IP to be assigned..."
                   fi

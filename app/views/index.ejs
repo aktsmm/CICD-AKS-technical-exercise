@@ -11,7 +11,8 @@
         box-sizing: border-box;
       }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         min-height: 100vh;
         padding: 20px;
@@ -75,7 +76,7 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        font-family: 'Monaco', 'Courier New', monospace;
+        font-family: "Monaco", "Courier New", monospace;
         font-size: 0.9em;
       }
       .stats {
@@ -262,25 +263,19 @@
         <h2>💬 Messages</h2>
         <% if (messages.length === 0) { %>
         <div class="no-messages">No messages yet. Be the first to post! 🎉</div>
-        <% } else { %>
-          <% messages.forEach(msg => { %>
-          <div class="message-card">
-            <div class="message-header">
-              <span class="msg-author"><%= msg.name %></span>
-              <span class="msg-date">
-                <%= new Date(msg.createdAt).toLocaleString('en-US', { 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric', 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                }) %>
-              </span>
-            </div>
-            <div class="msg-content"><%= msg.message %></div>
+        <% } else { %> <% messages.forEach(msg => { %>
+        <div class="message-card">
+          <div class="message-header">
+            <span class="msg-author"><%= msg.name %></span>
+            <span class="msg-date">
+              <%= new Date(msg.createdAt).toLocaleString('en-US', { year:
+              'numeric', month: 'short', day: 'numeric', hour: '2-digit',
+              minute: '2-digit' }) %>
+            </span>
           </div>
-          <% }); %>
-        <% } %>
+          <div class="msg-content"><%= msg.message %></div>
+        </div>
+        <% }); %> <% } %>
       </div>
 
       <div class="footer">Powered by Node.js + MongoDB on Azure AKS</div>
