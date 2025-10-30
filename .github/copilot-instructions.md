@@ -367,10 +367,10 @@ az ad sp create-for-rbac --name spexercise-github `
   --sdk-auth
 
 # 2. Resource Group 作成
-az group create --name rg-cicd-aks-bbs01 --location japaneast
+az group create --name rg-bbs-icd-aks01 --location japaneast
 
 # 3. ACR 作成
-az acr create --resource-group rg-cicd-aks-bbs01 `
+az acr create --resource-group rg-bbs-icd-aks01 `
   --name acrwizexercise `
   --sku Standard
 
@@ -387,7 +387,7 @@ az acr create --resource-group rg-cicd-aks-bbs01 `
 git push origin main
 
 # 2. インフラデプロイ完了後、ACR と AKS を統合
-az aks update --resource-group rg-cicd-aks-bbs01 `
+az aks update --resource-group rg-bbs-icd-aks01 `
   --name aksexercise `
   --attach-acr acrwizexercise
 
