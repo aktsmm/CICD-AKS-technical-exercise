@@ -3,7 +3,7 @@ name: 🧹 Cleanup Failed or Pending Runs (Keep last 5 successful)
 on:
     workflow_dispatch:
     schedule:
-        - cron: "0 * * * *" # 毎時実行（UTC）
+        - cron: "0 */12 * * *" # 12時間ごとに実行（UTC）
 
 permissions:
     actions: write
@@ -13,25 +13,36 @@ jobs:
     cleanup:
         runs-on: ubuntu-latest
         steps:
-            - name: Delete only failed or in_progress workflow runs
+            - name: Delete failed, cancelled, or old pending workflow runs
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   REPO="aktsmm/CICD-AKS-technical-exercise"
+                  NOW=$(date -u +"%s")  # 現在のUTC時刻（UNIX秒）
+                  THRESHOLD=$((60 * 60))  # 1時間(秒換算)
 
                   echo "🧾 Fetching workflow runs..."
-                  RUNS=$(gh api repos/$REPO/actions/runs --paginate -q '.workflow_runs[] | {id: .id, status: .status, conclusion: .conclusion}')
+                  RUNS=$(gh api repos/$REPO/actions/runs --paginate -q '.workflow_runs[] | {id: .id, status: .status, conclusion: .conclusion, created_at: .created_at}')
 
                   echo "$RUNS" | jq -c '.' | while read -r run; do
-                    ID=$(echo $run | jq -r '.id')
-                    STATUS=$(echo $run | jq -r '.status')
-                    CONCLUSION=$(echo $run | jq -r '.conclusion')
+                    ID=$(echo "$run" | jq -r '.id')
+                    STATUS=$(echo "$run" | jq -r '.status')
+                    CONCLUSION=$(echo "$run" | jq -r '.conclusion')
+                    CREATED_AT=$(echo "$run" | jq -r '.created_at')
 
-                    # 削除対象条件：failed, cancelled, or in_progress
-                    if [[ "$CONCLUSION" == "failure" || "$CONCLUSION" == "cancelled" || "$STATUS" == "in_progress" ]]; then
-                      echo "🧹 Deleting failed/pending run ID: $ID ($STATUS/$CONCLUSION)"
-                      gh api repos/$REPO/actions/runs/$ID -X DELETE || echo "⚠️ Skipped run $ID"
+                    # 実行開始時刻をUNIX秒に変換
+                    CREATED_UNIX=$(date -d "$CREATED_AT" +"%s")
+                    AGE=$((NOW - CREATED_UNIX))
+
+                    # 1時間以上経過しているrunのみ対象
+                    if (( AGE >= THRESHOLD )); then
+                      if [[ "$CONCLUSION" == "failure" || "$CONCLUSION" == "cancelled" || "$STATUS" == "in_progress" ]]; then
+                        echo "🧹 Deleting run ID: $ID ($STATUS/$CONCLUSION) - age: $((AGE/60)) min"
+                        gh api repos/$REPO/actions/runs/$ID -X DELETE || echo "⚠️ Skipped run $ID"
+                      else
+                        echo "✅ Keeping successful run ID: $ID ($STATUS/$CONCLUSION)"
+                      fi
                     else
-                      echo "✅ Keeping run ID: $ID ($STATUS/$CONCLUSION)"
+                      echo "⏳ Skipping recent run ID: $ID ($STATUS/$CONCLUSION, created less than 1h ago)"
                     fi
                   done
