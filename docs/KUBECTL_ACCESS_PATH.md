@@ -1,17 +1,18 @@
 # kubectl アクセス経路の詳細
 
-**作成日**: 2025年10月31日  
+**作成日**: 2025 年 10 月 31 日  
 **プロジェクト**: CICD-AKS-Technical Exercise
 
 ---
 
 ## 🔍 重要な発見
 
-**kubectl はインターネット経由でアクセス可能だが、Pod自体は外部からアクセスできない！**
+**kubectl はインターネット経由でアクセス可能だが、Pod 自体は外部からアクセスできない！**
 
-これはKubernetesのセキュリティモデルの核心です：
+これは Kubernetes のセキュリティモデルの核心です：
+
 - ✅ **kubectl → AKS API Server**: パブリックエンドポイント（インターネット経由）
-- ❌ **外部 → Pod直接**: 不可能（プライベートネットワーク内）
+- ❌ **外部 → Pod 直接**: 不可能（プライベートネットワーク内）
 - ✅ **Ingress → Pod**: 許可された経路のみ（HTTP/HTTPS）
 
 ---
@@ -177,12 +178,12 @@ kubectl exec -it guestbook-app-xxx -- cat /app/wizexercise.txt
 
 ### 通信プロトコルスタック
 
-| レイヤー | プロトコル | ポート | 暗号化 | 詳細 |
-|---------|----------|--------|--------|------|
-| **アプリケーション層** | HTTPS | 443 | TLS 1.2/1.3 | Kubernetes REST API |
-| **トランスポート層** | TCP | 443 | - | 信頼性のある通信 |
-| **ネットワーク層** | IP | - | - | ルーティング |
-| **認証層** | mTLS | - | X.509証明書 | 双方向認証 |
+| レイヤー               | プロトコル | ポート | 暗号化       | 詳細                |
+| ---------------------- | ---------- | ------ | ------------ | ------------------- |
+| **アプリケーション層** | HTTPS      | 443    | TLS 1.2/1.3  | Kubernetes REST API |
+| **トランスポート層**   | TCP        | 443    | -            | 信頼性のある通信    |
+| **ネットワーク層**     | IP         | -      | -            | ルーティング        |
+| **認証層**             | mTLS       | -      | X.509 証明書 | 双方向認証          |
 
 ### 暗号化の詳細
 
@@ -206,48 +207,48 @@ TLS Handshake:
 
 ## 🔑 認証情報の管理
 
-### kubectl設定ファイル
+### kubectl 設定ファイル
 
 **場所**: `C:\Users\<username>\.kube\config`
 
 ```yaml
 apiVersion: v1
 clusters:
-- cluster:
-    certificate-authority-data: DATA+OMITTED
-    server: https://aks-dev-ax196xm1.hcp.japaneast.azmk8s.io:443
-  name: aks-dev
+  - cluster:
+      certificate-authority-data: DATA+OMITTED
+      server: https://aks-dev-ax196xm1.hcp.japaneast.azmk8s.io:443
+    name: aks-dev
 contexts:
-- context:
-    cluster: aks-dev
-    user: clusterUser_rg-bbs-cicd-aks_aks-dev
-  name: aks-dev
+  - context:
+      cluster: aks-dev
+      user: clusterUser_rg-bbs-cicd-aks_aks-dev
+    name: aks-dev
 current-context: aks-dev
 kind: Config
 preferences: {}
 users:
-- name: clusterUser_rg-bbs-cicd-aks_aks-dev
-  user:
-    client-certificate-data: DATA+OMITTED
-    client-key-data: DATA+OMITTED
-    token: REDACTED
+  - name: clusterUser_rg-bbs-cicd-aks_aks-dev
+    user:
+      client-certificate-data: DATA+OMITTED
+      client-key-data: DATA+OMITTED
+      token: REDACTED
 ```
 
 ### 認証要素
 
-| 要素 | 説明 | 用途 |
-|-----|------|------|
-| **Server URL** | `aks-dev-ax196xm1.hcp.japaneast.azmk8s.io:443` | API Serverのエンドポイント |
-| **Client Certificate** | X.509証明書 | クライアント認証 |
-| **Client Key** | 秘密鍵 | 証明書の署名検証 |
-| **Azure AD Token** | JWT形式 | Azure AD認証 |
-| **CA Certificate** | 認証局証明書 | サーバー証明書検証 |
+| 要素                   | 説明                                           | 用途                        |
+| ---------------------- | ---------------------------------------------- | --------------------------- |
+| **Server URL**         | `aks-dev-ax196xm1.hcp.japaneast.azmk8s.io:443` | API Server のエンドポイント |
+| **Client Certificate** | X.509 証明書                                   | クライアント認証            |
+| **Client Key**         | 秘密鍵                                         | 証明書の署名検証            |
+| **Azure AD Token**     | JWT 形式                                       | Azure AD 認証               |
+| **CA Certificate**     | 認証局証明書                                   | サーバー証明書検証          |
 
 ---
 
-## 🎯 API Serverの詳細
+## 🎯 API Server の詳細
 
-### URL構造
+### URL 構造
 
 ```
 https://aks-dev-ax196xm1.hcp.japaneast.azmk8s.io:443
@@ -262,23 +263,23 @@ https://aks-dev-ax196xm1.hcp.japaneast.azmk8s.io:443
 
 ### 特徴
 
-| 項目 | 詳細 |
-|-----|------|
-| **管理主体** | Azure (マネージド) |
+| 項目             | 詳細                     |
+| ---------------- | ------------------------ |
+| **管理主体**     | Azure (マネージド)       |
 | **アクセス方法** | パブリックエンドポイント |
-| **可用性** | 99.95% SLA |
-| **スケーリング** | Azure自動管理 |
-| **アップデート** | Azure自動適用 |
-| **バックアップ** | etcd自動バックアップ |
+| **可用性**       | 99.95% SLA               |
+| **スケーリング** | Azure 自動管理           |
+| **アップデート** | Azure 自動適用           |
+| **バックアップ** | etcd 自動バックアップ    |
 
 ### セキュリティ機能
 
-- ✅ **Azure AD統合**: エンタープライズ認証
+- ✅ **Azure AD 統合**: エンタープライズ認証
 - ✅ **RBAC**: きめ細かいアクセス制御
-- ✅ **Network Policy**: Pod間通信制御
-- ✅ **Private Cluster**: API Serverをプライベート化可能（現在は無効）
-- ✅ **IP制限**: 特定IPからのみアクセス許可可能（現在は無制限）
-- ✅ **監査ログ**: すべてのAPI呼び出しを記録
+- ✅ **Network Policy**: Pod 間通信制御
+- ✅ **Private Cluster**: API Server をプライベート化可能（現在は無効）
+- ✅ **IP 制限**: 特定 IP からのみアクセス許可可能（現在は無制限）
+- ✅ **監査ログ**: すべての API 呼び出しを記録
 
 ---
 
@@ -286,16 +287,16 @@ https://aks-dev-ax196xm1.hcp.japaneast.azmk8s.io:443
 
 ### kubectl vs Web ブラウザ
 
-| アクセス方法 | 経路 | 認証 | ターゲット | アクセス可否 |
-|-------------|------|------|-----------|------------|
-| **kubectl exec** | Internet → API Server → kubelet → Pod | Azure AD + 証明書 | Pod内部 | ✅ 可能 |
-| **Web Browser** | Internet → Azure LB → Ingress → Service → Pod | なし | HTTP/HTTPS endpoint | ✅ 可能 |
-| **直接Pod IP** | Internet → ??? | ??? | Pod (10.0.1.x) | ❌ 不可能 |
-| **直接Node SSH** | Internet → ??? | ??? | Worker Node | ❌ 不可能 |
+| アクセス方法      | 経路                                          | 認証              | ターゲット          | アクセス可否 |
+| ----------------- | --------------------------------------------- | ----------------- | ------------------- | ------------ |
+| **kubectl exec**  | Internet → API Server → kubelet → Pod         | Azure AD + 証明書 | Pod 内部            | ✅ 可能      |
+| **Web Browser**   | Internet → Azure LB → Ingress → Service → Pod | なし              | HTTP/HTTPS endpoint | ✅ 可能      |
+| **直接 Pod IP**   | Internet → ???                                | ???               | Pod (10.0.1.x)      | ❌ 不可能    |
+| **直接 Node SSH** | Internet → ???                                | ???               | Worker Node         | ❌ 不可能    |
 
-### なぜkubectlは外部からアクセスできるのか？
+### なぜ kubectl は外部からアクセスできるのか？
 
-**答え: API Serverがパブリックエンドポイントだから**
+**答え: API Server がパブリックエンドポイントだから**
 
 ```
 kubectl → 🌐 Internet → 🎯 API Server (Public) → 🔒 kubelet (Private) → 🔒 Pod (Private)
@@ -305,13 +306,14 @@ kubectl → 🌐 Internet → 🎯 API Server (Public) → 🔒 kubelet (Private
 ```
 
 **重要:**
-- API Serverは**意図的にパブリック**にされている
+
+- API Server は**意図的にパブリック**にされている
 - これにより、どこからでもクラスタ管理が可能
 - ただし、**強固な認証・認可**で保護されている
 
-### なぜPodには直接アクセスできないのか？
+### なぜ Pod には直接アクセスできないのか？
 
-**答え: PodはプライベートIPしか持たないから**
+**答え: Pod はプライベート IP しか持たないから**
 
 ```
 外部 → ❌ Pod (10.0.1.55) → 到達不可
@@ -327,15 +329,15 @@ kubectl → 🌐 Internet → 🎯 API Server (Public) → 🔒 kubelet (Private
 
 ## 🛡️ セキュリティ上の考慮点
 
-### パブリックAPI Serverのリスク
+### パブリック API Server のリスク
 
-| リスク | 説明 | 対策 |
-|-------|------|------|
-| **ブルートフォース攻撃** | 認証情報の総当たり | ✅ Azure AD MFA強制 |
-| **認証情報漏洩** | ~/.kube/config流出 | ✅ 定期的な証明書ローテーション |
-| **DDoS攻撃** | API Server過負荷 | ✅ Azure DDoS Protection |
-| **不正アクセス** | 未承認ユーザー | ✅ RBAC + Azure AD条件付きアクセス |
-| **内部脅威** | 過剰な権限 | ⚠️ cluster-admin権限（脆弱性） |
+| リスク                   | 説明                | 対策                                |
+| ------------------------ | ------------------- | ----------------------------------- |
+| **ブルートフォース攻撃** | 認証情報の総当たり  | ✅ Azure AD MFA 強制                |
+| **認証情報漏洩**         | ~/.kube/config 流出 | ✅ 定期的な証明書ローテーション     |
+| **DDoS 攻撃**            | API Server 過負荷   | ✅ Azure DDoS Protection            |
+| **不正アクセス**         | 未承認ユーザー      | ✅ RBAC + Azure AD 条件付きアクセス |
+| **内部脅威**             | 過剰な権限          | ⚠️ cluster-admin 権限（脆弱性）     |
 
 ### 本番環境での推奨設定
 
@@ -358,22 +360,22 @@ az aks create --network-policy azure
 
 ## 📊 kubectl vs Ingress 比較表
 
-| 項目 | kubectl | Ingress (Web) |
-|-----|---------|--------------|
-| **経路** | PC → Internet → API Server → kubelet → Pod | PC → Internet → Azure LB → Ingress Controller → Service → Pod |
-| **認証** | Azure AD + クライアント証明書 | なし（パブリックアクセス） |
-| **プロトコル** | HTTPS (Port 443) | HTTP/HTTPS (Port 80/443) |
-| **ターゲット** | Kubernetes API | アプリケーションエンドポイント |
-| **アクセス範囲** | すべてのリソース（RBAC次第） | 公開されたHTTP/HTTPSのみ |
-| **用途** | 管理・運用・デバッグ | エンドユーザーアクセス |
-| **セキュリティ** | 強固（多要素認証） | 弱い（認証なし） ⚠️ |
-| **外部公開** | API Serverのみ公開 | Ingress Controllerを公開 |
+| 項目             | kubectl                                    | Ingress (Web)                                                 |
+| ---------------- | ------------------------------------------ | ------------------------------------------------------------- |
+| **経路**         | PC → Internet → API Server → kubelet → Pod | PC → Internet → Azure LB → Ingress Controller → Service → Pod |
+| **認証**         | Azure AD + クライアント証明書              | なし（パブリックアクセス）                                    |
+| **プロトコル**   | HTTPS (Port 443)                           | HTTP/HTTPS (Port 80/443)                                      |
+| **ターゲット**   | Kubernetes API                             | アプリケーションエンドポイント                                |
+| **アクセス範囲** | すべてのリソース（RBAC 次第）              | 公開された HTTP/HTTPS のみ                                    |
+| **用途**         | 管理・運用・デバッグ                       | エンドユーザーアクセス                                        |
+| **セキュリティ** | 強固（多要素認証）                         | 弱い（認証なし） ⚠️                                           |
+| **外部公開**     | API Server のみ公開                        | Ingress Controller を公開                                     |
 
 ---
 
 ## 🔍 検証コマンド
 
-### API Server情報の確認
+### API Server 情報の確認
 
 ```bash
 # クラスタ情報
@@ -409,28 +411,32 @@ kubectl get svc -n ingress-nginx ingress-nginx-controller
 ### 重要なポイント
 
 1. **kubectl はパブリックアクセス**
-   - API ServerがパブリックエンドポイントとしてInternet公開
+
+   - API Server がパブリックエンドポイントとして Internet 公開
    - Azure AD + 証明書による強固な認証
 
-2. **Podはプライベート**
-   - VNet内部のプライベートIPのみ
+2. **Pod はプライベート**
+
+   - VNet 内部のプライベート IP のみ
    - 直接外部アクセス不可
 
-3. **2つのアクセス経路**
+3. **2 つのアクセス経路**
+
    - 管理用: kubectl → API Server → Pod
    - エンドユーザー用: Browser → Ingress → Service → Pod
 
 4. **セキュリティの多層防御**
    - API Server: 認証・認可・監査
-   - Network: VNet分離、NSG、Network Policy
+   - Network: VNet 分離、NSG、Network Policy
    - RBAC: きめ細かい権限制御
 
 ### デモ環境での脆弱性
 
 ⚠️ **意図的に設定した脆弱性**:
-- API ServerがIP制限なしでパブリック公開
-- cluster-admin権限の過剰付与
-- Ingressが認証なしでパブリック公開
+
+- API Server が IP 制限なしでパブリック公開
+- cluster-admin 権限の過剰付与
+- Ingress が認証なしでパブリック公開
 
 本番環境では**必ず対策すること**！
 

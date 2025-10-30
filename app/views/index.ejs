@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BBS - Azure Kubernetes Service</title>
+    <title>Guestbook - Azure Kubernetes Service</title>
     <style>
       * {
         margin: 0;
@@ -11,253 +11,275 @@
         box-sizing: border-box;
       }
       body {
-        font-family: "MS PGothic", "Osaka-Mono", monospace, sans-serif;
-        background: #e0e0e0;
-        padding: 10px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
       }
       .container {
-        max-width: 900px;
+        max-width: 1000px;
         margin: 0 auto;
         background: #fff;
-        border: 3px double #666;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
       }
       .header {
-        background: #336699;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: #fff;
-        padding: 15px;
-        border-bottom: 3px solid #224466;
+        padding: 30px;
+        position: relative;
       }
       .header h1 {
-        font-size: 1.5em;
-        font-weight: bold;
-        letter-spacing: 2px;
-        margin-bottom: 5px;
+        font-size: 2em;
+        font-weight: 700;
+        margin-bottom: 10px;
+        letter-spacing: -0.5px;
       }
       .header-info {
-        font-size: 0.85em;
-        opacity: 0.9;
+        font-size: 0.95em;
         display: flex;
-        gap: 15px;
+        gap: 20px;
         align-items: center;
-        margin-top: 8px;
+        flex-wrap: wrap;
+        margin-top: 15px;
+        opacity: 0.95;
       }
       .badge {
-        background: #ff6b6b;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
         color: #fff;
-        padding: 2px 8px;
-        font-size: 0.75em;
-        border: 1px solid #cc0000;
+        padding: 4px 12px;
+        font-size: 0.8em;
+        border-radius: 20px;
+        font-weight: 600;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      .badge.vulnerable {
+        background: rgba(239, 68, 68, 0.9);
+        border: 1px solid rgba(220, 38, 38, 0.5);
       }
       .secret-link {
-        color: #ffff00;
-        text-decoration: underline;
-        font-size: 0.85em;
+        color: #fef08a;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        padding: 4px 8px;
+        border-radius: 4px;
       }
       .secret-link:hover {
-        color: #ffdd00;
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
       }
-      .stats {
-        background: #f5f5f5;
-        padding: 8px 15px;
-        border-bottom: 1px solid #ccc;
+      .server-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: 'Monaco', 'Courier New', monospace;
         font-size: 0.9em;
       }
+      .stats {
+        background: linear-gradient(to right, #f8fafc, #f1f5f9);
+        padding: 16px 30px;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 0.95em;
+        color: #64748b;
+        display: flex;
+        gap: 24px;
+        align-items: center;
+      }
+      .stats span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
       .form-section {
-        padding: 20px;
-        background: #fafafa;
-        border-bottom: 2px solid #ddd;
+        padding: 40px 30px;
+        background: #fff;
       }
       .form-section h2 {
-        font-size: 1.2em;
-        margin-bottom: 15px;
-        color: #333;
-        border-left: 4px solid #336699;
-        padding-left: 10px;
+        font-size: 1.5em;
+        margin-bottom: 24px;
+        color: #1e293b;
+        font-weight: 700;
       }
-      table.form-table {
-        width: 100%;
-        border-collapse: collapse;
+      .form-group {
+        margin-bottom: 24px;
       }
-      table.form-table td {
-        padding: 8px;
-        vertical-align: top;
-      }
-      table.form-table td:first-child {
-        width: 100px;
-        font-weight: bold;
-        color: #333;
+      .form-label {
+        display: block;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 8px;
+        font-size: 0.95em;
       }
       .form-input,
       .form-textarea {
         width: 100%;
-        padding: 6px;
-        border: 1px solid #999;
+        padding: 12px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
         font-family: inherit;
-        font-size: 0.95em;
+        font-size: 1em;
+        transition: all 0.3s ease;
+        background: #f8fafc;
+      }
+      .form-input:focus,
+      .form-textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
       }
       .form-textarea {
-        min-height: 80px;
+        min-height: 120px;
         resize: vertical;
       }
       .btn-submit {
-        background: #336699;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: #fff;
-        border: 2px outset #336699;
-        padding: 8px 25px;
+        border: none;
+        padding: 14px 32px;
         font-size: 1em;
+        border-radius: 8px;
         cursor: pointer;
-        font-weight: bold;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
       }
       .btn-submit:hover {
-        background: #2a5580;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
       }
       .btn-submit:active {
-        border-style: inset;
+        transform: translateY(0);
       }
       .messages-section {
-        padding: 20px;
+        padding: 40px 30px;
+        background: #f8fafc;
       }
       .messages-section h2 {
-        font-size: 1.2em;
-        margin-bottom: 15px;
-        color: #333;
-        border-left: 4px solid #336699;
-        padding-left: 10px;
+        font-size: 1.5em;
+        margin-bottom: 24px;
+        color: #1e293b;
+        font-weight: 700;
       }
-      table.message-table {
-        width: 100%;
-        border-collapse: collapse;
-        border: 1px solid #999;
+      .message-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        border: 1px solid #e2e8f0;
       }
-      table.message-table th {
-        background: #336699;
-        color: #fff;
-        padding: 8px;
-        text-align: left;
-        font-weight: bold;
-        border: 1px solid #666;
+      .message-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
       }
-      table.message-table td {
-        padding: 10px;
-        border: 1px solid #ccc;
-        vertical-align: top;
-      }
-      table.message-table tr:nth-child(even) {
-        background: #f9f9f9;
-      }
-      table.message-table tr:hover {
-        background: #ffffcc;
+      .message-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #f1f5f9;
       }
       .msg-author {
-        font-weight: bold;
-        color: #336699;
+        font-weight: 700;
+        color: #667eea;
+        font-size: 1.1em;
       }
       .msg-date {
-        color: #666;
+        color: #94a3b8;
         font-size: 0.85em;
-        margin-left: 10px;
       }
       .msg-content {
-        margin-top: 8px;
-        line-height: 1.5;
+        color: #334155;
+        line-height: 1.7;
         white-space: pre-wrap;
         word-wrap: break-word;
       }
       .no-messages {
         text-align: center;
-        padding: 40px;
-        color: #666;
-        font-style: italic;
+        padding: 60px 20px;
+        color: #94a3b8;
+        font-size: 1.1em;
       }
       .footer {
-        background: #f5f5f5;
-        padding: 10px;
+        background: #1e293b;
+        padding: 20px;
         text-align: center;
-        font-size: 0.8em;
-        color: #666;
-        border-top: 1px solid #ccc;
+        font-size: 0.9em;
+        color: #94a3b8;
       }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="header">
-        <h1>■ BBS - Azure Kubernetes Service ■</h1>
+        <h1>🚀 Guestbook</h1>
         <div class="header-info">
-          <span>AKS Demo Environment</span>
-          <span class="badge">VULNERABLE</span>
-          <a href="/wizexercise.txt" class="secret-link">[Secret File]</a>
-          <span style="color: #ffff00; margin-left: 10px;">📡 <%= serverHost %></span>
+          <span>Azure Kubernetes Service Demo</span>
+          <span class="badge vulnerable">⚠️ VULNERABLE</span>
+          <a href="/wizexercise.txt" class="secret-link">🔒 Secret File</a>
+          <span class="server-info">📡 <%= serverHost %></span>
         </div>
       </div>
 
-      <div class="stats">■ Total Posts: <%= messages.length %> | Online: 1 | Your IP: <%= clientIp %></div>
+      <div class="stats">
+        <span>📝 <strong><%= messages.length %></strong> Total Posts</span>
+        <span>👥 <strong>1</strong> Online</span>
+      </div>
 
       <div class="form-section">
-        <h2>■ 新規投稿</h2>
+        <h2>✍️ New Post</h2>
         <form action="/post" method="POST">
-          <table class="form-table">
-            <tr>
-              <td>名前:</td>
-              <td>
-                <input
-                  type="text"
-                  name="name"
-                  class="form-input"
-                  required
-                  placeholder="Your Name"
-                />
-              </td>
-            </tr>
-            <tr>
-              <td>メッセージ:</td>
-              <td>
-                <textarea
-                  name="message"
-                  class="form-textarea"
-                  required
-                  placeholder="Enter your message..."
-                ></textarea>
-              </td>
-            </tr>
-            <tr>
-              <td></td>
-              <td>
-                <button type="submit" class="btn-submit">[ 投稿 ]</button>
-              </td>
-            </tr>
-          </table>
+          <div class="form-group">
+            <label class="form-label">Name</label>
+            <input
+              type="text"
+              name="name"
+              class="form-input"
+              required
+              placeholder="Enter your name"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Message</label>
+            <textarea
+              name="message"
+              class="form-textarea"
+              required
+              placeholder="Share your thoughts..."
+            ></textarea>
+          </div>
+          <button type="submit" class="btn-submit">Post Message</button>
         </form>
       </div>
 
       <div class="messages-section">
-        <h2>■ 投稿一覧</h2>
+        <h2>💬 Messages</h2>
         <% if (messages.length === 0) { %>
-        <div class="no-messages">まだ投稿がありません</div>
+        <div class="no-messages">No messages yet. Be the first to post! 🎉</div>
         <% } else { %>
-        <table class="message-table">
-          <thead>
-            <tr>
-              <th style="width: 25%">投稿者</th>
-              <th>メッセージ</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% messages.forEach(msg => { %>
-            <tr>
-              <td>
-                <span class="msg-author"><%= msg.name %></span>
-                <div class="msg-date">
-                  <%= new Date(msg.createdAt).toLocaleString('ja-JP') %>
-                </div>
-              </td>
-              <td>
-                <div class="msg-content"><%= msg.message %></div>
-              </td>
-            </tr>
-            <% }); %>
-          </tbody>
-        </table>
+          <% messages.forEach(msg => { %>
+          <div class="message-card">
+            <div class="message-header">
+              <span class="msg-author"><%= msg.name %></span>
+              <span class="msg-date">
+                <%= new Date(msg.createdAt).toLocaleString('en-US', { 
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric', 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                }) %>
+              </span>
+            </div>
+            <div class="msg-content"><%= msg.message %></div>
+          </div>
+          <% }); %>
         <% } %>
       </div>
 
