@@ -18,6 +18,10 @@ on:
         branches:
             - main
 
+permissions:
+    contents: read
+    security-events: write
+
 env:
     IMAGE_NAME: guestbook
     RESOURCE_GROUP: rg-cicd-aks-bbs
