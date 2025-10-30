@@ -174,11 +174,11 @@ module aksAcrRole 'modules/aks-acr-role.bicep' = {
 
 ```bash
 # AKS の Kubelet Identity を取得
-az aks show --resource-group rg-cicd-aks --name aks-wiz-dev \
+az aks show --resource-group rg-cicd-bbs --name aks-wiz-dev \
   --query identityProfile.kubeletidentity.objectId -o tsv
 
 # ACR のロール割り当てを確認
-az role assignment list --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-cicd-aks/providers/Microsoft.ContainerRegistry/registries/acrwizdev \
+az role assignment list --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-cicd-bbs/providers/Microsoft.ContainerRegistry/registries/acrwizdev \
   --query "[?roleDefinitionName=='AcrPull'].{Principal:principalId,Role:roleDefinitionName}"
 ```
 
@@ -212,7 +212,7 @@ Normal  Started    Started container guestbook
 
 ```bicep
 // パターン A: attach-acr を使用 (推奨)
-az aks update -n aks-wiz-dev -g rg-cicd-aks --attach-acr acrwizdev
+az aks update -n aks-wiz-dev -g rg-cicd-bbs --attach-acr acrwizdev
 
 // パターン B: ロール割り当てを明示的に作成 (今回採用)
 module aksAcrRole 'modules/aks-acr-role.bicep' = { ... }
