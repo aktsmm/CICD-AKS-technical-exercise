@@ -1,0 +1,251 @@
+name: Setup HTTPS with Self-Signed Certificate
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: 'Domain name (leave empty to use nip.io with Ingress IP)'
+        required: false
+        type: string
+
+env:
+  RESOURCE_GROUP: rg-bbs-cicd-aks
+  AKS_CLUSTER: aks-dev
+
+jobs:
+  setup-https:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get AKS Credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.AKS_CLUSTER }} \
+            --overwrite-existing
+
+      - name: Get Ingress IP
+        id: ingress-ip
+        run: |
+          echo "Waiting for Ingress Controller to get External IP..."
+          for i in {1..30}; do
+            INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+            if [ -n "$INGRESS_IP" ]; then
+              echo "ip=$INGRESS_IP" >> $GITHUB_OUTPUT
+              echo "✅ Ingress IP: $INGRESS_IP"
+              break
+            fi
+            echo "⏳ Waiting... ($i/30)"
+            sleep 10
+          done
+          
+          if [ -z "$INGRESS_IP" ]; then
+            echo "❌ Failed to get Ingress IP"
+            exit 1
+          fi
+
+      - name: Set Domain Name
+        id: domain
+        run: |
+          if [ -n "${{ inputs.domain }}" ]; then
+            DOMAIN="${{ inputs.domain }}"
+          else
+            # Use nip.io for automatic DNS resolution
+            DOMAIN="${{ steps.ingress-ip.outputs.ip }}.nip.io"
+          fi
+          echo "domain=$DOMAIN" >> $GITHUB_OUTPUT
+          echo "✅ Using domain: $DOMAIN"
+
+      - name: Install cert-manager
+        run: |
+          echo "📦 Installing cert-manager..."
+          kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.yaml
+          
+          echo "⏳ Waiting for cert-manager to be ready..."
+          kubectl wait --for=condition=Available --timeout=300s \
+            deployment/cert-manager -n cert-manager
+          kubectl wait --for=condition=Available --timeout=300s \
+            deployment/cert-manager-webhook -n cert-manager
+          kubectl wait --for=condition=Available --timeout=300s \
+            deployment/cert-manager-cainjector -n cert-manager
+          
+          echo "✅ cert-manager is ready"
+
+      - name: Create Self-Signed ClusterIssuer
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: cert-manager.io/v1
+          kind: ClusterIssuer
+          metadata:
+            name: selfsigned-issuer
+          spec:
+            selfSigned: {}
+          EOF
+          
+          echo "✅ Self-Signed ClusterIssuer created"
+
+      - name: Update Ingress with TLS
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: guestbook-ingress
+            namespace: default
+            annotations:
+              nginx.ingress.kubernetes.io/rewrite-target: /
+              cert-manager.io/cluster-issuer: selfsigned-issuer
+              nginx.ingress.kubernetes.io/ssl-redirect: "true"
+              nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+          spec:
+            ingressClassName: nginx
+            tls:
+            - hosts:
+              - ${{ steps.domain.outputs.domain }}
+              secretName: guestbook-tls
+            rules:
+            - host: ${{ steps.domain.outputs.domain }}
+              http:
+                paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: guestbook-service
+                      port:
+                        number: 80
+          EOF
+          
+          echo "✅ Ingress updated with TLS configuration"
+
+      - name: Wait for Certificate
+        run: |
+          echo "⏳ Waiting for certificate to be ready..."
+          for i in {1..60}; do
+            CERT_READY=$(kubectl get certificate guestbook-tls -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+            if [ "$CERT_READY" == "True" ]; then
+              echo "✅ Certificate is ready"
+              kubectl get certificate guestbook-tls
+              break
+            fi
+            echo "⏳ Waiting for certificate... ($i/60)"
+            sleep 5
+          done
+
+      - name: Display Access Information
+        run: |
+          echo ""
+          echo "=================================================="
+          echo "🎉 HTTPS Setup Complete!"
+          echo "=================================================="
+          echo ""
+          echo "🌐 Access URLs:"
+          echo "  HTTPS: https://${{ steps.domain.outputs.domain }}"
+          echo "  HTTP:  http://${{ steps.domain.outputs.domain }}"
+          echo ""
+          echo "📋 Ingress IP: ${{ steps.ingress-ip.outputs.ip }}"
+          echo "🔐 Certificate Type: Self-Signed"
+          echo ""
+          echo "⚠️  Note: Self-signed certificate will show a browser warning."
+          echo "    This is expected for demo environments."
+          echo ""
+          echo "🔍 Verification Commands:"
+          echo "  kubectl get ingress guestbook-ingress"
+          echo "  kubectl get certificate guestbook-tls"
+          echo "  kubectl describe certificate guestbook-tls"
+          echo ""
+
+      - name: Update wizexercise.txt with HTTPS URL
+        run: |
+          HTTPS_URL="https://${{ steps.domain.outputs.domain }}"
+          
+          cat > app/wizexercise.txt <<EOF
+          氏名: yamapan
+          日付: 2025-10-31
+          CICD-AKS-Technical Exercise
+
+          ===================================
+          このファイルへのアクセス方法:
+          ===================================
+
+          【方法1】kubectl exec コマンド（コンテナ内部確認）
+          \$ kubectl exec -it \$(kubectl get pod -l app=guestbook -o jsonpath='{.items[0].metadata.name}') -- cat /app/wizexercise.txt
+
+          【方法2】ブラウザから直接アクセス (HTTPS)
+          URL: ${HTTPS_URL}/wizexercise.txt
+
+          【方法3】curl コマンド (HTTPS)
+          \$ curl -k ${HTTPS_URL}/wizexercise.txt
+
+          【方法4】HTMLプレビュー版 (HTTPS)
+          URL: ${HTTPS_URL}/wizfile
+
+          ---
+          Note: HTTPSは自己署名証明書を使用しています。
+          ブラウザで警告が表示される場合は「詳細設定」→「続行」を選択してください。
+          
+          取得方法 (Ingress IP):
+          \$ kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+          
+          Domain: ${{ steps.domain.outputs.domain }}
+          EOF
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          
+          git add app/wizexercise.txt
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: Update wizexercise.txt with HTTPS URL
+
+          - Add HTTPS access methods
+          - Update domain to ${{ steps.domain.outputs.domain }}
+          - Note about self-signed certificate
+          "
+            git push
+            echo "✅ Changes committed and pushed"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## 🎉 HTTPS Setup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Domain** | \`${{ steps.domain.outputs.domain }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Ingress IP** | \`${{ steps.ingress-ip.outputs.ip }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Certificate Type** | Self-Signed |" >> $GITHUB_STEP_SUMMARY
+          echo "| **HTTPS URL** | https://${{ steps.domain.outputs.domain }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Installed Components" >> $GITHUB_STEP_SUMMARY
+          echo "- cert-manager v1.13.2" >> $GITHUB_STEP_SUMMARY
+          echo "- Self-Signed ClusterIssuer" >> $GITHUB_STEP_SUMMARY
+          echo "- TLS Certificate (guestbook-tls)" >> $GITHUB_STEP_SUMMARY
+          echo "- Updated Ingress with TLS configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 Verification" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# Check certificate status" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl get certificate guestbook-tls" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Check ingress" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl get ingress guestbook-ingress" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Test HTTPS access" >> $GITHUB_STEP_SUMMARY
+          echo "curl -k https://${{ steps.domain.outputs.domain }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Note**: Self-signed certificates will trigger browser warnings. This is expected for demo environments." >> $GITHUB_STEP_SUMMARY

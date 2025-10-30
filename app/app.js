@@ -57,10 +57,11 @@ app.post("/post", async (req, res) => {
 // ルート: wizexercise.txt表示（デモ用）
 app.get("/wizfile", (req, res) => {
   // 動的にコンテンツを生成
-  const publicUrl = process.env.PUBLIC_URL || req.get('host') || 'localhost:3000';
-  const protocol = publicUrl.includes('localhost') ? 'http' : 'http';
+  const publicUrl =
+    process.env.PUBLIC_URL || req.get("host") || "localhost:3000";
+  const protocol = publicUrl.includes("localhost") ? "http" : "http";
   const baseUrl = `${protocol}://${publicUrl}`;
-  
+
   const content = `氏名: yamapan
 日付: 2025-10-28
 CICD-AKS-Technical Exercise
@@ -82,8 +83,10 @@ $ curl ${baseUrl}/wizexercise.txt
 URL: ${baseUrl}/wizfile
 
 ---
-Generated at: ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })} JST
-Current Host: ${req.get('host')}`;
+Generated at: ${new Date().toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+  })} JST
+Current Host: ${req.get("host")}`;
 
   res.send(`<pre>${content}</pre>`);
 });
@@ -91,10 +94,11 @@ Current Host: ${req.get('host')}`;
 // ルート: wizexercise.txtを直接提供（動的生成）
 app.get("/wizexercise.txt", (req, res) => {
   // 動的にコンテンツを生成
-  const publicUrl = process.env.PUBLIC_URL || req.get('host') || 'localhost:3000';
-  const protocol = publicUrl.includes('localhost') ? 'http' : 'http';
+  const publicUrl =
+    process.env.PUBLIC_URL || req.get("host") || "localhost:3000";
+  const protocol = publicUrl.includes("localhost") ? "http" : "http";
   const baseUrl = `${protocol}://${publicUrl}`;
-  
+
   const content = `氏名: yamapan
 日付: 2025-10-28
 CICD-AKS-Technical Exercise
@@ -116,8 +120,10 @@ $ curl ${baseUrl}/wizexercise.txt
 URL: ${baseUrl}/wizfile
 
 ---
-Generated at: ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })} JST
-Current Host: ${req.get('host')}`;
+Generated at: ${new Date().toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+  })} JST
+Current Host: ${req.get("host")}`;
 
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.send(content);
