@@ -323,7 +323,7 @@ Error: Unable to find file 'infra-outputs.txt'
 
 1. Azure Container Registry (acrwizexercise)
 2. Storage Account (stwizdev5ogryzdtfnsbk) - 作成後にエラー
-3. Log Analytics Workspace (log-wiz-dev)
+3. Log Analytics Workspace (log-dev)
 4. Virtual Network (vnet-wiz-dev)
 5. Network Security Group (vm-mongo-dev-nsg)
 6. Public IP (vm-mongo-dev-pip)
