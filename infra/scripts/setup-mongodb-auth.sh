@@ -35,8 +35,8 @@ fi
 echo "Using MongoDB service: $SERVICE_NAME"
 echo "Using config file: $MONGO_CONF"
 
-# 認証がまだ有効でない場合のみ設定
-if ! grep -q "authorization: enabled" "$MONGO_CONF"; then
+# 認証がまだ有効でない場合のみ設定（コメントアウトされた行は除外）
+if ! grep -q "^[[:space:]]*authorization:[[:space:]]*enabled" "$MONGO_CONF"; then
   echo "=== Creating MongoDB Admin User ==="
   
   # 管理者ユーザーを作成（認証無効の状態で）
@@ -85,7 +85,44 @@ EOF
     echo "❌ Authentication test failed"
 
 else
-  echo "✅ MongoDB authentication is already enabled"
+  echo "⚠️ MongoDB authentication is already enabled"
+  
+  # 認証が有効でもユーザーが存在しない可能性があるのでテスト
+  echo "=== Testing if admin user exists ==="
+  if ! mongo admin -u "${MONGO_ADMIN_USER}" -p "${MONGO_ADMIN_PASSWORD}" --eval "db.adminCommand({ listDatabases: 1 })" 2>/dev/null; then
+    echo "⚠️ Admin user does not exist, recreating..."
+    
+    # 一時的に認証を無効化
+    sudo sed -i 's/^[[:space:]]*authorization:[[:space:]]*enabled/#authorization: enabled/' "$MONGO_CONF"
+    sudo systemctl restart $SERVICE_NAME
+    sleep 5
+    
+    # ユーザー作成
+    mongo admin --eval "
+      db.createUser({
+        user: '${MONGO_ADMIN_USER}',
+        pwd: '${MONGO_ADMIN_PASSWORD}',
+        roles: [
+          { role: 'root', db: 'admin' },
+          { role: 'userAdminAnyDatabase', db: 'admin' },
+          { role: 'dbAdminAnyDatabase', db: 'admin' },
+          { role: 'readWriteAnyDatabase', db: 'admin' }
+        ]
+      })
+    " || echo "WARNING: User creation failed"
+    
+    # 認証を再度有効化
+    sudo sed -i 's/#authorization: enabled/authorization: enabled/' "$MONGO_CONF"
+    sudo systemctl restart $SERVICE_NAME
+    sleep 5
+    
+    # 再テスト
+    mongo admin -u "${MONGO_ADMIN_USER}" -p "${MONGO_ADMIN_PASSWORD}" --eval "db.adminCommand({ listDatabases: 1 })" && \
+      echo "✅ MongoDB Authentication is now working!" || \
+      echo "❌ Authentication test still failed"
+  else
+    echo "✅ Admin user already exists and is working"
+  fi
 fi
 
 echo "=== MongoDB Authentication Setup Completed ==="
