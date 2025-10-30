@@ -4,7 +4,7 @@ metadata:
   name: guestbook-service
   namespace: default
 spec:
-  type: LoadBalancer # ClusterIP → LoadBalancer に変更
+  type: ClusterIP  # Ingress経由でアクセス
   selector:
     app: guestbook
   ports:

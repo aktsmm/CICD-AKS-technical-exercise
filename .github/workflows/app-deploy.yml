@@ -242,13 +242,29 @@ jobs:
 
             - name: Deploy to Kubernetes
               run: |
-                  # Apply vulnerable RBAC first (demo purpose)
+                  # 1. Deploy Ingress Controller (if not exists)
+                  echo "=== Deploying NGINX Ingress Controller ==="
+                  kubectl apply -f app/k8s/ingress-nginx-controller.yaml
+                  
+                  # Wait for Ingress Controller to be ready
+                  echo "=== Waiting for Ingress Controller (2 min) ==="
+                  kubectl wait --namespace ingress-nginx \
+                    --for=condition=ready pod \
+                    --selector=app.kubernetes.io/component=controller \
+                    --timeout=120s || echo "⚠️ Ingress Controller not ready yet (will continue)"
+                  
+                  # 2. Apply vulnerable RBAC (demo purpose)
+                  echo "=== Deploying Vulnerable RBAC ==="
                   kubectl apply -f app/k8s/rbac-vulnerable.yaml
 
-                  # Deploy application
+                  # 3. Deploy application
+                  echo "=== Deploying Application ==="
                   kubectl apply -f app/k8s/deployment.yaml
                   kubectl apply -f app/k8s/service.yaml
-                  # Note: Ingress is skipped as we're using LoadBalancer service type
+                  
+                  # 4. Deploy Ingress resource
+                  echo "=== Deploying Ingress ==="
+                  kubectl apply -f app/k8s/ingress.yaml
 
             - name: Wait for Deployment
               run: |
@@ -290,6 +306,22 @@ jobs:
 
                   echo "=== Services ==="
                   kubectl get svc guestbook-service
+                  
+                  echo "=== Ingress Controller Service ==="
+                  kubectl get svc -n ingress-nginx ingress-nginx-controller
+                  
+                  echo "=== Ingress Resources ==="
+                  kubectl get ingress guestbook-ingress
+                  kubectl describe ingress guestbook-ingress
 
-                  echo "=== Deployment Complete ==="
-                  echo "Access the application via the LoadBalancer EXTERNAL-IP shown above"
+                  echo ""
+                  echo "=== 🎉 Deployment Complete ==="
+                  echo "Access Flow:"
+                  echo "  [User] → [Azure Load Balancer] → [Ingress Controller] → [Service] → [Pod]"
+                  echo ""
+                  INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                  if [ ! -z "$INGRESS_IP" ]; then
+                    echo "🌐 Access URL: http://$INGRESS_IP"
+                  else
+                    echo "⏳ Waiting for External IP to be assigned..."
+                  fi
