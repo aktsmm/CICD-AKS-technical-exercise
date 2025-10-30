@@ -65,6 +65,17 @@ app.get("/wizfile", (req, res) => {
   }
 });
 
+// ルート: wizexercise.txtを直接提供（ファイル名そのままでアクセス可能）
+app.get("/wizexercise.txt", (req, res) => {
+  const filePath = path.join(__dirname, "wizexercise.txt");
+  if (fs.existsSync(filePath)) {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send("wizexercise.txt が見つかりません");
+  }
+});
+
 // ヘルスチェック
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
