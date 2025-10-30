@@ -16,7 +16,7 @@ permissions:
 
 env:
     AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    RESOURCE_GROUP: rg-cicd-aks-bbs
+    RESOURCE_GROUP: rg-cicd-aks-bbs01
     LOCATION: japaneast
 
 jobs:
