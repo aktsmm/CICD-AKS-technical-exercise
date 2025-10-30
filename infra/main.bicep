@@ -1,7 +1,7 @@
 targetScope = 'subscription'
 
 @description('リソースグループ名')
-param resourceGroupName string = 'rg-bbs-icd-aks001'
+param resourceGroupName string = 'rg-bbs-cicd-aks001001'
 
 @description('デプロイ先リージョン')
 param location string = 'japaneast'
