@@ -22,8 +22,8 @@ permissions:
     security-events: write
 
 env:
-    IMAGE_NAME: ${{ vars.IMAGE_NAME }}
-    RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+    IMAGE_NAME: guestbook
+    RESOURCE_GROUP: rg-bbs-cicd-aks001
 
 jobs:
     scan-container:
