@@ -20,6 +20,10 @@ param storageAccountName string
 @description('バックアップコンテナ名')
 param backupContainerName string = 'backups'
 
+@description('MongoDB管理者パスワード')
+@secure()
+param mongoAdminPassword string
+
 var vmName = 'vm-mongo-${environment}'
 var nicName = '${vmName}-nic'
 var nsgName = '${vmName}-nsg'
@@ -138,7 +142,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-07-01' = {
   }
 }
 
-// MongoDB インストールスクリプト（認証なし = 脆弱性）
+// MongoDB インストールスクリプト（認証付き）
 resource vmExtension 'Microsoft.Compute/virtualMachines/extensions@2023-07-01' = {
   parent: vm
   name: 'install-mongodb'
@@ -151,11 +155,12 @@ resource vmExtension 'Microsoft.Compute/virtualMachines/extensions@2023-07-01' =
     settings: {
       fileUris: [
         'https://raw.githubusercontent.com/aktsmm/wiz-technical-exercise/main/infra/scripts/install-mongodb.sh'
+        'https://raw.githubusercontent.com/aktsmm/wiz-technical-exercise/main/infra/scripts/setup-mongodb-auth.sh'
         'https://raw.githubusercontent.com/aktsmm/wiz-technical-exercise/main/infra/scripts/setup-backup.sh'
       ]
     }
     protectedSettings: {
-      commandToExecute: 'bash install-mongodb.sh && bash setup-backup.sh ${storageAccountName} ${backupContainerName}'
+      commandToExecute: 'bash install-mongodb.sh && MONGO_ADMIN_PASSWORD="${mongoAdminPassword}" bash setup-mongodb-auth.sh && MONGO_ADMIN_PASSWORD="${mongoAdminPassword}" bash setup-backup.sh ${storageAccountName} ${backupContainerName}'
     }
   }
 }

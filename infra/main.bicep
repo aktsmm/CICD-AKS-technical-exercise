@@ -1,7 +1,7 @@
 targetScope = 'subscription'
 
 @description('リソースグループ名')
-param resourceGroupName string = 'rg-bbs-cicd-aks'
+param resourceGroupName string = 'rg-bbs-cicd-aks001'
 
 @description('デプロイ先リージョン')
 param location string = 'japaneast'
@@ -72,6 +72,7 @@ module mongoVM 'modules/vm-mongodb.bicep' = {
     location: location
     environment: environment
     adminPassword: mongoAdminPassword
+    mongoAdminPassword: mongoAdminPassword
     subnetId: networking.outputs.mongoSubnetId
     storageAccountName: storage.outputs.storageAccountName
     backupContainerName: storage.outputs.containerName

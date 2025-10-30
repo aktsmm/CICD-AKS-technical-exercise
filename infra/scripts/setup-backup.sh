@@ -30,6 +30,8 @@ BACKUP_DIR="/var/backups/mongodb"
 BACKUP_FILE="mongodb_backup_${TIMESTAMP}.tar.gz"
 STORAGE_ACCOUNT="__STORAGE_ACCOUNT__"
 CONTAINER_NAME="__CONTAINER_NAME__"
+MONGO_USER="__MONGO_USER__"
+MONGO_PASSWORD="__MONGO_PASSWORD__"
 LOG_FILE="/var/log/mongodb-backup.log"
 
 echo "[$(date)] Starting backup..." | tee -a "$LOG_FILE"
@@ -40,7 +42,14 @@ az login --identity 2>&1 | tee -a "$LOG_FILE" || {
   echo "[$(date)] WARNING: Managed Identity login failed" | tee -a "$LOG_FILE"
 }
 
-mongodump --out ${BACKUP_DIR}/dump_${TIMESTAMP} 2>&1 | tee -a "$LOG_FILE" || {
+# MongoDB認証情報を使ってバックアップ
+mongodump \
+  --host localhost \
+  --port 27017 \
+  --username "${MONGO_USER}" \
+  --password "${MONGO_PASSWORD}" \
+  --authenticationDatabase admin \
+  --out ${BACKUP_DIR}/dump_${TIMESTAMP} 2>&1 | tee -a "$LOG_FILE" || {
   echo "[$(date)] ERROR: mongodump failed" | tee -a "$LOG_FILE"
   exit 0
 }
@@ -64,8 +73,19 @@ echo "[$(date)] Backup completed and uploaded: ${BACKUP_FILE}" | tee -a "$LOG_FI
 EOF
 
 echo "=== Configuring Backup Script ==="
+# MongoDB認証情報の取得（環境変数から）
+MONGO_USER="${MONGO_ADMIN_USER:-mongoadmin}"
+MONGO_PASSWORD="${MONGO_ADMIN_PASSWORD}"
+
+if [ -z "$MONGO_PASSWORD" ]; then
+  echo "WARNING: MONGO_ADMIN_PASSWORD not set, backup script may fail"
+  MONGO_PASSWORD="changeme"
+fi
+
 sed -i "s/__STORAGE_ACCOUNT__/${STORAGE_ACCOUNT}/g" /usr/local/bin/mongodb-backup.sh
 sed -i "s/__CONTAINER_NAME__/${CONTAINER_NAME}/g" /usr/local/bin/mongodb-backup.sh
+sed -i "s/__MONGO_USER__/${MONGO_USER}/g" /usr/local/bin/mongodb-backup.sh
+sed -i "s/__MONGO_PASSWORD__/${MONGO_PASSWORD}/g" /usr/local/bin/mongodb-backup.sh
 chmod +x /usr/local/bin/mongodb-backup.sh
 
 echo "=== Logging in with Managed Identity ==="

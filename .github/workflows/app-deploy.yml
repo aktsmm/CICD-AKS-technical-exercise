@@ -23,7 +23,7 @@ permissions:
 
 env:
     IMAGE_NAME: guestbook
-    RESOURCE_GROUP: rg-bbs-cicd-aks
+    RESOURCE_GROUP: rg-bbs-cicd-aks001
 
 jobs:
     scan-container:
@@ -240,12 +240,15 @@ jobs:
               run: |
                   # Deployment - use dynamic image tag from build
                   ACR_NAME="${{ needs.build-push.outputs.acr_name }}"
+                  MONGO_PASSWORD="${{ secrets.MONGO_ADMIN_PASSWORD }}"
+
                   sed -i "s|<ACR_NAME>|${ACR_NAME}|g" app/k8s/deployment.yaml
                   sed -i "s|<IMAGE_TAG>|${{ needs.build-push.outputs.image_tag }}|g" app/k8s/deployment.yaml
                   sed -i "s|<MONGO_VM_IP>|${{ steps.infra.outputs.mongo_ip }}|g" app/k8s/deployment.yaml
+                  sed -i "s|<MONGO_ADMIN_PASSWORD>|${MONGO_PASSWORD}|g" app/k8s/deployment.yaml
 
-                  echo "=== Updated Deployment ==="
-                  cat app/k8s/deployment.yaml
+                  echo "=== Updated Deployment (credentials masked) ==="
+                  cat app/k8s/deployment.yaml | sed "s/${MONGO_PASSWORD}/***MASKED***/g"
 
             - name: Deploy to Kubernetes
               run: |
