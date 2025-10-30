@@ -6,9 +6,9 @@ on:
         branches:
             - main
         paths:
+            - "./**"
             - "app/**"
-            # ワークフロー自体の変更時は直接実行を避ける
-            # - ".github/workflows/app-deploy.yml"
+            - ".github/workflows/app-deploy.yml"
     workflow_dispatch:
     # Infrastructure完了後に自動実行
     workflow_run:
