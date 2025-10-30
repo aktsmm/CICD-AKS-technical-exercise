@@ -14,13 +14,3 @@ URL: http://<INGRESS_IP>/wizexercise.txt
 
 【方法3】curl コマンド
 $ curl http://<INGRESS_IP>/wizexercise.txt
-
-【方法4】HTMLプレビュー版
-URL: http://<INGRESS_IP>/wizfile
-
----
-Note: <INGRESS_IP> は環境により異なります。
-Webアクセス時は自動的に現在のIPが表示されます。
-
-取得方法:
-$ kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
