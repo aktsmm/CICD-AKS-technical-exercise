@@ -6,7 +6,7 @@ param environment string
 
 // VNet作成
 resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
-  name: 'vnet-wiz-${environment}'
+  name: 'vnet${environment}'
   location: location
   properties: {
     addressSpace: {

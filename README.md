@@ -31,13 +31,13 @@
 │  │              Resource Group: <YOUR_RG_NAME>                  │   │
 │  │                                                               │   │
 │  │  ┌──────────────────────────────────────────────────────┐   │   │
-│  │  │  VNet: vnet-wiz-dev (10.0.0.0/16)                    │   │   │
+│  │  │  VNet: vnetdev (10.0.0.0/16)                    │   │   │
 │  │  │                                                        │   │   │
 │  │  │  ┌──────────────────────────────────────┐            │   │   │
 │  │  │  │ Subnet: aks-subnet (10.0.1.0/24)    │            │   │   │
 │  │  │  │                                       │            │   │   │
 │  │  │  │  ┌─────────────────────────────┐    │            │   │   │
-│  │  │  │  │  AKS: aks-wiz-dev           │    │            │   │   │
+│  │  │  │  │  AKS: aksdev           │    │            │   │   │
 │  │  │  │  │  ├─ Node Pool: 2 nodes      │    │            │   │   │
 │  │  │  │  │  │  Standard_DS2_v2          │    │            │   │   │
 │  │  │  │  │  ├─ Pod: guestbook-app (×2) │    │            │   │   │
@@ -255,7 +255,7 @@
 
 ```powershell
 az ad sp create-for-rbac \
-  --name "sp-wiz-exercise" \
+  --name "spexercise" \
   --role contributor \
   --scopes /subscriptions/<SUBSCRIPTION_ID> \
   --sdk-auth
@@ -297,7 +297,7 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 
 ```powershell
 # AKS Kubelet IdentityのObject ID取得
-$KUBELET_ID = az aks show -g <RG_NAME> -n aks-wiz-dev \
+$KUBELET_ID = az aks show -g <RG_NAME> -n aksdev \
   --query identityProfile.kubeletidentity.objectId -o tsv
 
 # ACRへのロール割り当て確認
@@ -408,7 +408,7 @@ env:
   run: |
     az aks get-credentials \
       --resource-group ${{ env.RESOURCE_GROUP }} \
-      --name aks-wiz-dev \
+      --name aksdev \
       --overwrite-existing
     # ~/.kube/config に認証情報が保存される
 ```
@@ -427,7 +427,7 @@ env:
 # エラー: "Failed to pull image: unauthorized"
 
 # 確認1: Kubelet IdentityのAcrPull権限
-$KUBELET_ID = az aks show -g <RG_NAME> -n aks-wiz-dev \
+$KUBELET_ID = az aks show -g <RG_NAME> -n aksdev \
   --query identityProfile.kubeletidentity.objectId -o tsv
 az role assignment list --assignee $KUBELET_ID
 
@@ -488,7 +488,7 @@ az account set --subscription "<YOUR_SUBSCRIPTION_ID>"
 
 ```powershell
 az ad sp create-for-rbac `
-  --name "sp-wiz-exercise" `
+  --name "spexercise" `
   --role contributor `
   --scopes /subscriptions/<YOUR_SUBSCRIPTION_ID> `
   --sdk-auth > azure-credentials.json
@@ -533,7 +533,7 @@ GitHub Actions が自動的に:
 
 ```powershell
 # AKS認証情報取得
-az aks get-credentials --resource-group <YOUR_RG_NAME> --name aks-wiz-dev --overwrite-existing
+az aks get-credentials --resource-group <YOUR_RG_NAME> --name aksdev --overwrite-existing
 
 # External IP取得
 kubectl get svc guestbook-service -n default
@@ -635,7 +635,7 @@ kubectl get clusterrolebindings developer-cluster-admin -o yaml
 
 ```powershell
 # AKSクラスター認証情報を取得
-az aks get-credentials --resource-group <YOUR_RG_NAME> --name aks-wiz-dev --overwrite-existing
+az aks get-credentials --resource-group <YOUR_RG_NAME> --name aksdev --overwrite-existing
 
 # External IPを確認
 kubectl get svc guestbook-service -n default
@@ -689,7 +689,7 @@ kubectl get deployment guestbook-app -o yaml | grep MONGO_URI
 
 ```powershell
 # AKS Managed IdentityにAcrPull権限があるか確認
-$AKS_KUBELET_ID = (az aks show -g <YOUR_RG_NAME> -n aks-wiz-dev --query identityProfile.kubeletidentity.objectId -o tsv)
+$AKS_KUBELET_ID = (az aks show -g <YOUR_RG_NAME> -n aksdev --query identityProfile.kubeletidentity.objectId -o tsv)
 $ACR_ID = (az acr show -g <YOUR_RG_NAME> -n $(az acr list -g <YOUR_RG_NAME> --query "[0].name" -o tsv) --query id -o tsv)
 
 az role assignment list --assignee $AKS_KUBELET_ID --scope $ACR_ID
@@ -702,7 +702,7 @@ az role assignment list --assignee $AKS_KUBELET_ID --scope $ACR_ID
 az group delete --name <YOUR_RG_NAME> --yes --no-wait
 
 # サービスプリンシパル削除
-$SP_ID = (az ad sp list --display-name "sp-wiz-exercise" --query "[0].appId" -o tsv)
+$SP_ID = (az ad sp list --display-name "spexercise" --query "[0].appId" -o tsv)
 az ad sp delete --id $SP_ID
 ```
 

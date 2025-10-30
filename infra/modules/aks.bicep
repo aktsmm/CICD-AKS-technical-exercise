@@ -10,7 +10,7 @@ param subnetId string
 @description('Log Analytics Workspace ID')
 param logAnalyticsWorkspaceId string
 
-var clusterName = 'aks-wiz-${environment}'
+var clusterName = 'aks${environment}'
 
 // AKSクラスター
 resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {

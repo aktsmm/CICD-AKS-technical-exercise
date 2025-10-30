@@ -644,13 +644,13 @@ Microsoft のセキュリティドキュメントとベストプラクティス�
 
 ```bash
 # 1. Azure でアプリ登録
-az ad app create --display-name github-actions-wiz-demo
+az ad app create --display-name github-actionsdemo
 
 # 2. Federated credential 設定
 az ad app federated-credential create \
   --id $APP_ID \
   --parameters '{
-    "name": "github-wiz-repo",
+    "name": "githubrepo",
     "issuer": "https://token.actions.githubusercontent.com",
     "subject": "repo:YourOrg/wiz-technical-exercise:ref:refs/heads/main",
     "audiences": ["api://AzureADTokenExchange"]

@@ -97,7 +97,7 @@
             {
               "type": "Microsoft.Network/virtualNetworks",
               "apiVersion": "2023-05-01",
-              "name": "[format('vnet-wiz-{0}', parameters('environment'))]",
+              "name": "[format('vnet{0}', parameters('environment'))]",
               "location": "[parameters('location')]",
               "properties": {
                 "addressSpace": {
@@ -131,19 +131,19 @@
           "outputs": {
             "vnetId": {
               "type": "string",
-              "value": "[resourceId('Microsoft.Network/virtualNetworks', format('vnet-wiz-{0}', parameters('environment')))]"
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', format('vnet{0}', parameters('environment')))]"
             },
             "aksSubnetId": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('vnet-wiz-{0}', parameters('environment'))), '2023-05-01').subnets[0].id]"
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('vnet{0}', parameters('environment'))), '2023-05-01').subnets[0].id]"
             },
             "mongoSubnetId": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('vnet-wiz-{0}', parameters('environment'))), '2023-05-01').subnets[1].id]"
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('vnet{0}', parameters('environment'))), '2023-05-01').subnets[1].id]"
             },
             "privateEndpointSubnetId": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('vnet-wiz-{0}', parameters('environment'))), '2023-05-01').subnets[2].id]"
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('vnet{0}', parameters('environment'))), '2023-05-01').subnets[2].id]"
             }
           }
         }
@@ -195,7 +195,7 @@
             }
           },
           "variables": {
-            "workspaceName": "[format('log-wiz-{0}', parameters('environment'))]"
+            "workspaceName": "[format('log{0}', parameters('environment'))]"
           },
           "resources": [
             {
@@ -663,7 +663,7 @@
             }
           },
           "variables": {
-            "clusterName": "[format('aks-wiz-{0}', parameters('environment'))]"
+            "clusterName": "[format('aks{0}', parameters('environment'))]"
           },
           "resources": [
             {

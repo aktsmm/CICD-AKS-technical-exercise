@@ -361,7 +361,7 @@ az provider register --namespace Microsoft.ContainerService --wait
 
 ```powershell
 # 1. Service Principal 作成
-az ad sp create-for-rbac --name sp-wiz-exercise-github `
+az ad sp create-for-rbac --name spexercise-github `
   --role Contributor `
   --scopes /subscriptions/<SUBSCRIPTION_ID> `
   --sdk-auth
@@ -388,7 +388,7 @@ git push origin main
 
 # 2. インフラデプロイ完了後、ACR と AKS を統合
 az aks update --resource-group rg-cicd-aks-bbs `
-  --name aks-wiz-exercise `
+  --name aksexercise `
   --attach-acr acrwizexercise
 
 # 3. アプリデプロイを手動実行

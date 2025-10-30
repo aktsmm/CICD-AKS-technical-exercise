@@ -324,13 +324,13 @@ Error: Unable to find file 'infra-outputs.txt'
 1. Azure Container Registry (acrwizexercise)
 2. Storage Account (stwizdev5ogryzdtfnsbk) - 作成後にエラー
 3. Log Analytics Workspace (log-dev)
-4. Virtual Network (vnet-wiz-dev)
+4. Virtual Network (vnetdev)
 5. Network Security Group (vm-mongo-dev-nsg)
 6. Public IP (vm-mongo-dev-pip)
 7. Network Interface (vm-mongo-dev-nic)
 8. Virtual Machine (vm-mongo-dev)
 9. OS Disk (vm-mongo-dev_OsDisk)
-10. AKS Cluster (aks-wiz-dev)
+10. AKS Cluster (aksdev)
 11. VM Extension (vm-mongo-dev/install-mongodb)
 12. Container Insights (ContainerInsights)
 
@@ -349,7 +349,7 @@ Error: Unable to find file 'infra-outputs.txt'
 **実施内容**:
 
 - サブスクリプション切り替え: "hinokuni-sub" → "Visual Studio Enterprise"
-- Service Principal 新規作成: `sp-wiz-exercise-github-vspro`
+- Service Principal 新規作成: `spexercise-github-vspro`
 - GitHub Secrets 更新:
   - `AZURE_CREDENTIALS`
   - `AZURE_SUBSCRIPTION_ID`

@@ -48,10 +48,10 @@ az group show --name rg-cicd-aks-bbs
 
 | リソース名                | タイプ             | 用途                   | 状態       |
 | ------------------------- | ------------------ | ---------------------- | ---------- |
-| **aks-wiz-dev**           | AKS Cluster        | Kubernetes クラスター  | ✅ Running |
+| **aksdev**                | AKS Cluster        | Kubernetes クラスター  | ✅ Running |
 | **acrwizdev**             | Container Registry | Docker イメージ管理    | ✅ Active  |
 | **vm-mongo-dev**          | Virtual Machine    | MongoDB サーバー       | ✅ Running |
-| **vnet-wiz-dev**          | Virtual Network    | ネットワーク基盤       | ✅ Active  |
+| **vnetdev**               | Virtual Network    | ネットワーク基盤       | ✅ Active  |
 | **log-dev**               | Log Analytics      | 監視・ログ収集         | ✅ Active  |
 | **stwizdevdacheo6jrka7w** | Storage Account    | バックアップストレージ | ✅ Active  |
 
@@ -66,7 +66,7 @@ az group show --name rg-cicd-aks-bbs
 │  │  Resource Group: rg-cicd-aks-bbs                 │  │
 │  │                                                  │  │
 │  │  ┌──────────────────────────────────────────┐  │  │
-│  │  │  Virtual Network: vnet-wiz-dev           │  │  │
+│  │  │  Virtual Network: vnetdev           │  │  │
 │  │  │  Address Space: 10.0.0.0/16              │  │  │
 │  │  │                                          │  │  │
 │  │  │  ┌─────────────────────────────────┐   │  │  │
@@ -74,7 +74,7 @@ az group show --name rg-cicd-aks-bbs
 │  │  │  │                                 │   │  │  │
 │  │  │  │  ┌──────────────────────────┐  │   │  │  │
 │  │  │  │  │ AKS Cluster              │  │   │  │  │
-│  │  │  │  │ aks-wiz-dev              │  │   │  │  │
+│  │  │  │  │ aksdev              │  │   │  │  │
 │  │  │  │  │ - 2 Nodes (Standard_DS2) │  │   │  │  │
 │  │  │  │  │ - Kubernetes 1.32        │  │   │  │  │
 │  │  │  │  │                          │  │   │  │  │
@@ -126,11 +126,11 @@ External Access:
 
 ### Virtual Network
 
-| 項目             | 値           |
-| ---------------- | ------------ |
-| **名前**         | vnet-wiz-dev |
-| **アドレス空間** | 10.0.0.0/16  |
-| **リージョン**   | Japan East   |
+| 項目             | 値          |
+| ---------------- | ----------- |
+| **名前**         | vnetdev     |
+| **アドレス空間** | 10.0.0.0/16 |
+| **リージョン**   | Japan East  |
 
 ### サブネット構成
 
@@ -163,7 +163,7 @@ External Access:
 
 | 項目                       | 値          |
 | -------------------------- | ----------- |
-| **クラスター名**           | aks-wiz-dev |
+| **クラスター名**           | aksdev      |
 | **Kubernetes バージョン**  | 1.32.7      |
 | **リージョン**             | Japan East  |
 | **ネットワークプラグイン** | Azure CNI   |
@@ -225,7 +225,7 @@ ingress-nginx-controller-66cb9865b5-dbwbk   1/1     Running   48m
 
 ```bash
 # クラスター接続
-az aks get-credentials --resource-group rg-cicd-aks-bbs --name aks-wiz-dev
+az aks get-credentials --resource-group rg-cicd-aks-bbs --name aksdev
 
 # Pod確認
 kubectl get pods -l app=guestbook
@@ -346,7 +346,7 @@ az acr build --registry acrwizdev --image guestbook:v5 .
 # ACRをAKSにアタッチ (既に設定済み)
 az aks update \
   --resource-group rg-cicd-aks-bbs \
-  --name aks-wiz-dev \
+  --name aksdev \
   --attach-acr acrwizdev
 ```
 
@@ -543,7 +543,7 @@ Azure デプロイ
 # kubectl アクセス設定
 az aks get-credentials \
   --resource-group rg-cicd-aks-bbs \
-  --name aks-wiz-dev \
+  --name aksdev \
   --overwrite-existing
 
 # ダッシュボード (オプション)
@@ -646,7 +646,7 @@ az group show --name rg-cicd-aks-bbs
 az resource list --resource-group rg-cicd-aks-bbs --output table
 
 # AKS詳細
-az aks show --resource-group rg-cicd-aks-bbs --name aks-wiz-dev
+az aks show --resource-group rg-cicd-aks-bbs --name aksdev
 
 # VM詳細
 az vm show --resource-group rg-cicd-aks-bbs --name vm-mongo-dev
@@ -659,7 +659,7 @@ az acr show --name acrwizdev
 
 ```bash
 # クラスター接続
-az aks get-credentials --resource-group rg-cicd-aks-bbs --name aks-wiz-dev
+az aks get-credentials --resource-group rg-cicd-aks-bbs --name aksdev
 
 # ノード確認
 kubectl get nodes -o wide
