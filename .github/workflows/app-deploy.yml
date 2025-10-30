@@ -77,13 +77,30 @@ jobs:
             - name: Get ACR Name
               id: get_acr
               run: |
-                  # リソースグループの存在確認
-                  if ! az group show --name ${{ env.RESOURCE_GROUP }} &>/dev/null; then
-                      echo "❌ Resource group ${{ env.RESOURCE_GROUP }} not found!"
-                      echo "Infrastructure deployment may not have completed yet."
-                      exit 1
-                  fi
+                  # リソースグループの存在確認（最大10回リトライ、30秒間隔）
+                  max_attempts=10
+                  attempt=1
 
+                  while [ $attempt -le $max_attempts ]; do
+                      echo "🔍 Attempt $attempt/$max_attempts: Checking resource group..."
+                      
+                      if az group show --name ${{ env.RESOURCE_GROUP }} &>/dev/null; then
+                          echo "✅ Resource group ${{ env.RESOURCE_GROUP }} found!"
+                          break
+                      fi
+                      
+                      if [ $attempt -eq $max_attempts ]; then
+                          echo "❌ Resource group ${{ env.RESOURCE_GROUP }} not found after $max_attempts attempts!"
+                          echo "Infrastructure deployment may not have completed yet."
+                          exit 1
+                      fi
+                      
+                      echo "⏳ Resource group not found. Waiting 30 seconds..."
+                      sleep 30
+                      attempt=$((attempt + 1))
+                  done
+
+                  # ACRの取得
                   ACR_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
 
                   if [ -z "$ACR_NAME" ]; then
