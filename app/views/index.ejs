@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>🚀 BBS App on Azure Kubernetes Service</title>
+    <title>BBS - Azure Kubernetes Service</title>
     <style>
       * {
         margin: 0;
@@ -11,205 +11,261 @@
         box-sizing: border-box;
       }
       body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-        padding: 20px;
+        font-family: "MS PGothic", "Osaka-Mono", monospace, sans-serif;
+        background: #e0e0e0;
+        padding: 10px;
       }
       .container {
-        max-width: 800px;
+        max-width: 900px;
         margin: 0 auto;
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        overflow: hidden;
+        background: #fff;
+        border: 3px double #666;
       }
       .header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 30px;
-        text-align: center;
+        background: #336699;
+        color: #fff;
+        padding: 15px;
+        border-bottom: 3px solid #224466;
       }
       .header h1 {
-        font-size: 2.5em;
-        margin-bottom: 10px;
-      }
-      .header p {
-        font-size: 1.1em;
-        opacity: 0.9;
-      }
-      .form-section {
-        padding: 30px;
-        background: #f8f9fa;
-        border-bottom: 2px solid #e9ecef;
-      }
-      .form-group {
-        margin-bottom: 15px;
-      }
-      .form-group label {
-        display: block;
+        font-size: 1.5em;
+        font-weight: bold;
+        letter-spacing: 2px;
         margin-bottom: 5px;
-        font-weight: 600;
-        color: #333;
       }
-      .form-group input,
-      .form-group textarea {
-        width: 100%;
-        padding: 12px;
-        border: 2px solid #e9ecef;
-        border-radius: 5px;
-        font-size: 1em;
-        transition: border-color 0.3s;
-      }
-      .form-group input:focus,
-      .form-group textarea:focus {
-        outline: none;
-        border-color: #667eea;
-      }
-      .form-group textarea {
-        resize: vertical;
-        min-height: 100px;
-      }
-      .btn-submit {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 12px 30px;
-        font-size: 1.1em;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: transform 0.2s;
-        font-weight: 600;
-      }
-      .btn-submit:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-      }
-      .messages-section {
-        padding: 30px;
-      }
-      .messages-section h2 {
-        margin-bottom: 20px;
-        color: #333;
-        font-size: 1.8em;
-      }
-      .message-card {
-        background: #f8f9fa;
-        border-left: 4px solid #667eea;
-        padding: 20px;
-        margin-bottom: 15px;
-        border-radius: 5px;
-        transition: transform 0.2s, box-shadow 0.2s;
-      }
-      .message-card:hover {
-        transform: translateX(5px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-      }
-      .message-header {
+      .header-info {
+        font-size: 0.85em;
+        opacity: 0.9;
         display: flex;
-        justify-content: space-between;
+        gap: 15px;
         align-items: center;
-        margin-bottom: 10px;
+        margin-top: 8px;
       }
-      .message-author {
-        font-weight: 600;
-        color: #667eea;
-        font-size: 1.1em;
+      .badge {
+        background: #ff6b6b;
+        color: #fff;
+        padding: 2px 8px;
+        font-size: 0.75em;
+        border: 1px solid #cc0000;
       }
-      .message-date {
-        color: #6c757d;
+      .secret-link {
+        color: #ffff00;
+        text-decoration: underline;
+        font-size: 0.85em;
+      }
+      .secret-link:hover {
+        color: #ffdd00;
+      }
+      .stats {
+        background: #f5f5f5;
+        padding: 8px 15px;
+        border-bottom: 1px solid #ccc;
         font-size: 0.9em;
       }
-      .message-content {
+      .form-section {
+        padding: 20px;
+        background: #fafafa;
+        border-bottom: 2px solid #ddd;
+      }
+      .form-section h2 {
+        font-size: 1.2em;
+        margin-bottom: 15px;
         color: #333;
-        line-height: 1.6;
+        border-left: 4px solid #336699;
+        padding-left: 10px;
+      }
+      table.form-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      table.form-table td {
+        padding: 8px;
+        vertical-align: top;
+      }
+      table.form-table td:first-child {
+        width: 100px;
+        font-weight: bold;
+        color: #333;
+      }
+      .form-input,
+      .form-textarea {
+        width: 100%;
+        padding: 6px;
+        border: 1px solid #999;
+        font-family: inherit;
+        font-size: 0.95em;
+      }
+      .form-textarea {
+        min-height: 80px;
+        resize: vertical;
+      }
+      .btn-submit {
+        background: #336699;
+        color: #fff;
+        border: 2px outset #336699;
+        padding: 8px 25px;
+        font-size: 1em;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .btn-submit:hover {
+        background: #2a5580;
+      }
+      .btn-submit:active {
+        border-style: inset;
+      }
+      .messages-section {
+        padding: 20px;
+      }
+      .messages-section h2 {
+        font-size: 1.2em;
+        margin-bottom: 15px;
+        color: #333;
+        border-left: 4px solid #336699;
+        padding-left: 10px;
+      }
+      table.message-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #999;
+      }
+      table.message-table th {
+        background: #336699;
+        color: #fff;
+        padding: 8px;
+        text-align: left;
+        font-weight: bold;
+        border: 1px solid #666;
+      }
+      table.message-table td {
+        padding: 10px;
+        border: 1px solid #ccc;
+        vertical-align: top;
+      }
+      table.message-table tr:nth-child(even) {
+        background: #f9f9f9;
+      }
+      table.message-table tr:hover {
+        background: #ffffcc;
+      }
+      .msg-author {
+        font-weight: bold;
+        color: #336699;
+      }
+      .msg-date {
+        color: #666;
+        font-size: 0.85em;
+        margin-left: 10px;
+      }
+      .msg-content {
+        margin-top: 8px;
+        line-height: 1.5;
+        white-space: pre-wrap;
         word-wrap: break-word;
       }
       .no-messages {
         text-align: center;
         padding: 40px;
-        color: #6c757d;
-        font-size: 1.1em;
+        color: #666;
+        font-style: italic;
       }
-      .stats {
-        background: #e9ecef;
-        padding: 15px 30px;
+      .footer {
+        background: #f5f5f5;
+        padding: 10px;
         text-align: center;
-        color: #495057;
-        font-weight: 600;
-      }
-      .wiz-badge {
-        display: inline-block;
-        background: #ffc107;
-        color: #333;
-        padding: 5px 15px;
-        border-radius: 20px;
-        font-size: 0.9em;
-        font-weight: 600;
-        margin-left: 10px;
+        font-size: 0.8em;
+        color: #666;
+        border-top: 1px solid #ccc;
       }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="header">
-        <h1>🧙‍♂️ BBS App on Azure Kubernetes Service</h1>
-        <p>
-          AKS on Demo
-          <span class="wiz-badge">Vulnerable Config</span>
-        </p>
-        <p style="margin-top: 15px">
-          <a
-            href="/wizexercise.txt"
-            style="
-              color: #fff;
-              text-decoration: none;
-              background: rgba(255, 255, 255, 0.2);
-              padding: 8px 16px;
-              border-radius: 5px;
-              font-size: 0.9em;
-              display: inline-block;
-              transition: all 0.3s;
-            "
-            onmouseover="this.style.background='rgba(255,255,255,0.3)'"
-            onmouseout="this.style.background='rgba(255,255,255,0.2)'"
-          >
-            🔐 シークレットファイル
-          </a>
-        </p>
+        <h1>■ BBS - Azure Kubernetes Service ■</h1>
+        <div class="header-info">
+          <span>AKS Demo Environment</span>
+          <span class="badge">VULNERABLE</span>
+          <a href="/wizexercise.txt" class="secret-link">[Secret File]</a>
+        </div>
       </div>
 
-      <div class="stats">📝 投稿数: <%= messages.length %> 件</div>
+      <div class="stats">
+        ■ Total Posts: <%= messages.length %> | Online: 1
+      </div>
 
       <div class="form-section">
-        <h2>💬 メッセージを投稿</h2>
+        <h2>■ 新規投稿</h2>
         <form action="/post" method="POST">
-          <div class="form-group">
-            <label for="name">お名前:</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              required
-              placeholder="あなたの名前を入力してください"
-            />
-          </div>
-          <div class="form-group">
-            <label for="message">メッセージ:</label>
-            <textarea
-              id="message"
-              name="message"
-              required
-              placeholder="メッセージを入力してください"
-            ></textarea>
-          </div>
-          <button type="submit" class="btn-submit">📤 投稿する</button>
+          <table class="form-table">
+            <tr>
+              <td>名前:</td>
+              <td>
+                <input
+                  type="text"
+                  name="name"
+                  class="form-input"
+                  required
+                  placeholder="Your Name"
+                />
+              </td>
+            </tr>
+            <tr>
+              <td>メッセージ:</td>
+              <td>
+                <textarea
+                  name="message"
+                  class="form-textarea"
+                  required
+                  placeholder="Enter your message..."
+                ></textarea>
+              </td>
+            </tr>
+            <tr>
+              <td></td>
+              <td>
+                <button type="submit" class="btn-submit">[ 投稿 ]</button>
+              </td>
+            </tr>
+          </table>
         </form>
       </div>
 
       <div class="messages-section">
-        <h2>📋 投稿一覧</h2>
+        <h2>■ 投稿一覧</h2>
         <% if (messages.length === 0) { %>
+        <div class="no-messages">まだ投稿がありません</div>
+        <% } else { %>
+        <table class="message-table">
+          <thead>
+            <tr>
+              <th style="width: 25%">投稿者</th>
+              <th>メッセージ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% messages.forEach(msg => { %>
+            <tr>
+              <td>
+                <span class="msg-author"><%= msg.name %></span>
+                <div class="msg-date">
+                  <%= new Date(msg.createdAt).toLocaleString('ja-JP') %>
+                </div>
+              </td>
+              <td>
+                <div class="msg-content"><%= msg.message %></div>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+        <% } %>
+      </div>
+
+      <div class="footer">Powered by Node.js + MongoDB on Azure AKS</div>
+    </div>
+  </body>
+</html>
         <div class="no-messages">
           <p>まだメッセージがありません。最初の投稿者になりましょう！</p>
         </div>
