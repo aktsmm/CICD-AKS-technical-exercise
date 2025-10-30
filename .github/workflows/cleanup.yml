@@ -33,8 +33,8 @@ jobs:
                     | jq -s 'sort_by(.created_at) | reverse')
 
                   echo "🧩 Selecting deletion targets..."
-                  # 最新5件を残すが、5件以内でも failure / cancelled / timed_out / conclusion=null は削除対象
-                  TARGETS=$(echo "$RUNS" | jq -c '[.[] | select((.conclusion == "failure") or (.conclusion == "cancelled") or (.conclusion == "timed_out") or (.conclusion == null))] + (.[5:] | .[])')
+                  # 最新5件は保持。ただし失敗・キャンセル・タイムアウト・conclusion=null は削除対象
+                  TARGETS=$(echo "$RUNS" | jq -c '[.[] | select((.conclusion == "failure") or (.conclusion == "cancelled") or (.conclusion == "timed_out") or (.conclusion == null))] + .[5:]')
 
                   COUNT=$(echo "$TARGETS" | jq 'length')
                   echo "🧹 Found $COUNT runs to delete."
