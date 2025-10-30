@@ -30,7 +30,7 @@ E: Unable to locate package mongodb
 ```
 Error: ERROR: "status":"Failed","error":"code":"DeploymentFailed"
 ResourceDeploymentFailure:
-/Microsoft.Compute/virtualMachines/vm-mongo-dev/extensions/install-mongodb
+/Microsoft.Compute/virtualMachines/<MONGODB_VM_NAME>/extensions/install-mongodb
 ```
 
 ---

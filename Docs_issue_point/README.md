@@ -59,7 +59,7 @@
 
 **主なトラブル**:
 
-- トラブル #1: ACR 名の不一致エラー → `acrwizexercise` → `acrwizdev`
+- トラブル #1: ACR 名の不一致エラー → `<ACR_NAME>` → `<ACR_NAME>`
 - トラブル #2: Docker イメージビルド失敗 → `package.json` に依存関係追加
 - トラブル #3: Pod のクラッシュループ → モジュール欠落問題
 - トラブル #4: Ingress デプロイエラー → NGINX Ingress Controller 導入

@@ -49,11 +49,11 @@ az group show --name <RESOURCE_GROUP_NAME>
 | リソース名                | タイプ             | 用途                   | 状態       |
 | ------------------------- | ------------------ | ---------------------- | ---------- |
 | **aks-dev**               | AKS Cluster        | Kubernetes クラスター  | ✅ Running |
-| **acrwizdev**             | Container Registry | Docker イメージ管理    | ✅ Active  |
-| **vm-mongo-dev**          | Virtual Machine    | MongoDB サーバー       | ✅ Running |
+| **<ACR_NAME>**             | Container Registry | Docker イメージ管理    | ✅ Active  |
+| **<MONGODB_VM_NAME>**          | Virtual Machine    | MongoDB サーバー       | ✅ Running |
 | **vnetdev**               | Virtual Network    | ネットワーク基盤       | ✅ Active  |
-| **log-dev**               | Log Analytics      | 監視・ログ収集         | ✅ Active  |
-| **stwizdevdacheo6jrka7w** | Storage Account    | バックアップストレージ | ✅ Active  |
+| **<LOG_ANALYTICS_NAME>**               | Log Analytics      | 監視・ログ収集         | ✅ Active  |
+| **<STORAGE_ACCOUNT_NAME>** | Storage Account    | バックアップストレージ | ✅ Active  |
 
 ### リソース構成図
 
@@ -70,7 +70,7 @@ az group show --name <RESOURCE_GROUP_NAME>
 │  │  │  Address Space: 10.0.0.0/16              │  │  │
 │  │  │                                          │  │  │
 │  │  │  ┌─────────────────────────────────┐   │  │  │
-│  │  │  │ Subnet: snet-aks (10.0.1.0/24)  │   │  │  │
+│  │  │  │ Subnet: <SUBNET_AKS_NAME> (10.0.1.0/24)  │   │  │  │
 │  │  │  │                                 │   │  │  │
 │  │  │  │  ┌──────────────────────────┐  │   │  │  │
 │  │  │  │  │ AKS Cluster              │  │   │  │  │
@@ -84,10 +84,10 @@ az group show --name <RESOURCE_GROUP_NAME>
 │  │  │  └─────────────────────────────────┘   │  │  │
 │  │  │                                          │  │  │
 │  │  │  ┌─────────────────────────────────┐   │  │  │
-│  │  │  │ Subnet: snet-vm (10.0.2.0/24)   │   │  │  │
+│  │  │  │ Subnet: <SUBNET_VM_NAME> (10.0.2.0/24)   │   │  │  │
 │  │  │  │                                 │   │  │  │
 │  │  │  │  ┌──────────────────────────┐  │   │  │  │
-│  │  │  │  │ VM: vm-mongo-dev         │  │   │  │  │
+│  │  │  │  │ VM: <MONGODB_VM_NAME>         │  │   │  │  │
 │  │  │  │  │ - Ubuntu 20.04 LTS       │  │   │  │  │
 │  │  │  │  │ - MongoDB 4.4            │  │   │  │  │
 │  │  │  │  │ - Public IP: 172.192.25.0│  │   │  │  │
@@ -96,19 +96,19 @@ az group show --name <RESOURCE_GROUP_NAME>
 │  │  └──────────────────────────────────────────┘  │  │
 │  │                                                  │  │
 │  │  ┌──────────────────────────────────────────┐  │  │
-│  │  │ ACR: acrwizdev.azurecr.io                │  │  │
+│  │  │ ACR: <ACR_NAME>.azurecr.io                │  │  │
 │  │  │ - SKU: Basic                             │  │  │
 │  │  │ - Images: guestbook (v3, v4, SHA tags)   │  │  │
 │  │  └──────────────────────────────────────────┘  │  │
 │  │                                                  │  │
 │  │  ┌──────────────────────────────────────────┐  │  │
-│  │  │ Storage: stwizdevdacheo6jrka7w           │  │  │
+│  │  │ Storage: <STORAGE_ACCOUNT_NAME>           │  │  │
 │  │  │ - MongoDB Backups                        │  │  │
 │  │  │ - Public Access: Enabled (Vulnerable)    │  │  │
 │  │  └──────────────────────────────────────────┘  │  │
 │  │                                                  │  │
 │  │  ┌──────────────────────────────────────────┐  │  │
-│  │  │ Log Analytics: log-dev               │  │  │
+│  │  │ Log Analytics: <LOG_ANALYTICS_NAME>               │  │  │
 │  │  │ - Container Insights                     │  │  │
 │  │  │ - Activity Logs                          │  │  │
 │  │  └──────────────────────────────────────────┘  │  │
@@ -136,12 +136,12 @@ External Access:
 
 | サブネット名 | アドレス範囲 | 用途       | 接続リソース              |
 | ------------ | ------------ | ---------- | ------------------------- |
-| **snet-aks** | 10.0.1.0/24  | AKS ノード | AKS クラスター (2 ノード) |
-| **snet-vm**  | 10.0.2.0/24  | 仮想マシン | MongoDB VM                |
+| **<SUBNET_AKS_NAME>** | 10.0.1.0/24  | AKS ノード | AKS クラスター (2 ノード) |
+| **<SUBNET_VM_NAME>**  | 10.0.2.0/24  | 仮想マシン | MongoDB VM                |
 
 ### ネットワークセキュリティグループ (NSG)
 
-#### vm-mongo-dev-nsg
+#### <MONGODB_VM_NAME>-nsg
 
 | ルール名 | 方向    | プロトコル | ポート | ソース      | 優先度 | 目的                      |
 | -------- | ------- | ---------- | ------ | ----------- | ------ | ------------------------- |
@@ -152,7 +152,7 @@ External Access:
 
 | 名前                         | IP アドレス  | 用途                 |
 | ---------------------------- | ------------ | -------------------- |
-| **vm-mongo-dev-pip**         | 172.192.25.0 | MongoDB VM           |
+| **<MONGODB_VM_NAME>-pip**         | 172.192.25.0 | MongoDB VM           |
 | **ingress-nginx-controller** | 20.18.117.80 | Ingress LoadBalancer |
 
 ---
@@ -197,7 +197,7 @@ Node 2: aks-nodepool1-28174749-vmss000001
 
 | リソース       | 名前              | レプリカ  | イメージ                          | 状態       |
 | -------------- | ----------------- | --------- | --------------------------------- | ---------- |
-| **Deployment** | guestbook-app     | 2/2       | acrwizdev.azurecr.io/guestbook:v4 | ✅ Running |
+| **Deployment** | guestbook-app     | 2/2       | <ACR_NAME>.azurecr.io/guestbook:v4 | ✅ Running |
 | **Service**    | guestbook-service | ClusterIP | -                                 | ✅ Active  |
 | **Ingress**    | guestbook-ingress | nginx     | -                                 | ✅ Active  |
 
@@ -248,7 +248,7 @@ kubectl logs -l app=guestbook --tail=50
 
 | 項目                | 値                             |
 | ------------------- | ------------------------------ |
-| **VM 名**           | vm-mongo-dev                   |
+| **VM 名**           | <MONGODB_VM_NAME>                   |
 | **VM サイズ**       | Standard_B2s (2 vCPU, 4GB RAM) |
 | **OS**              | Ubuntu 20.04 LTS               |
 | **パブリック IP**   | 172.192.25.0                   |
@@ -268,7 +268,7 @@ kubectl logs -l app=guestbook --tail=50
 
 ### バックアップ設定
 
-- **バックアップ先**: Azure Storage Account (`stwizdevdacheo6jrka7w`)
+- **バックアップ先**: Azure Storage Account (`<STORAGE_ACCOUNT_NAME>`)
 - **頻度**: デイリー
 - **保持期間**: 7 日間
 - **セキュリティ**: **Public Access 有効 (Vulnerable)**
@@ -309,8 +309,8 @@ mongo --host 10.0.2.4 --port 27017
 
 | 項目                      | 値                           |
 | ------------------------- | ---------------------------- |
-| **レジストリ名**          | acrwizdev                    |
-| **Login Server**          | acrwizdev.azurecr.io         |
+| **レジストリ名**          | <ACR_NAME>                    |
+| **Login Server**          | <ACR_NAME>.azurecr.io         |
 | **SKU**                   | Basic                        |
 | **管理者アカウント**      | 無効 (Managed Identity 使用) |
 | **Public Network Access** | 有効                         |
@@ -328,16 +328,16 @@ mongo --host 10.0.2.4 --port 27017
 
 ```bash
 # ログイン
-az acr login --name acrwizdev
+az acr login --name <ACR_NAME>
 
 # イメージ一覧
-az acr repository list --name acrwizdev
+az acr repository list --name <ACR_NAME>
 
 # タグ一覧
-az acr repository show-tags --name acrwizdev --repository guestbook
+az acr repository show-tags --name <ACR_NAME> --repository guestbook
 
 # イメージビルド
-az acr build --registry acrwizdev --image guestbook:v5 .
+az acr build --registry <ACR_NAME> --image guestbook:v5 .
 ```
 
 ### AKS との統合
@@ -347,7 +347,7 @@ az acr build --registry acrwizdev --image guestbook:v5 .
 az aks update \
   --resource-group <RESOURCE_GROUP_NAME> \
   --name aks-dev \
-  --attach-acr acrwizdev
+  --attach-acr <ACR_NAME>
 ```
 
 ---
@@ -649,10 +649,10 @@ az resource list --resource-group <RESOURCE_GROUP_NAME> --output table
 az aks show --resource-group <RESOURCE_GROUP_NAME> --name aks-dev
 
 # VM詳細
-az vm show --resource-group <RESOURCE_GROUP_NAME> --name vm-mongo-dev
+az vm show --resource-group <RESOURCE_GROUP_NAME> --name <MONGODB_VM_NAME>
 
 # ACR詳細
-az acr show --name acrwizdev
+az acr show --name <ACR_NAME>
 ```
 
 ### Kubernetes 確認
@@ -752,11 +752,11 @@ kubectl get svc -n ingress-nginx ingress-nginx-controller
 
 ```bash
 # VM確認
-az vm show --resource-group <RESOURCE_GROUP_NAME> --name vm-mongo-dev
-az vm get-instance-view --resource-group <RESOURCE_GROUP_NAME> --name vm-mongo-dev
+az vm show --resource-group <RESOURCE_GROUP_NAME> --name <MONGODB_VM_NAME>
+az vm get-instance-view --resource-group <RESOURCE_GROUP_NAME> --name <MONGODB_VM_NAME>
 
 # ネットワーク確認
-az network nsg rule list --resource-group <RESOURCE_GROUP_NAME> --nsg-name vm-mongo-dev-nsg
+az network nsg rule list --resource-group <RESOURCE_GROUP_NAME> --nsg-name <MONGODB_VM_NAME>-nsg
 
 # Pod内から接続テスト
 kubectl exec -it <pod-name> -- curl -v telnet://10.0.2.4:27017

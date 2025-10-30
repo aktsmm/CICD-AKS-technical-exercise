@@ -321,17 +321,17 @@ Error: Unable to find file 'infra-outputs.txt'
 
 **作成されたリソース**:
 
-1. Azure Container Registry (acrwizexercise)
-2. Storage Account (stwizdev5ogryzdtfnsbk) - 作成後にエラー
-3. Log Analytics Workspace (log-dev)
+1. Azure Container Registry (<ACR_NAME>)
+2. Storage Account (<STORAGE_ACCOUNT_NAME>) - 作成後にエラー
+3. Log Analytics Workspace (<LOG_ANALYTICS_NAME>)
 4. Virtual Network (vnetdev)
-5. Network Security Group (vm-mongo-dev-nsg)
-6. Public IP (vm-mongo-dev-pip)
-7. Network Interface (vm-mongo-dev-nic)
-8. Virtual Machine (vm-mongo-dev)
-9. OS Disk (vm-mongo-dev_OsDisk)
+5. Network Security Group (<MONGODB_VM_NAME>-nsg)
+6. Public IP (<MONGODB_VM_NAME>-pip)
+7. Network Interface (<MONGODB_VM_NAME>-nic)
+8. Virtual Machine (<MONGODB_VM_NAME>)
+9. OS Disk (<VM_OSDISK_NAME>)
 10. AKS Cluster (aks-dev)
-11. VM Extension (vm-mongo-dev/install-mongodb)
+11. VM Extension (<MONGODB_VM_NAME>/install-mongodb)
 12. Container Insights (ContainerInsights)
 
 ### アプリデプロイワークフロー (app-deploy.yml)

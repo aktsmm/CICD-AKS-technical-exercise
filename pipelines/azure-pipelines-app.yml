@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
 
 env:
-  ACR_NAME: acrwizdev
+  ACR_NAME: acrdev
   IMAGE_NAME: guestbook
-  RESOURCE_GROUP: rg-cicd-aks-bbs
+  RESOURCE_GROUP: rg-bbs-cicd-aks
 
 jobs:
   scan-container:
@@ -107,7 +107,7 @@ jobs:
           source outputs/infra-outputs.txt
 
           # Deployment - use dynamic image tag
-          sed -i "s|image: acrwizdev.azurecr.io/guestbook:.*|image: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.image_tag }}|g" app/k8s/deployment.yaml
+          sed -i "s|image: acrdev.azurecr.io/guestbook:.*|image: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.image_tag }}|g" app/k8s/deployment.yaml
           sed -i "s|<MONGO_VM_IP>|$MONGO_VM_IP|g" app/k8s/deployment.yaml
 
           cat app/k8s/deployment.yaml

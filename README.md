@@ -49,7 +49,7 @@
 │  │  │  │ Subnet: mongo-subnet (10.0.2.0/24)  │            │   │   │
 │  │  │  │                                       │            │   │   │
 │  │  │  │  ┌─────────────────────────────┐    │            │   │   │
-│  │  │  │  │  VM: vm-mongo-dev           │    │            │   │   │
+│  │  │  │  │  VM: <MONGODB_VM_NAME>           │    │            │   │   │
 │  │  │  │  │  ├─ Ubuntu 20.04 LTS        │    │            │   │   │
 │  │  │  │  │  ├─ MongoDB 4.4              │◄───┼─── AKS Pods
 │  │  │  │  │  ├─ Port 27017 (全開放)     │    │            │   │   │
@@ -59,14 +59,14 @@
 │  │  └──────────────────────────────────────────────────────┘   │   │
 │  │                                                               │   │
 │  │  ┌──────────────────────────────────────────────────────┐   │   │
-│  │  │  ACR: acrwizdev[hash] (Premium/Basic)                │   │   │
+│  │  │  ACR: <ACR_NAME>[hash] (Premium/Basic)                │   │   │
 │  │  │  └─ guestbook:latest                                 │   │   │
 │  │  └──────────────────────────────────────────────────────┘   │   │
 │  │             ▲                                                │   │
 │  │             │ AcrPull Role                                  │   │
 │  │             │                                                │   │
 │  │  ┌──────────────────────────────────────────────────────┐   │   │
-│  │  │  Storage: stwizdev[hash]                             │   │   │
+│  │  │  Storage: <STORAGE_ACCOUNT_NAME>[hash]                             │   │   │
 │  │  │  ├─ Container: backups                               │   │   │
 │  │  │  └─ Public Blob Access: Enabled ⚠️                   │   │   │
 │  │  └──────────────────────────────────────────────────────┘   │   │
@@ -74,7 +74,7 @@
 │  │             │ Daily Backup (cron 2:00 AM JST)               │   │
 │  │             │                                                │   │
 │  │  ┌──────────────────────────────────────────────────────┐   │   │
-│  │  │  Log Analytics: log-dev                          │   │   │
+│  │  │  Log Analytics: <LOG_ANALYTICS_NAME>                          │   │   │
 │  │  │  └─ AKS Audit Logs                                   │   │   │
 │  │  └──────────────────────────────────────────────────────┘   │   │
 │  └─────────────────────────────────────────────────────────┘   │
@@ -447,7 +447,7 @@ az role assignment create \
 # エラー: "AuthorizationPermissionMismatch"
 
 # VM Managed Identity取得
-$VM_PRINCIPAL_ID = az vm show -g <RG_NAME> -n vm-mongo-dev \
+$VM_PRINCIPAL_ID = az vm show -g <RG_NAME> -n <MONGODB_VM_NAME> \
   --query identity.principalId -o tsv
 
 # Storage Account権限確認
@@ -460,7 +460,102 @@ az role assignment create \
   --scope <STORAGE_ACCOUNT_RESOURCE_ID>
 ```
 
-## �🚀 クイックスタート
+## � プレースホルダーと設定箇所
+
+このドキュメントでは、環境非依存にするためプレースホルダーを使用しています。実際の設定箇所は以下の通りです。
+
+### プレースホルダー一覧と設定ファイル
+
+| プレースホルダー         | 説明                         | 設定箇所                                                                                                                           | デフォルト値                       |
+| ------------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `<RESOURCE_GROUP_NAME>`  | リソースグループ名           | `infra/main.bicep` (Line 4)<br>`.github/workflows/infra-deploy.yml` (Line 18)<br>`.github/workflows/app-deploy.yml` (Line 26)      | `rg-bbs-cicd-aks`                  |
+| `<AKS_CLUSTER_NAME>`     | AKS クラスター名             | `infra/modules/aks.bicep` (Line 13)<br>※ `aks${environment}` のパターン                                                            | `aksdev` (environment='dev'の場合) |
+| `<ACR_NAME>`             | Azure Container Registry 名  | `infra/modules/acr.bicep`<br>※ `acr${environment}${uniqueString}` のパターン<br>`.github/workflows/app-deploy.yml` (ACR_NAME 変数) | `acrdev` + ハッシュ                |
+| `<STORAGE_ACCOUNT_NAME>` | Storage Account 名           | `infra/modules/storage.bicep`<br>※ `stwiz${environment}${uniqueString}` のパターン                                                 | `stwizdev` + ハッシュ              |
+| `<MONGODB_VM_NAME>`      | MongoDB 仮想マシン名         | `infra/modules/vm-mongodb.bicep`<br>※ `vm-mongo-${environment}` のパターン                                                         | `vm-mongo-dev`                     |
+| `<LOG_ANALYTICS_NAME>`   | Log Analytics Workspace 名   | `infra/modules/log-analytics.bicep`<br>※ `log-${environment}` のパターン                                                           | `log-dev`                          |
+| `<SUBNET_AKS_NAME>`      | AKS 用サブネット名           | `infra/modules/vnet.bicep`                                                                                                         | `snet-aks`                         |
+| `<SUBNET_VM_NAME>`       | VM 用サブネット名            | `infra/modules/vnet.bicep`                                                                                                         | `snet-vm` または `snet-mongo`      |
+| `<VM_NSG_NAME>`          | VM Network Security Group 名 | `infra/modules/vm-mongodb.bicep`                                                                                                   | `vm-mongo-dev-nsg`                 |
+| `<VM_PIP_NAME>`          | VM Public IP 名              | `infra/modules/vm-mongodb.bicep`                                                                                                   | `vm-mongo-dev-pip`                 |
+| `<VM_NIC_NAME>`          | VM Network Interface 名      | `infra/modules/vm-mongodb.bicep`                                                                                                   | `vm-mongo-dev-nic`                 |
+| `<VM_OSDISK_NAME>`       | VM OS Disk 名                | `infra/modules/vm-mongodb.bicep`                                                                                                   | `vm-mongo-dev_OsDisk`              |
+
+### 主要設定ファイルの編集箇所
+
+#### 1. `infra/main.bicep` (リソースグループと Environment)
+
+```bicep
+// Line 4: リソースグループ名
+param resourceGroupName string = 'rg-bbs-cicd-aks'
+
+// Line 10: 環境名 (dev, prod, staging等)
+param environment string = 'dev'
+```
+
+#### 2. `.github/workflows/infra-deploy.yml` (CI/CD 設定)
+
+```yaml
+# Line 18: リソースグループ名
+env:
+  RESOURCE_GROUP: rg-bbs-cicd-aks
+```
+
+#### 3. `.github/workflows/app-deploy.yml` (アプリデプロイ設定)
+
+```yaml
+# Line 26: リソースグループ名
+env:
+  RESOURCE_GROUP: rg-bbs-cicd-aks
+  ACR_NAME: acrdev # Line 27: ACR名
+```
+
+#### 4. `infra/modules/aks.bicep` (AKS クラスター名)
+
+```bicep
+// Line 13: 動的に生成されるクラスター名
+var clusterName = 'aks${environment}'
+```
+
+#### 5. `pipelines/azure-pipelines.yml` (Azure Pipelines 使用時)
+
+```yaml
+# Line 6: リソースグループ名
+variables:
+  resourceGroup: "rg-bbs-cicd-aks"
+```
+
+### 命名規則の説明
+
+このプロジェクトでは以下の命名規則を採用しています:
+
+- **環境別サフィックス**: `${environment}` パラメータで dev/prod/staging を切り替え
+- **一意性確保**: Storage/ACR は `uniqueString(resourceGroup().id)` でハッシュを追加
+- **リソースタイププレフィックス**: Azure 推奨の命名規則に従う
+  - `aks-`: AKS Cluster
+  - `acr`: Container Registry
+  - `st`: Storage Account
+  - `vm-`: Virtual Machine
+  - `log-`: Log Analytics
+  - `snet-`: Subnet
+
+### カスタマイズ方法
+
+1. **リソースグループ名を変更する場合**:
+
+   - `infra/main.bicep` の `resourceGroupName` パラメータを編集
+   - `.github/workflows/*.yml` の `RESOURCE_GROUP` 環境変数を同じ値に更新
+
+2. **環境を切り替える場合** (dev → prod):
+
+   - `infra/main.bicep` の `environment` パラメータを変更
+   - すべてのリソース名が自動的に `*prod*` になります
+
+3. **個別リソース名をカスタマイズする場合**:
+   - 各モジュールの Bicep ファイル (`infra/modules/*.bicep`) を編集
+   - 変数セクション (`var xxxx = '...'`) を変更
+
+## 🚀 クイックスタート
 
 ### 前提条件
 
@@ -468,10 +563,6 @@ az role assignment create \
 - **Azure サブスクリプション** (無料試用版可)
 - **GitHub アカウント**
 - **Git** インストール済み
-
-> **Note**: この README では `<YOUR_RG_NAME>` をリソースグループ名のプレースホルダーとして使用しています。
-> 実際のリソースグループ名は `infra/main.bicep` の `targetScope` と `rg` モジュールで定義されています。
-> デフォルト: `rg-cicd-aks` (環境によって変更可能)
 
 ### 1️⃣ リポジトリのフォーク
 
@@ -614,14 +705,14 @@ az storage account show `
   --query allowBlobPublicAccess
 
 # SSH公開確認
-$NSG_NAME = "vm-mongo-dev-nsg"
+$NSG_NAME = "<MONGODB_VM_NAME>-nsg"
 az network nsg rule show `
   --resource-group $RG_NAME `
   --nsg-name $NSG_NAME `
   --name Allow-SSH-Internet
 
 # MongoDB認証なし確認
-$MONGO_IP = (az vm show -g $RG_NAME -n vm-mongo-dev --show-details --query publicIps -o tsv)
+$MONGO_IP = (az vm show -g $RG_NAME -n <MONGODB_VM_NAME> --show-details --query publicIps -o tsv)
 # 認証なしで接続可能 (脆弱性)
 mongosh "mongodb://${MONGO_IP}:27017/guestbook"
 
@@ -671,14 +762,14 @@ kubectl describe svc guestbook-service -n default
 # VM IPアドレス確認
 $MONGO_IP = (az vm show `
   -g <YOUR_RG_NAME> `
-  -n vm-mongo-dev `
+  -n <MONGODB_VM_NAME> `
   --show-details `
   --query publicIps -o tsv)
 
 # NSG確認 (Port 27017が開いているか)
 az network nsg rule list `
   --resource-group <YOUR_RG_NAME> `
-  --nsg-name vm-mongo-dev-nsg `
+  --nsg-name <MONGODB_VM_NAME>-nsg `
   --query "[?destinationPortRange=='27017']"
 
 # Deploymentの環境変数を確認

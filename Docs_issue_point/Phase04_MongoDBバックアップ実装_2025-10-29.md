@@ -302,7 +302,7 @@ crontab -l  # Cron ジョブが表示されない
 # VM 拡張機能のステータス確認
 az vm extension list \
   --resource-group <RESOURCE_GROUP_NAME> \
-  --vm-name vm-mongo-dev \
+  --vm-name <MONGODB_VM_NAME> \
   --query "[?name=='install-mongodb'].{Name:name, Status:provisioningState}" \
   --output table
 ```
@@ -313,7 +313,7 @@ az vm extension list \
 # VM 拡張機能を再実行
 az vm extension set \
   --resource-group <RESOURCE_GROUP_NAME> \
-  --vm-name vm-mongo-dev \
+  --vm-name <MONGODB_VM_NAME> \
   --name CustomScript \
   --publisher Microsoft.Azure.Extensions \
   --version 2.1

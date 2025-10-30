@@ -392,7 +392,7 @@ az provider list --query "[?registrationState=='Registered'].namespace" -o table
 az role assignment list --assignee <CLIENT_ID> --query "[].{Role:roleDefinitionName, Scope:scope}" -o table
 
 # ACR 確認
-az acr show --name acrwizexercise --resource-group <RESOURCE_GROUP_NAME>
+az acr show --name <ACR_NAME> --resource-group <RESOURCE_GROUP_NAME>
 
 # GitHub Secrets 確認（マスクされていることを確認）
 # Settings > Secrets and variables > Actions

@@ -348,7 +348,7 @@ subjects:
 
 #### ❌ 現在の実装
 
-**該当ファイル**: `infra/modules/vm-mongodb.bicep`
+**該当ファイル**: `infra/modules/<MONGODB_VM_NAME>.bicep`
 
 ```bicep
 // ❌ インターネット全体からSSHを許可
@@ -501,7 +501,7 @@ resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/container
 
 #### ❌ 現在の実装
 
-**該当ファイル**: `infra/modules/vm-mongodb.bicep`
+**該当ファイル**: `infra/modules/<MONGODB_VM_NAME>.bicep`
 
 ```bicep
 imageReference: {
@@ -715,7 +715,7 @@ subjects:
 #### 修正 2: NSG を制限
 
 ```bicep
-// infra/modules/vm-mongodb.bicep
+// infra/modules/<MONGODB_VM_NAME>.bicep
 securityRules: [
   {
     name: 'AllowSSHFromBastion'

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: guestbook
-          image: acrwizdev.azurecr.io/guestbook:v4
+          image: acrdev.azurecr.io/guestbook:v4
           ports:
             - containerPort: 3000
           env:

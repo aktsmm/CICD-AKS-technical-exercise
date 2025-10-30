@@ -29,9 +29,9 @@ guestbook-app-78996b4f4c-wpxpt   0/1     ImagePullBackOff   0          6m44s
 ### 詳細なエラーメッセージ
 
 ```
-Failed to pull image "acrwizdev.azurecr.io/guestbook:8edd399546e2808cc356e1fd28af9f4fbdaf2d3d":
+Failed to pull image "<ACR_NAME>.azurecr.io/guestbook:8edd399546e2808cc356e1fd28af9f4fbdaf2d3d":
 failed to authorize: failed to fetch anonymous token:
-unexpected status from GET request to https://acrwizdev.azurecr.io/oauth2/token?scope=repository%3Aguestbook%3Apull&service=acrwizdev.azurecr.io:
+unexpected status from GET request to https://<ACR_NAME>.azurecr.io/oauth2/token?scope=repository%3Aguestbook%3Apull&service=<ACR_NAME>.azurecr.io:
 401 Unauthorized
 ```
 
@@ -124,7 +124,7 @@ module aksAcrRole 'modules/aks-acr-role.bicep' = {
 | **ロール名**      | AcrPull                                |
 | **ロール定義 ID** | `7f951dda-4ed3-4680-a7ca-43fe172d538d` |
 | **権限**          | コンテナイメージの読み取り (pull) のみ |
-| **スコープ**      | ACR リソース (`acrwizdev`)             |
+| **スコープ**      | ACR リソース (`<ACR_NAME>`)             |
 | **割り当て先**    | AKS Kubelet Managed Identity           |
 
 ### 権限の範囲
@@ -148,7 +148,7 @@ module aksAcrRole 'modules/aks-acr-role.bicep' = {
 ### Infrastructure デプロイ時
 
 ```
-1. ACR 作成 (acrwizdev)
+1. ACR 作成 (<ACR_NAME>)
 2. AKS 作成 (aks-dev)
    └─ Kubelet Identity 自動作成
 3. ロール割り当て作成
@@ -178,7 +178,7 @@ az aks show --resource-group <RESOURCE_GROUP_NAME> --name aks-dev \
   --query identityProfile.kubeletidentity.objectId -o tsv
 
 # ACR のロール割り当てを確認
-az role assignment list --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.ContainerRegistry/registries/acrwizdev \
+az role assignment list --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.ContainerRegistry/registries/<ACR_NAME> \
   --query "[?roleDefinitionName=='AcrPull'].{Principal:principalId,Role:roleDefinitionName}"
 ```
 
@@ -198,8 +198,8 @@ kubectl describe pod -n default -l app=guestbook
 **期待される結果:**
 
 ```
-Normal  Pulling    Successfully pulled image "acrwizdev.azurecr.io/guestbook:xxx"
-Normal  Pulled     Container image "acrwizdev.azurecr.io/guestbook:xxx" already present on machine
+Normal  Pulling    Successfully pulled image "<ACR_NAME>.azurecr.io/guestbook:xxx"
+Normal  Pulled     Container image "<ACR_NAME>.azurecr.io/guestbook:xxx" already present on machine
 Normal  Created    Created container guestbook
 Normal  Started    Started container guestbook
 ```
@@ -212,7 +212,7 @@ Normal  Started    Started container guestbook
 
 ```bicep
 // パターン A: attach-acr を使用 (推奨)
-az aks update -n aks-dev -g <RESOURCE_GROUP_NAME> --attach-acr acrwizdev
+az aks update -n aks-dev -g <RESOURCE_GROUP_NAME> --attach-acr <ACR_NAME>
 
 // パターン B: ロール割り当てを明示的に作成 (今回採用)
 module aksAcrRole 'modules/aks-acr-role.bicep' = { ... }
