@@ -1,4 +1,4 @@
-氏名: やまもとたつみ
+氏名: yamapan
 日付: 2025-10-28
 CICD-AKS-Technical Exercise
 

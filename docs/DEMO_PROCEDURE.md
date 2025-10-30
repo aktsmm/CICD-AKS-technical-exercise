@@ -6,6 +6,26 @@
 
 ---
 
+## ⚙️ 環境変数（デモ前に確認・設定）
+
+```powershell
+# MongoDB VM Public IP（事前確認）
+$MONGO_PUBLIC_IP = az network public-ip show -g rg-bbs-cicd-aks0000 -n vm-mongo-dev-pip --query "ipAddress" -o tsv
+Write-Host "MongoDB VM IP: $MONGO_PUBLIC_IP" -ForegroundColor Cyan
+
+# Ingress External IP（事前確認）
+$INGRESS_IP = kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+Write-Host "Ingress IP: $INGRESS_IP" -ForegroundColor Cyan
+
+# アプリURL
+$APP_URL = "http://$INGRESS_IP"
+Write-Host "App URL: $APP_URL" -ForegroundColor Green
+```
+
+**⚠️ 注意**: 以降の手順で `<MONGO_PUBLIC_IP>` と `<INGRESS_IP>` が出てきたら、上記で取得した値に置き換えてください。
+
+---
+
 ## 📋 目次
 
 1. [環境概要説明](#1-環境概要説明-5分)
@@ -90,7 +110,7 @@ az network nsg rule show -g rg-bbs-cicd-aks0000 --nsg-name nsg-mongo-dev -n allo
 ```json
 // Public IP
 {
-  "IP": "172.192.56.57",
+  "IP": "<MONGO_PUBLIC_IP>",
   "Method": "Static"
 }
 
@@ -367,14 +387,14 @@ CICD-AKS-Technical Exercise
 
 ```powershell
 # ブラウザで直接開く
-Start-Process "http://135.149.87.151/wizexercise.txt"
+Start-Process "http://<INGRESS_IP>/wizexercise.txt"
 ```
 
 **または curl で確認**:
 
 ```powershell
 # PowerShellから確認
-Invoke-WebRequest -Uri "http://135.149.87.151/wizexercise.txt" | Select-Object -ExpandProperty Content
+Invoke-WebRequest -Uri "http://<INGRESS_IP>/wizexercise.txt" | Select-Object -ExpandProperty Content
 ```
 
 **どのように挿入したか説明**:
@@ -438,13 +458,13 @@ NAME                CLASS   HOSTS   ADDRESS     PORTS   AGE
 guestbook-ingress   nginx   *       10.0.1.33   80      45m
 
 NAME                       TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)
-ingress-nginx-controller   LoadBalancer   10.1.204.250   135.149.87.151   80:30470/TCP,443:31963/TCP
+ingress-nginx-controller   LoadBalancer   10.1.204.250   <INGRESS_IP>     80:30470/TCP,443:31963/TCP
 ```
 
 **ブラウザでアクセスデモ**:
 
 ```powershell
-Start-Process "http://135.149.87.151"
+Start-Process "http://<INGRESS_IP>"
 ```
 
 **説明**: NGINX Ingress 経由で Azure Load Balancer から公開 ✅
@@ -473,7 +493,7 @@ kubectl scale deployment guestbook-app --replicas=2
 
 **Web アプリでメッセージ投稿**:
 
-1. http://135.149.87.151 にアクセス
+1. http://<INGRESS_IP> にアクセス
 2. 名前とメッセージを入力して送信
 3. 画面に表示されることを確認
 
