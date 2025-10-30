@@ -154,9 +154,9 @@ resource vmExtension 'Microsoft.Compute/virtualMachines/extensions@2023-07-01' =
     autoUpgradeMinorVersion: true
     settings: {
       fileUris: [
-        'https://raw.githubusercontent.com/aktsmm/wiz-technical-exercise/main/infra/scripts/install-mongodb.sh'
-        'https://raw.githubusercontent.com/aktsmm/wiz-technical-exercise/main/infra/scripts/setup-mongodb-auth.sh'
-        'https://raw.githubusercontent.com/aktsmm/wiz-technical-exercise/main/infra/scripts/setup-backup.sh'
+        'https://raw.githubusercontent.com/aktsmm/CICD-AKS-technical-exercise/main/infra/scripts/install-mongodb.sh'
+        'https://raw.githubusercontent.com/aktsmm/CICD-AKS-technical-exercise/main/infra/scripts/setup-mongodb-auth.sh'
+        'https://raw.githubusercontent.com/aktsmm/CICD-AKS-technical-exercise/main/infra/scripts/setup-backup.sh'
       ]
     }
     protectedSettings: {
