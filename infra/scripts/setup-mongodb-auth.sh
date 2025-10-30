@@ -40,12 +40,9 @@ echo "=== Waiting for MongoDB to be ready ==="
 MAX_RETRIES=30
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    # MongoDB起動確認
-  if ! mongo admin --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
-    echo "❌ ERROR: MongoDB is not running after initial startup"
-    exit 1
-  fi
-  echo "✅ MongoDB is ready!"
+  # MongoDB起動確認
+  if mongo admin --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
+    echo "✅ MongoDB is ready!"
     break
   fi
   RETRY_COUNT=$((RETRY_COUNT + 1))
