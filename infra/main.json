@@ -11,7 +11,7 @@
   "parameters": {
     "resourceGroupName": {
       "type": "string",
-      "defaultValue": "rg-bbs-cicd-aks",
+      "defaultValue": "rg-cicd-aks-bbs",
       "metadata": {
         "description": "リソースグループ名"
       }
