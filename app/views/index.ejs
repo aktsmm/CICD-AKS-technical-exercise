@@ -190,9 +190,7 @@
         </div>
       </div>
 
-      <div class="stats">
-        ■ Total Posts: <%= messages.length %> | Online: 1
-      </div>
+      <div class="stats">■ Total Posts: <%= messages.length %> | Online: 1</div>
 
       <div class="form-section">
         <h2>■ 新規投稿</h2>
@@ -263,25 +261,6 @@
       </div>
 
       <div class="footer">Powered by Node.js + MongoDB on Azure AKS</div>
-    </div>
-  </body>
-</html>
-        <div class="no-messages">
-          <p>まだメッセージがありません。最初の投稿者になりましょう！</p>
-        </div>
-        <% } else { %> <% messages.forEach(function(msg) { %>
-        <div class="message-card">
-          <div class="message-header">
-            <span class="message-author">👤 <%= msg.name %></span>
-            <span class="message-date"
-              >🕒 <%= new Date(msg.createdAt).toLocaleString('ja-JP', {
-              timeZone: 'Asia/Tokyo' }) %> JST</span
-            >
-          </div>
-          <div class="message-content"><%= msg.message %></div>
-        </div>
-        <% }); %> <% } %>
-      </div>
     </div>
   </body>
 </html>
