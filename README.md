@@ -28,7 +28,7 @@
 │                           Azure Subscription                         │
 │                                                                       │
 │  ┌─────────────────────────────────────────────────────────────┐   │
-│  │              Resource Group: rg-cicd-aks                     │   │
+│  │              Resource Group: <YOUR_RG_NAME>                  │   │
 │  │                                                               │   │
 │  │  ┌──────────────────────────────────────────────────────┐   │   │
 │  │  │  VNet: vnet-wiz-dev (10.0.0.0/16)                    │   │   │
@@ -194,9 +194,13 @@
 - **GitHub アカウント**
 - **Git** インストール済み
 
+> **Note**: このREADMEでは `<YOUR_RG_NAME>` をリソースグループ名のプレースホルダーとして使用しています。
+> 実際のリソースグループ名は `infra/main.bicep` の `targetScope` と `rg` モジュールで定義されています。
+> デフォルト: `rg-cicd-aks` (環境によって変更可能)
+
 ### 1️⃣ リポジトリのフォーク
 
-このリポジトリを自分のGitHubアカウントにフォークします。
+このリポジトリを自分の GitHub アカウントにフォークします。
 
 ### 2️⃣ Azure 認証
 
@@ -221,17 +225,17 @@ az ad sp create-for-rbac `
 
 フォークしたリポジトリで: **Settings** > **Secrets and variables** > **Actions** > **New repository secret**
 
-| Secret名 | 値 |
-|----------|-----|
-| `AZURE_CREDENTIALS` | azure-credentials.json の内容全体 |
-| `AZURE_SUBSCRIPTION_ID` | Azureサブスクリプション ID |
-| `MONGO_ADMIN_PASSWORD` | MongoDB管理者パスワード (任意の文字列) |
+| Secret 名               | 値                                      |
+| ----------------------- | --------------------------------------- |
+| `AZURE_CREDENTIALS`     | azure-credentials.json の内容全体       |
+| `AZURE_SUBSCRIPTION_ID` | Azure サブスクリプション ID             |
+| `MONGO_ADMIN_PASSWORD`  | MongoDB 管理者パスワード (任意の文字列) |
 
 ### 5️⃣ ワークフロー実行
 
 **Actions** タブ > **Deploy Infrastructure** > **Run workflow** をクリック
 
-または、コードを変更してpush:
+または、コードを変更して push:
 
 ```powershell
 git clone https://github.com/<YOUR_USERNAME>/CICD-AKS-technical-exercise.git
@@ -244,16 +248,17 @@ git push
 ```
 
 GitHub Actions が自動的に:
+
 1. **インフラデプロイ** (AKS, ACR, MongoDB VM, Storage など)
 2. **アプリケーションデプロイ** (Docker build & push, kubectl apply)
 
-を実行します。デプロイには約**15-20分**かかります。
+を実行します。デプロイには約**15-20 分**かかります。
 
 ### 6️⃣ アプリケーションへアクセス
 
 ```powershell
 # AKS認証情報取得
-az aks get-credentials --resource-group rg-cicd-aks --name aks-wiz-dev --overwrite-existing
+az aks get-credentials --resource-group <YOUR_RG_NAME> --name aks-wiz-dev --overwrite-existing
 
 # External IP取得
 kubectl get svc guestbook-service -n default
@@ -325,7 +330,7 @@ wiz-technical-exercise/
 
 ```powershell
 # リソースグループ名を設定
-$RG_NAME = "rg-cicd-aks"
+$RG_NAME = "<YOUR_RG_NAME>"
 
 # Storage Public Access
 $STORAGE_NAME = (az storage account list --resource-group $RG_NAME --query "[0].name" -o tsv)
@@ -355,7 +360,7 @@ kubectl get clusterrolebindings developer-cluster-admin -o yaml
 
 ```powershell
 # AKSクラスター認証情報を取得
-az aks get-credentials --resource-group rg-cicd-aks --name aks-wiz-dev --overwrite-existing
+az aks get-credentials --resource-group <YOUR_RG_NAME> --name aks-wiz-dev --overwrite-existing
 
 # External IPを確認
 kubectl get svc guestbook-service -n default
@@ -390,14 +395,14 @@ kubectl describe svc guestbook-service -n default
 ```powershell
 # VM IPアドレス確認
 $MONGO_IP = (az vm show `
-  -g rg-cicd-aks `
+  -g <YOUR_RG_NAME> `
   -n vm-mongo-dev `
   --show-details `
   --query publicIps -o tsv)
 
 # NSG確認 (Port 27017が開いているか)
 az network nsg rule list `
-  --resource-group rg-cicd-aks `
+  --resource-group <YOUR_RG_NAME> `
   --nsg-name vm-mongo-dev-nsg `
   --query "[?destinationPortRange=='27017']"
 
@@ -405,12 +410,12 @@ az network nsg rule list `
 kubectl get deployment guestbook-app -o yaml | grep MONGO_URI
 ```
 
-### ACR認証エラー
+### ACR 認証エラー
 
 ```powershell
 # AKS Managed IdentityにAcrPull権限があるか確認
-$AKS_KUBELET_ID = (az aks show -g rg-cicd-aks -n aks-wiz-dev --query identityProfile.kubeletidentity.objectId -o tsv)
-$ACR_ID = (az acr show -g rg-cicd-aks -n $(az acr list -g rg-cicd-aks --query "[0].name" -o tsv) --query id -o tsv)
+$AKS_KUBELET_ID = (az aks show -g <YOUR_RG_NAME> -n aks-wiz-dev --query identityProfile.kubeletidentity.objectId -o tsv)
+$ACR_ID = (az acr show -g <YOUR_RG_NAME> -n $(az acr list -g <YOUR_RG_NAME> --query "[0].name" -o tsv) --query id -o tsv)
 
 az role assignment list --assignee $AKS_KUBELET_ID --scope $ACR_ID
 ```
@@ -419,7 +424,7 @@ az role assignment list --assignee $AKS_KUBELET_ID --scope $ACR_ID
 
 ```powershell
 # すべてのリソースを削除
-az group delete --name rg-cicd-aks --yes --no-wait
+az group delete --name <YOUR_RG_NAME> --yes --no-wait
 
 # サービスプリンシパル削除
 $SP_ID = (az ad sp list --display-name "sp-wiz-exercise" --query "[0].appId" -o tsv)
@@ -429,8 +434,8 @@ az ad sp delete --id $SP_ID
 ## � 関連ドキュメント
 
 - [環境情報](docs/ENVIRONMENT_INFO.md) - デプロイ環境の詳細
-- [トラブルシューティング履歴](Docs_issue_point/) - Phase 02-11の問題解決記録
-- [Azureセットアップ](docs/AZURE_SETUP_INFO.md) - Azure構成手順
+- [トラブルシューティング履歴](Docs_issue_point/) - Phase 02-11 の問題解決記録
+- [Azure セットアップ](docs/AZURE_SETUP_INFO.md) - Azure 構成手順
 
 ## ⚠️ セキュリティに関する注意
 
@@ -438,11 +443,11 @@ az ad sp delete --id $SP_ID
 
 - ✅ **デモ環境専用** - 本番環境では使用しないでください
 - ✅ **定期的な削除** - 使用後は必ずリソースを削除してください
-- ✅ **コスト管理** - AKS/VM稼働でコストが発生します
+- ✅ **コスト管理** - AKS/VM 稼働でコストが発生します
 
 ## �📝 ライセンス
 
-このプロジェクトはMITライセンスの下で公開されています。詳細は [LICENSE](LICENSE) を参照してください。
+このプロジェクトは MIT ライセンスの下で公開されています。詳細は [LICENSE](LICENSE) を参照してください。
 
 ## 🤝 コントリビューション
 
