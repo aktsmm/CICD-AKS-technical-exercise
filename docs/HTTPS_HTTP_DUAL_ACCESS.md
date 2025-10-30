@@ -1,25 +1,26 @@
 # HTTP/HTTPS 両対応の実装
 
-**作成日**: 2025年10月31日  
+**作成日**: 2025 年 10 月 31 日  
 **プロジェクト**: CICD-AKS-Technical Exercise
 
 ---
 
 ## 🎯 概要
 
-このドキュメントでは、Kubernetes Ingressを使用してHTTPとHTTPSの両方でアクセスできるように実装した方法を説明します。
+このドキュメントでは、Kubernetes Ingress を使用して HTTP と HTTPS の両方でアクセスできるように実装した方法を説明します。
 
 **実現した機能:**
-- ✅ HTTP直IPアクセス: `http://4.190.29.229`
-- ✅ HTTPSドメインアクセス: `https://4.190.29.229.nip.io`
-- ✅ 自動HTTPS証明書管理（cert-manager）
-- ✅ 単一のIngressリソースで両対応
+
+- ✅ HTTP 直 IP アクセス: `http://4.190.29.229`
+- ✅ HTTPS ドメインアクセス: `https://4.190.29.229.nip.io`
+- ✅ 自動 HTTPS 証明書管理（cert-manager）
+- ✅ 単一の Ingress リソースで両対応
 
 ---
 
-## 🔐 なぜHTTPSには直IPが使えないのか？
+## 🔐 なぜ HTTPS には直 IP が使えないのか？
 
-### TLS証明書の仕組み
+### TLS 証明書の仕組み
 
 HTTPS（TLS/SSL）の証明書は**ドメイン名に対して発行**されます。
 
@@ -52,7 +53,7 @@ HTTPS（TLS/SSL）の証明書は**ドメイン名に対して発行**されま�
    - ❌ 不一致 → "安全ではありません"エラー
 ```
 
-### 直IPの問題
+### 直 IP の問題
 
 ```
 ❌ 直IPでHTTPSアクセスした場合:
@@ -67,23 +68,23 @@ HTTPS（TLS/SSL）の証明書は**ドメイン名に対して発行**されま�
 証明書のドメイン名とアクセス先が一致しません
 ```
 
-### なぜIPアドレス証明書は使われないのか？
+### なぜ IP アドレス証明書は使われないのか？
 
-| 理由 | 説明 |
-|-----|------|
-| **IPの変動性** | IPアドレスは変更される可能性が高い（DHCP、クラウド再配置） |
-| **証明書の更新** | IPが変わるたびに証明書を再発行する必要がある |
-| **コスト** | 公式CAはIPアドレス証明書を高額で発行（または発行しない） |
-| **セキュリティ** | IPは所有権の証明が難しい |
-| **ベストプラクティス** | HTTPSはドメイン名で使用するのが標準 |
+| 理由                   | 説明                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| **IP の変動性**        | IP アドレスは変更される可能性が高い（DHCP、クラウド再配置）  |
+| **証明書の更新**       | IP が変わるたびに証明書を再発行する必要がある                |
+| **コスト**             | 公式 CA は IP アドレス証明書を高額で発行（または発行しない） |
+| **セキュリティ**       | IP は所有権の証明が難しい                                    |
+| **ベストプラクティス** | HTTPS はドメイン名で使用するのが標準                         |
 
 ---
 
 ## 💡 解決策: nip.io
 
-### nip.ioとは？
+### nip.io とは？
 
-**nip.io**は、IPアドレスをドメイン名に変換してくれる無料のDNSサービスです。
+**nip.io**は、IP アドレスをドメイン名に変換してくれる無料の DNS サービスです。
 
 ```
 公式サイト: https://nip.io/
@@ -97,7 +98,7 @@ HTTPS（TLS/SSL）の証明書は**ドメイン名に対して発行**されま�
   192.168.1.1.nip.io  → 192.168.1.1
 ```
 
-### DNSクエリの流れ
+### DNS クエリの流れ
 
 ```
 ┌──────────────┐
@@ -122,17 +123,17 @@ HTTPS（TLS/SSL）の証明書は**ドメイン名に対して発行**されま�
 └──────────────┘
 ```
 
-### なぜnip.ioが便利か？
+### なぜ nip.io が便利か？
 
-| メリット | 説明 |
-|---------|------|
-| **DNS設定不要** | 独自ドメインやDNSレコード設定が不要 |
-| **即座に使える** | IPが決まればすぐにドメイン名として使用可能 |
-| **無料** | 完全無料で利用可能 |
-| **証明書発行可能** | Let's EncryptやSelf-Signedで証明書を発行できる |
-| **開発/デモ向け** | 開発環境やデモに最適 |
+| メリット           | 説明                                              |
+| ------------------ | ------------------------------------------------- |
+| **DNS 設定不要**   | 独自ドメインや DNS レコード設定が不要             |
+| **即座に使える**   | IP が決まればすぐにドメイン名として使用可能       |
+| **無料**           | 完全無料で利用可能                                |
+| **証明書発行可能** | Let's Encrypt や Self-Signed で証明書を発行できる |
+| **開発/デモ向け**  | 開発環境やデモに最適                              |
 
-### nip.ioの動作確認
+### nip.io の動作確認
 
 ```bash
 # DNS解決テスト
@@ -200,7 +201,7 @@ nslookup 4.190.29.229.nip.io
                     └───────────────────┘
 ```
 
-### Ingressルールの構成
+### Ingress ルールの構成
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -213,13 +214,13 @@ metadata:
     cert-manager.io/cluster-issuer: selfsigned-issuer
 spec:
   ingressClassName: nginx
-  
+
   # TLS設定（HTTPS用）
   tls:
     - hosts:
         - 4.190.29.229.nip.io
       secretName: guestbook-tls-cert
-  
+
   rules:
     # ルール1: ホスト名指定（HTTPS/HTTPドメインアクセス用）
     - host: 4.190.29.229.nip.io
@@ -232,7 +233,7 @@ spec:
                 name: guestbook-service
                 port:
                   number: 80
-    
+
     # ルール2: ホスト名無し（HTTP直IPアクセス用）
     - http:
         paths:
@@ -249,7 +250,7 @@ spec:
 
 ## 🔄 トラフィックフロー
 
-### HTTPアクセス（直IP）
+### HTTP アクセス（直 IP）
 
 ```
 1. ユーザー
@@ -276,7 +277,7 @@ spec:
    └─> HTTP 200 OK
 ```
 
-### HTTPSアクセス（ドメイン名）
+### HTTPS アクセス（ドメイン名）
 
 ```
 1. ユーザー
@@ -313,9 +314,9 @@ spec:
 
 ## 🛠️ 実装の詳細
 
-### 1. cert-managerのインストール
+### 1. cert-manager のインストール
 
-cert-managerは、Kubernetes用の証明書管理ツールです。
+cert-manager は、Kubernetes 用の証明書管理ツールです。
 
 ```bash
 # cert-manager v1.13.2 をインストール
@@ -331,13 +332,14 @@ kubectl get pods -n cert-manager
 # cert-manager-webhook-5b7c8d9e6f-klmno    1/1     Running   0          2m
 ```
 
-**cert-managerの役割:**
+**cert-manager の役割:**
+
 - 証明書の自動発行
 - 証明書の自動更新
 - 証明書のライフサイクル管理
-- Kubernetes Secretとして証明書を保存
+- Kubernetes Secret として証明書を保存
 
-### 2. Self-Signed ClusterIssuerの作成
+### 2. Self-Signed ClusterIssuer の作成
 
 ```yaml
 apiVersion: cert-manager.io/v1
@@ -348,18 +350,21 @@ spec:
   selfSigned: {}
 ```
 
-**ClusterIssuerとは:**
+**ClusterIssuer とは:**
+
 - 証明書を発行する"発行者"を定義
 - `ClusterIssuer`はクラスター全体で使用可能
-- `Issuer`は特定のNamespaceのみ
+- `Issuer`は特定の Namespace のみ
 
 **Self-Signed（自己署名）とは:**
+
 - 自分で署名した証明書
 - CA（認証局）による署名なし
 - ブラウザは警告を表示
 - 開発/デモ環境で使用
 
 **本番環境では:**
+
 ```yaml
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -377,7 +382,7 @@ spec:
             class: nginx
 ```
 
-### 3. Ingress TLS設定
+### 3. Ingress TLS 設定
 
 ```yaml
 spec:
@@ -388,11 +393,12 @@ spec:
 ```
 
 **動作:**
-1. cert-managerがIngressを監視
+
+1. cert-manager が Ingress を監視
 2. `cert-manager.io/cluster-issuer`アノテーションを検知
 3. `selfsigned-issuer`を使用して証明書を発行
-4. 証明書をSecret `guestbook-tls-cert`に保存
-5. Ingress Controllerが自動的にSecretから証明書を読み込み
+4. 証明書を Secret `guestbook-tls-cert`に保存
+5. Ingress Controller が自動的に Secret から証明書を読み込み
 
 ### 4. 証明書の確認
 
@@ -447,16 +453,16 @@ openssl x509 -in cert.pem -text -noout
 
 ### 各アクセス方法の詳細
 
-| 項目 | HTTP 直IP | HTTP ドメイン | HTTPS ドメイン |
-|-----|----------|-------------|--------------|
-| **URL** | http://4.190.29.229 | http://4.190.29.229.nip.io | https://4.190.29.229.nip.io |
-| **DNS解決** | 不要 | nip.io | nip.io |
-| **ポート** | 80 | 80 | 443 |
-| **暗号化** | ❌ なし | ❌ なし | ✅ TLS 1.2/1.3 |
-| **証明書** | - | - | Self-Signed |
-| **Ingressルール** | ルール2 (host無し) | ルール1 (host指定) | ルール1 (host指定) + TLS |
-| **ブラウザ警告** | なし | なし | ⚠️ あり（自己署名） |
-| **使用場面** | 開発/テスト | 開発/テスト | デモ/本番前検証 |
+| 項目               | HTTP 直 IP           | HTTP ドメイン              | HTTPS ドメイン              |
+| ------------------ | -------------------- | -------------------------- | --------------------------- |
+| **URL**            | http://4.190.29.229  | http://4.190.29.229.nip.io | https://4.190.29.229.nip.io |
+| **DNS 解決**       | 不要                 | nip.io                     | nip.io                      |
+| **ポート**         | 80                   | 80                         | 443                         |
+| **暗号化**         | ❌ なし              | ❌ なし                    | ✅ TLS 1.2/1.3              |
+| **証明書**         | -                    | -                          | Self-Signed                 |
+| **Ingress ルール** | ルール 2 (host 無し) | ルール 1 (host 指定)       | ルール 1 (host 指定) + TLS  |
+| **ブラウザ警告**   | なし                 | なし                       | ⚠️ あり（自己署名）         |
+| **使用場面**       | 開発/テスト          | 開発/テスト                | デモ/本番前検証             |
 
 ### 通信内容の違い
 
@@ -504,9 +510,10 @@ Host: 4.190.29.229.nip.io
 
 ## 🔍 トラブルシューティング
 
-### 問題1: HTTP直IPで404エラー
+### 問題 1: HTTP 直 IP で 404 エラー
 
 **症状:**
+
 ```
 $ curl http://4.190.29.229
 <html>
@@ -519,7 +526,7 @@ $ curl http://4.190.29.229
 ```
 
 **原因:**
-Ingressに`host`指定のルールしかない場合、ホスト名なしのリクエストがマッチしない。
+Ingress に`host`指定のルールしかない場合、ホスト名なしのリクエストがマッチしない。
 
 ```yaml
 # ❌ これだけだとNG
@@ -539,14 +546,14 @@ rules:
 ```yaml
 # ✅ 正しい設定
 rules:
-  - host: 4.190.29.229.nip.io  # ドメインアクセス用
+  - host: 4.190.29.229.nip.io # ドメインアクセス用
     http:
       paths:
         - path: /
           backend:
             service:
               name: guestbook-service
-  - http:  # 直IPアクセス用（host無し）
+  - http: # 直IPアクセス用（host無し）
       paths:
         - path: /
           backend:
@@ -554,9 +561,10 @@ rules:
               name: guestbook-service
 ```
 
-### 問題2: HTTPS証明書エラー
+### 問題 2: HTTPS 証明書エラー
 
 **症状:**
+
 ```
 NET::ERR_CERT_AUTHORITY_INVALID
 この接続ではプライバシーが保護されません
@@ -570,27 +578,30 @@ NET::ERR_CERT_AUTHORITY_INVALID
 **対応方法:**
 
 1. **ブラウザで例外を許可**
+
    ```
    Chrome/Edge:
    - "詳細設定" をクリック
    - "4.190.29.229.nip.io にアクセスする（安全ではありません）" をクリック
-   
+
    Firefox:
    - "詳細情報..." をクリック
    - "危険性を承知で続行" をクリック
    ```
 
 2. **curl で検証を無効化**
+
    ```bash
    curl -k https://4.190.29.229.nip.io
    # -k = --insecure (証明書検証をスキップ)
    ```
 
-3. **本番環境ではLet's Encryptを使用**
+3. **本番環境では Let's Encrypt を使用**
 
-### 問題3: 証明書が発行されない
+### 問題 3: 証明書が発行されない
 
 **確認コマンド:**
+
 ```bash
 # Certificate リソース確認
 kubectl get certificate
@@ -609,16 +620,17 @@ kubectl describe certificate guestbook-tls-cert
 
 **原因と対策:**
 
-| 原因 | 対策 |
-|-----|------|
-| cert-managerがインストールされていない | `kubectl apply -f cert-manager.yaml` |
-| ClusterIssuerが存在しない | `kubectl get clusterissuer` で確認 |
-| アノテーションが間違っている | `cert-manager.io/cluster-issuer: selfsigned-issuer` を確認 |
-| cert-manager Podがクラッシュ | `kubectl get pods -n cert-manager` で確認 |
+| 原因                                    | 対策                                                       |
+| --------------------------------------- | ---------------------------------------------------------- |
+| cert-manager がインストールされていない | `kubectl apply -f cert-manager.yaml`                       |
+| ClusterIssuer が存在しない              | `kubectl get clusterissuer` で確認                         |
+| アノテーションが間違っている            | `cert-manager.io/cluster-issuer: selfsigned-issuer` を確認 |
+| cert-manager Pod がクラッシュ           | `kubectl get pods -n cert-manager` で確認                  |
 
-### 問題4: nip.ioが解決しない
+### 問題 4: nip.io が解決しない
 
 **確認:**
+
 ```bash
 # DNS解決テスト
 nslookup 4.190.29.229.nip.io
@@ -626,16 +638,18 @@ nslookup 4.190.29.229.nip.io
 # タイムアウトする場合:
 # Server:  UnKnown
 # Address:  x.x.x.x
-# 
+#
 # DNS request timed out.
 ```
 
 **原因:**
-- nip.ioサービスが一時的にダウン
-- ファイアウォールがDNSをブロック
+
+- nip.io サービスが一時的にダウン
+- ファイアウォールが DNS をブロック
 - プロキシ環境
 
 **対策:**
+
 ```bash
 # 代替サービスを使用
 # sslip.io (nip.ioの代替)
@@ -653,15 +667,15 @@ nslookup 4.190.29.229.nip.io
 
 ### 自己署名証明書のリスク
 
-| リスク | 説明 | 対策 |
-|-------|------|------|
-| **中間者攻撃** | 偽の証明書でも検証されない | 本番環境では使用しない |
-| **ユーザーの誤解** | ユーザーが警告を無視する習慣がつく | デモであることを明示 |
-| **信頼チェーン無し** | CAによる検証なし | 内部ネットワークのみで使用 |
+| リスク               | 説明                               | 対策                       |
+| -------------------- | ---------------------------------- | -------------------------- |
+| **中間者攻撃**       | 偽の証明書でも検証されない         | 本番環境では使用しない     |
+| **ユーザーの誤解**   | ユーザーが警告を無視する習慣がつく | デモであることを明示       |
+| **信頼チェーン無し** | CA による検証なし                  | 内部ネットワークのみで使用 |
 
 ### 本番環境への移行
 
-#### Let's Encryptの使用
+#### Let's Encrypt の使用
 
 ```yaml
 # 本番用 ClusterIssuer
@@ -686,31 +700,33 @@ spec:
 # Ingressのアノテーション変更
 metadata:
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod  # ← 変更
+    cert-manager.io/cluster-issuer: letsencrypt-prod # ← 変更
 ```
 
-**Let's Encryptの利点:**
+**Let's Encrypt の利点:**
+
 - ✅ 無料
 - ✅ ブラウザに信頼される
-- ✅ 自動更新（90日ごと）
-- ✅ ワイルドカード証明書対応（DNS-01チャレンジ）
+- ✅ 自動更新（90 日ごと）
+- ✅ ワイルドカード証明書対応（DNS-01 チャレンジ）
 
 **制限:**
-- 独自ドメインが必要（nip.ioでは使用不可）
-- レート制限あり（週50証明書/ドメイン）
-- 証明書の有効期限が90日
 
-### HTTPSの重要性
+- 独自ドメインが必要（nip.io では使用不可）
+- レート制限あり（週 50 証明書/ドメイン）
+- 証明書の有効期限が 90 日
 
-| なぜHTTPSが必要か | 説明 |
-|-----------------|------|
-| **暗号化** | 通信内容が盗聴されない |
-| **改ざん防止** | データが途中で変更されない |
-| **認証** | 接続先サーバーの正当性を確認 |
-| **SEO** | Googleは HTTPS サイトを優遇 |
-| **HTTP/2** | HTTP/2 はHTTPSが必須 |
-| **PWA** | Progressive Web Apps には必須 |
-| **Cookie Secure** | Secure属性のCookieを使用可能 |
+### HTTPS の重要性
+
+| なぜ HTTPS が必要か | 説明                            |
+| ------------------- | ------------------------------- |
+| **暗号化**          | 通信内容が盗聴されない          |
+| **改ざん防止**      | データが途中で変更されない      |
+| **認証**            | 接続先サーバーの正当性を確認    |
+| **SEO**             | Google は HTTPS サイトを優遇    |
+| **HTTP/2**          | HTTP/2 は HTTPS が必須          |
+| **PWA**             | Progressive Web Apps には必須   |
+| **Cookie Secure**   | Secure 属性の Cookie を使用可能 |
 
 ---
 
@@ -728,7 +744,7 @@ $ time curl -s https://4.190.29.229.nip.io > /dev/null
 real    0m0.125s  ← TLSハンドシェイクのオーバーヘッド
 ```
 
-### TLSハンドシェイクのコスト
+### TLS ハンドシェイクのコスト
 
 ```
 HTTP:
@@ -748,12 +764,12 @@ HTTPS (TLS 1.3):
 
 ### 最適化手法
 
-| 手法 | 効果 |
-|-----|------|
+| 手法                       | 効果                           |
+| -------------------------- | ------------------------------ |
 | **TLS Session Resumption** | 再接続時のハンドシェイクを省略 |
-| **HTTP/2** | 多重化で複数リクエストを効率化 |
-| **Certificate Caching** | 証明書検証結果をキャッシュ |
-| **OCSP Stapling** | 証明書失効確認を高速化 |
+| **HTTP/2**                 | 多重化で複数リクエストを効率化 |
+| **Certificate Caching**    | 証明書検証結果をキャッシュ     |
+| **OCSP Stapling**          | 証明書失効確認を高速化         |
 
 ---
 
@@ -761,30 +777,33 @@ HTTPS (TLS 1.3):
 
 ### 実装のポイント
 
-1. **HTTPSには必ずドメイン名が必要**
-   - TLS証明書はドメイン名に対して発行される
-   - 直IPではHTTPSは実質使用不可
+1. **HTTPS には必ずドメイン名が必要**
+
+   - TLS 証明書はドメイン名に対して発行される
+   - 直 IP では HTTPS は実質使用不可
 
 2. **nip.io は開発/デモに最適**
-   - DNS設定不要
+
+   - DNS 設定不要
    - 即座に使用可能
    - 証明書発行可能
 
-3. **Ingressで両対応を実現**
-   - `host`指定ルール: HTTPS/HTTPドメインアクセス
-   - `host`無しルール: HTTP直IPアクセス
+3. **Ingress で両対応を実現**
+
+   - `host`指定ルール: HTTPS/HTTP ドメインアクセス
+   - `host`無しルール: HTTP 直 IP アクセス
 
 4. **cert-manager で証明書を自動管理**
    - 自己署名証明書の自動発行
    - 証明書の自動更新
-   - Kubernetes Secretとして管理
+   - Kubernetes Secret として管理
 
 ### アクセス方法
 
-| 方法 | URL | 用途 |
-|-----|-----|------|
-| **HTTP直IP** | http://4.190.29.229 | シンプルな動作確認 |
-| **HTTPS** | https://4.190.29.229.nip.io | セキュアなデモ |
+| 方法           | URL                         | 用途               |
+| -------------- | --------------------------- | ------------------ |
+| **HTTP 直 IP** | http://4.190.29.229         | シンプルな動作確認 |
+| **HTTPS**      | https://4.190.29.229.nip.io | セキュアなデモ     |
 
 ### 本番環境への移行
 
@@ -839,4 +858,4 @@ spec:
 
 ---
 
-**このアーキテクチャにより、開発からデモまでシームレスにHTTP/HTTPS両対応を実現しています！** 🚀
+**このアーキテクチャにより、開発からデモまでシームレスに HTTP/HTTPS 両対応を実現しています！** 🚀
