@@ -470,7 +470,7 @@ az role assignment create \
 
 | プレースホルダー         | 説明                         | 設定箇所                                                                                                                           | デフォルト値                       |
 | ------------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `<RESOURCE_GROUP_NAME>`  | リソースグループ名           | `infra/main.bicep` (Line 4)<br>`.github/workflows/infra-deploy.yml` (Line 18)<br>`.github/workflows/app-deploy.yml` (Line 26)      | `rg-cicd-aks-bbs01`                |
+| `<RESOURCE_GROUP_NAME>`  | リソースグループ名           | `infra/main.bicep` (Line 4)<br>`.github/workflows/infra-deploy.yml` (Line 18)<br>`.github/workflows/app-deploy.yml` (Line 26)      | `rg-cicd-aks-bbs`                  |
 | `<AKS_CLUSTER_NAME>`     | AKS クラスター名             | `infra/modules/aks.bicep` (Line 13)<br>※ `aks${environment}` のパターン                                                            | `aksdev` (environment='dev'の場合) |
 | `<ACR_NAME>`             | Azure Container Registry 名  | `infra/modules/acr.bicep`<br>※ `acr${environment}${uniqueString}` のパターン<br>`.github/workflows/app-deploy.yml` (ACR_NAME 変数) | `acrdev` + ハッシュ                |
 | `<STORAGE_ACCOUNT_NAME>` | Storage Account 名           | `infra/modules/storage.bicep`<br>※ `stwiz${environment}${uniqueString}` のパターン                                                 | `stwizdev` + ハッシュ              |
@@ -489,7 +489,7 @@ az role assignment create \
 
 ```bicep
 // Line 4: リソースグループ名
-param resourceGroupName string = 'rg-cicd-aks-bbs01'
+param resourceGroupName string = 'rg-cicd-aks-bbs'
 
 // Line 10: 環境名 (dev, prod, staging等)
 param environment string = 'dev'
@@ -500,7 +500,7 @@ param environment string = 'dev'
 ```yaml
 # Line 18: リソースグループ名
 env:
-  RESOURCE_GROUP: rg-cicd-aks-bbs01
+  RESOURCE_GROUP: rg-cicd-aks-bbs
 ```
 
 #### 3. `.github/workflows/app-deploy.yml` (アプリデプロイ設定)
@@ -508,7 +508,7 @@ env:
 ```yaml
 # Line 26: リソースグループ名
 env:
-  RESOURCE_GROUP: rg-cicd-aks-bbs01
+  RESOURCE_GROUP: rg-cicd-aks-bbs
   ACR_NAME: acrdev # Line 27: ACR名
 ```
 
@@ -524,7 +524,7 @@ var clusterName = 'aks${environment}'
 ```yaml
 # Line 6: リソースグループ名
 variables:
-  resourceGroup: "rg-cicd-aks-bbs01"
+  resourceGroup: "rg-cicd-aks-bbs"
 ```
 
 ### 命名規則の説明
