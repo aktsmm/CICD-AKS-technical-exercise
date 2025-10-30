@@ -356,6 +356,25 @@ kubectl exec -it $POD_NAME -- cat /app/wizexercise.txt
 氏名: やまもとたつみ
 日付: 2025-10-28
 CICD-AKS-Technical Exercise
+
+===================================
+このファイルへのアクセス方法:
+===================================
+...
+```
+
+**ブラウザからも直接アクセス可能**:
+
+```powershell
+# ブラウザで直接開く
+Start-Process "http://135.149.87.151/wizexercise.txt"
+```
+
+**または curl で確認**:
+
+```powershell
+# PowerShellから確認
+Invoke-WebRequest -Uri "http://135.149.87.151/wizexercise.txt" | Select-Object -ExpandProperty Content
 ```
 
 **どのように挿入したか説明**:
@@ -366,8 +385,9 @@ CICD-AKS-Technical Exercise
    ```
 2. **ビルド時に含まれる**: Docker build プロセスで自動的にイメージに含まれる
 3. **Pod 起動時に存在**: コンテナ起動時には既にファイルが存在
+4. **Express.js でエンドポイント公開**: `/wizexercise.txt` ルートでブラウザからアクセス可能
 
-**説明**: wizexercise.txt がコンテナ内に存在し、氏名が記載されている ✅
+**説明**: wizexercise.txt がコンテナ内に存在し、氏名が記載されている。kubectl コマンドまたはブラウザから確認可能 ✅
 
 ### 3.6 ✅ コンテナにクラスタ管理者権限 (admin role)
 
