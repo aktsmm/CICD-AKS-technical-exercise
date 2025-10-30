@@ -80,14 +80,14 @@ jobs:
                       echo "Infrastructure deployment may not have completed yet."
                       exit 1
                   fi
-                  
+
                   ACR_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
-                  
+
                   if [ -z "$ACR_NAME" ]; then
                       echo "❌ No ACR found in resource group ${{ env.RESOURCE_GROUP }}"
                       exit 1
                   fi
-                  
+
                   echo "ACR Name: ${ACR_NAME}"
                   echo "acr_name=${ACR_NAME}" >> $GITHUB_OUTPUT
 
