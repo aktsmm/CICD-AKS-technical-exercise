@@ -24,6 +24,9 @@ param backupContainerName string = 'backups'
 @secure()
 param mongoAdminPassword string
 
+@description('VM拡張の強制更新タグ')
+param forceUpdateTag string = utcNow()
+
 var vmName = 'vm-mongo-${environment}'
 var nicName = '${vmName}-nic'
 var nsgName = '${vmName}-nsg'
@@ -152,6 +155,7 @@ resource vmExtension 'Microsoft.Compute/virtualMachines/extensions@2023-07-01' =
     type: 'CustomScript'
     typeHandlerVersion: '2.1'
     autoUpgradeMinorVersion: true
+    forceUpdateTag: forceUpdateTag  // 毎回拡張を再実行
     settings: {
       fileUris: [
         'https://raw.githubusercontent.com/aktsmm/CICD-AKS-technical-exercise/main/infra/scripts/install-mongodb.sh'
