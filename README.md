@@ -6,11 +6,12 @@
 
 ### 構成要素
 
-- **AKS (Azure Kubernetes Service)** - コンテナ化された BBS App
+- **AKS (Azure Kubernetes Service)** - コンテナ化された BBS App + NGINX Ingress Controller
 - **VM (MongoDB)** - Ubuntu 20.04 + MongoDB 4.4 データベース
 - **ACR (Azure Container Registry)** - Docker イメージレジストリ
 - **Storage Account** - バックアップ用 Blob Storage
 - **Azure Monitor** - 監査ログ収集
+- **Azure Load Balancer** - L4ロードバランシング（Ingress Controller 用）
 
 ### 意図的な脆弱性
 
@@ -38,11 +39,13 @@
 │  │  │  │ Subnet: aks-subnet (10.0.1.0/24)    │            │   │   │
 │  │  │  │                                       │            │   │   │
 │  │  │  │  ┌─────────────────────────────┐    │            │   │   │
-│  │  │  │  │  AKS: aks-dev           │    │            │   │   │
+│  │  │  │  │  AKS: aks-dev               │    │            │   │   │
 │  │  │  │  │  ├─ Node Pool: 2 nodes      │    │            │   │   │
 │  │  │  │  │  │  Standard_DS2_v2          │    │            │   │   │
+│  │  │  │  │  ├─ Ingress Controller      │◄───┼─── Azure LB (External IP)
+│  │  │  │  │  │  (NGINX, L7 Routing)     │    │            │   │   │
 │  │  │  │  │  ├─ Pod: guestbook-app (×2) │    │            │   │   │
-│  │  │  │  │  └─ Service: LoadBalancer   │◄───┼─── External IP
+│  │  │  │  │  └─ Service: ClusterIP      │    │            │   │   │
 │  │  │  │  └─────────────────────────────┘    │            │   │   │
 │  │  │  └──────────────────────────────────────┘            │   │   │
 │  │  │                                                        │   │   │
@@ -159,9 +162,17 @@
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    Deployed Application                             │
 │                                                                      │
-│  Browser → http://<EXTERNAL_IP> → LoadBalancer                     │
-│                                        └─ AKS Pods (guestbook-app)  │
-│                                               └─ MongoDB VM          │
+│  Browser → http://<INGRESS-IP>                                     │
+│               ↓                                                      │
+│          Azure Load Balancer (L4)                                   │
+│               ↓                                                      │
+│          Ingress Controller (L7, NGINX)                             │
+│               ↓                                                      │
+│          Service: guestbook-service (ClusterIP)                     │
+│               ↓                                                      │
+│          AKS Pods (guestbook-app ×2)                                │
+│               ↓                                                      │
+│          MongoDB VM (Private IP: 10.0.2.4)                          │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -625,14 +636,19 @@ GitHub Actions が自動的に:
 ### 6️⃣ アプリケーションへアクセス
 
 ```powershell
-# AKS認証情報取得
+# AKSクラスター認証情報を取得
 az aks get-credentials --resource-group <YOUR_RG_NAME> --name aks-dev --overwrite-existing
 
-# External IP取得
-kubectl get svc guestbook-service -n default
+# Ingress Controller の External IP を確認
+kubectl get svc -n ingress-nginx ingress-nginx-controller
 ```
 
-ブラウザで `http://<EXTERNAL-IP>` を開きます。
+ブラウザで `http://<INGRESS-EXTERNAL-IP>` を開きます。
+
+**アクセスフロー**:
+```
+User → Azure Load Balancer → Ingress Controller (NGINX) → Service (ClusterIP) → Pod
+```
 
 ## 📂 ディレクトリ構造
 
@@ -647,9 +663,9 @@ wiz-technical-exercise/
 │   │   └── index.ejs           # 掲示板UI
 │   └── k8s/                     # Kubernetesマニフェスト
 │       ├── deployment.yaml      # アプリデプロイ
-│       ├── service.yaml         # LoadBalancer Service
-│       ├── ingress.yaml         # Ingress (App Gateway)
-│       ├── ingress-nginx.yaml   # Ingress (NGINX代替)
+│       ├── service.yaml         # ClusterIP Service
+│       ├── ingress.yaml         # Ingress Resource
+│       ├── ingress-nginx-controller.yaml  # NGINX Ingress Controller
 │       └── rbac-vulnerable.yaml # 脆弱なRBAC設定
 ├── infra/                       # Infrastructure as Code (Bicep)
 │   ├── main.bicep              # メインテンプレート
@@ -694,6 +710,39 @@ wiz-technical-exercise/
 
 ## 🔐 セキュリティ検証
 
+### Wiz 技術課題要件チェックリスト
+
+#### Kubernetes 上の Web アプリケーション
+
+| 要件 | 実装状況 | 確認方法 |
+|------|---------|---------|
+| ✅ アプリはコンテナ化、MongoDB使用 | **完了** | `kubectl get pods -l app=guestbook` |
+| ✅ Kubernetes クラスタはプライベートサブネット | **完了** | AKS subnet: 10.0.1.0/24 |
+| ✅ MongoDB接続情報は環境変数で指定 | **完了** | `kubectl get deploy guestbook-app -o yaml \| grep MONGO_URI` |
+| ✅ wizexercise.txt がコンテナ内に存在 | **完了** | `kubectl exec <POD> -- cat /app/wizexercise.txt` |
+| ✅ クラスタ管理者権限を付与 | **完了** | `kubectl get clusterrolebindings developer-cluster-admin` |
+| ✅ Ingress + LoadBalancer で公開 | **完了** | `kubectl get svc -n ingress-nginx ingress-nginx-controller` |
+| ✅ kubectl コマンドによる操作デモ可能 | **完了** | `az aks get-credentials` でアクセス |
+| ✅ データが MongoDB に保存されることを証明 | **完了** | ブラウザでメッセージ投稿 → MongoDB クエリで確認 |
+
+#### トラフィックフロー
+
+```
+[User Browser]
+      ↓
+[Azure Public IP]
+      ↓
+[Azure Load Balancer (L4)]
+      ↓
+[NGINX Ingress Controller (L7, HTTP Routing)]
+      ↓
+[Kubernetes Service: guestbook-service (ClusterIP)]
+      ↓
+[Pod: guestbook-app (×2, ServiceAccount=default with cluster-admin)]
+      ↓
+[MongoDB VM (Private IP: 10.0.2.4, Port 27017, Authentication Enabled)]
+```
+
 ### 脆弱性確認
 
 ```powershell
@@ -724,17 +773,23 @@ kubectl get clusterrolebindings developer-cluster-admin -o yaml
 
 ## 📊 アプリケーションアクセス
 
-### LoadBalancer External IP の取得
+### Ingress Controller External IP の取得
 
 ```powershell
 # AKSクラスター認証情報を取得
 az aks get-credentials --resource-group <YOUR_RG_NAME> --name aks-dev --overwrite-existing
 
-# External IPを確認
-kubectl get svc guestbook-service -n default
+# Ingress Controller の External IPを確認
+kubectl get svc -n ingress-nginx ingress-nginx-controller
+
+# Ingress リソース確認
+kubectl get ingress guestbook-ingress
+kubectl describe ingress guestbook-ingress
 ```
 
-ブラウザでアクセス: `http://<EXTERNAL-IP>`
+**アクセス**:
+- URL: `http://<INGRESS-EXTERNAL-IP>`
+- トラフィックフロー: `User → Azure LB (L4) → Ingress Controller (L7) → ClusterIP Service → Pod`
 
 ### wizexercise.txt 確認
 
@@ -746,14 +801,14 @@ kubectl exec $POD_NAME -- cat /app/wizexercise.txt
 
 ## 🛠️ トラブルシューティング
 
-### LoadBalancer External IP が pending のまま
+### Ingress External IP が pending のまま
 
 ```powershell
-# Service状態確認
-kubectl get svc guestbook-service -n default
+# Ingress Controller Pod 確認
+kubectl get pods -n ingress-nginx
 
-# AKS LoadBalancer設定確認
-kubectl describe svc guestbook-service -n default
+# Ingress Controller Service 確認
+kubectl get svc -n ingress-nginx ingress-nginx-controller
 
 # 通常2-3分で割り当て完了
 ```
