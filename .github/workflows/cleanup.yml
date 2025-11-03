@@ -4,12 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "*"
-      - "Docs/**"
-      - "Docs_issue_point/**"
-      - "Scripts/**"
-      - "wiz-technical-exercise/**"
   workflow_dispatch:
   schedule:
     - cron: "0 */12 * * *" # 12時間ごとに実行（UTC）
