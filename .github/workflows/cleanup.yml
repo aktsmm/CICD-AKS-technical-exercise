@@ -2,6 +2,13 @@ name: 🧹 Cleanup Workflow Runs (Keep latest 10 successful runs only)
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - "*"
+      - "Docs/**"
+      - "Scripts/**"
+      - "wiz-technical-exercise/**"
   workflow_dispatch:
   schedule:
     - cron: "0 */12 * * *" # 12時間ごとに実行（UTC）
@@ -12,6 +19,7 @@ permissions:
 
 jobs:
   cleanup:
+    if: ${{ github.ref == 'refs/heads/main' && github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - name: Delete failed, old, and all Cleanup runs (keep latest 10 successful)
