@@ -103,7 +103,6 @@ resource vmDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview
   properties: {
     workspaceId: workspaceId
     logs: [
-      { category: 'SoftwareUpdateProfile', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
       { category: 'SoftwareUpdates', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
     metrics: [
@@ -123,7 +122,6 @@ resource nsgDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
     workspaceId: workspaceId
     logs: [
       { category: 'NetworkSecurityGroupEvent', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'NetworkSecurityGroupFlowEvent', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
       { category: 'NetworkSecurityGroupRuleCounter', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
   }
