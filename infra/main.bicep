@@ -13,7 +13,7 @@ param environment string = 'dev'
 @secure()
 param mongoAdminPassword string
 
-@description('デプロイタイムスタンプ (ユニークなデプロイ名生成)')
+@description('デプロイタイムスタンプ!! (ユニークなデプロイ名生成)')
 param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
 
 // リソースグループ作成
