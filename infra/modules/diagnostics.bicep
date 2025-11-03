@@ -12,17 +12,19 @@ param acrName string
 @description('AKS クラスター名')
 param aksName string
 
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
-  name: storageAccountName
+resource storageBlobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' existing = {
+  name: '${storageAccountName}/default'
 }
 
-resource storageDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: 'storage-to-la'
-  scope: storageAccount
+resource storageBlobDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'storage-blob-to-la'
+  scope: storageBlobService
   properties: {
     workspaceId: workspaceId
     logs: [
-      { categoryGroup: 'StorageLogs', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+      { category: 'StorageRead', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+      { category: 'StorageWrite', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+      { category: 'StorageDelete', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
     metrics: [
       { category: 'Transaction', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
