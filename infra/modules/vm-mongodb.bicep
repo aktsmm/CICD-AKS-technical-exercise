@@ -145,6 +145,20 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-07-01' = {
   }
 }
 
+// AMA 拡張を導入して Log Analytics へ Linux ゲスト情報を送信
+resource vmAmaExtension 'Microsoft.Compute/virtualMachines/extensions@2023-07-01' = {
+  parent: vm
+  name: 'AzureMonitorLinuxAgent'
+  location: location
+  properties: {
+    publisher: 'Microsoft.Azure.Monitor'
+    type: 'AzureMonitorLinuxAgent'
+    typeHandlerVersion: '1.21'
+    autoUpgradeMinorVersion: true
+    enableAutomaticUpgrade: true
+  }
+}
+
 // MongoDB インストールスクリプト（認証付き）
 resource vmExtension 'Microsoft.Compute/virtualMachines/extensions@2023-07-01' = {
   parent: vm
