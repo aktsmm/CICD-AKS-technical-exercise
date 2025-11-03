@@ -1,17 +1,7 @@
-name: 🧹 Cleanup Workflow Runs (Keep latest 10 + delete failed recent runs)
+name: 🧹 Cleanup Workflow Runs (Delete ALL runs)
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "app/**"
-      - "infra/**"
-      - ".github/workflows/cleanup.yml"
-
   workflow_dispatch:
-  schedule:
-    - cron: "0 */12 * * *" # 12時間ごとに実行（UTC）
 
 permissions:
   actions: write
@@ -21,30 +11,26 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete old or failed workflow runs
+      - name: Delete ALL workflow runs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPO="aktsmm/CICD-AKS-technical-exercise"
 
-          echo "🧾 Fetching workflow runs..."
+          echo "🧾 Fetching ALL workflow runs..."
           RUNS=$(gh api repos/$REPO/actions/runs --paginate \
             -q '.workflow_runs[] | {id: .id, status: .status, conclusion: .conclusion, created_at: .created_at}' \
             | jq -s 'sort_by(.created_at) | reverse')
 
-          echo "🧩 Selecting deletion targets..."
-          # 最新10件は保持。それ以外で失敗・キャンセル・タイムアウト・conclusion=null を削除対象に
-          TARGETS=$(echo "$RUNS" | jq -c '[.[10:][] | select((.conclusion == "failure") or (.conclusion == "cancelled") or (.conclusion == "timed_out") or (.conclusion == null))]')
-
-          COUNT=$(echo "$TARGETS" | jq 'length')
+          COUNT=$(echo "$RUNS" | jq 'length')
           echo "🧹 Found $COUNT runs to delete."
 
           if (( COUNT == 0 )); then
-            echo "✅ No runs to delete. Exiting."
+            echo "✅ No runs found. Exiting."
             exit 0
           fi
 
-          echo "$TARGETS" | jq -c '.[]' | while read -r run; do
+          echo "$RUNS" | jq -c '.[]' | while read -r run; do
             ID=$(echo "$run" | jq -r '.id')
             STATUS=$(echo "$run" | jq -r '.status')
             CONCLUSION=$(echo "$run" | jq -r '.conclusion')
