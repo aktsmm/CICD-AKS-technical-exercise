@@ -34,7 +34,7 @@ jobs:
 
           echo "🧩 Determining latest successful runs per workflow..."
           # 各ワークフローごとに「最新の success」を抽出
-          LAST_SUCCESSES=$(echo "$RUNS" | jq -c 'group_by(.name) | map(first(select(.conclusion == "success")) | .id) | map(select(. != null))')
+          LAST_SUCCESSES=$(echo "$RUNS" | jq -c '[group_by(.name)[] | map(select(.conclusion == "success")) | first | .id] | map(select(. != null))')
 
           echo "🧩 Selecting deletion targets..."
           # 最新10件は保持。ただし "Cleanup Workflow Runs" は保持対象でも削除する
