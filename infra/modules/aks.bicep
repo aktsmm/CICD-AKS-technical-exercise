@@ -62,3 +62,4 @@ output clusterName string = aks.name
 // パブリッククラスターなので通常の FQDN を使用
 output clusterFqdn string = aks.properties.fqdn
 output kubeletIdentity string = aks.properties.identityProfile.kubeletidentity.objectId
+output clusterResourceId string = aks.id

@@ -122,6 +122,17 @@ module aksAcrRole 'modules/aks-acr-role.bicep' = {
   }
 }
 
+module diagnostics 'modules/diagnostics.bicep' = {
+  scope: rg
+  name: 'diagnostics-${deploymentTimestamp}'
+  params: {
+    workspaceId: monitoring.outputs.workspaceId
+    storageAccountName: storage.outputs.storageAccountName
+    acrName: acr.outputs.acrName
+    aksName: aks.outputs.clusterName
+  }
+}
+
 output aksClusterName string = aks.outputs.clusterName
 output mongoVMPublicIP string = mongoVM.outputs.publicIP
 output mongoVMPrivateIP string = mongoVM.outputs.privateIP
