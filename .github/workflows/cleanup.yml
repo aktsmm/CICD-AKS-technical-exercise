@@ -34,15 +34,15 @@ jobs:
             | jq -s 'sort_by(.created_at) | reverse')
 
           echo "🧩 Selecting deletion targets..."
-          # ✅ Cleanupワークフローは常に削除
-          # ✅ 最新10件の成功runのみ保持
-          TARGETS=$(echo "$RUNS" | jq -c --arg self "$SELF_NAME" '
-            [
-              .[] 
+          # 最新10件の成功runだけ保持
+          KEEP_IDS=$(echo "$RUNS" | jq -c '[.[] | select(.conclusion == "success")][:10] | map(.id)')
+
+          TARGETS=$(echo "$RUNS" | jq -c --arg self "$SELF_NAME" --argjson keepIds "$KEEP_IDS" '
+            [ .[]
               | select(
-                  (.name == $self)                         # Cleanupは常に削除
-                  or (.conclusion != "success")            # 失敗・キャンセル・未完了も削除
-                  or ((.conclusion == "success") and (.[0:10] | index(.)) | not)  # 10件より古い成功も削除
+                  (.name == $self)                           # ✅ Cleanupは常に削除
+                  or (.conclusion != "success")              # 失敗/キャンセル/未完は削除
+                  or (.id as $id | ($keepIds | index($id)) | not)  # 最新10件以外の成功も削除
                 )
             ]')
 
