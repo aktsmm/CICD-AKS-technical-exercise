@@ -21,7 +21,7 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete failed and old workflow runs (keep latest 10 successful)
+      - name: Delete failed, old, and all Cleanup runs (keep latest 10 successful)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -34,20 +34,15 @@ jobs:
             | jq -s 'sort_by(.created_at) | reverse')
 
           echo "🧩 Selecting deletion targets..."
-          # 直近10件の「成功run」を保持、それ以外を削除
+          # ✅ Cleanupワークフローは常に削除
+          # ✅ 最新10件の成功runのみ保持
           TARGETS=$(echo "$RUNS" | jq -c --arg self "$SELF_NAME" '
-            [ 
-              .[10:][]                                         # 11件目以降
-              | select(
-                  (.conclusion != "success")                   # 成功以外は削除
-                  or (.name == $self)                          # Cleanup自身も削除
-                )
-            ] +
             [
-              .[0:10][]                                       # 最新10件内でも
+              .[] 
               | select(
-                  (.conclusion != "success")                   # 成功以外は削除
-                  or (.name == $self)
+                  (.name == $self)                         # Cleanupは常に削除
+                  or (.conclusion != "success")            # 失敗・キャンセル・未完了も削除
+                  or ((.conclusion == "success") and (.[0:10] | index(.)) | not)  # 10件より古い成功も削除
                 )
             ]')
 
