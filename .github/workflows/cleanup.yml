@@ -1,4 +1,4 @@
-name: 🧹 Cleanup Workflow Runs (Keep latest 10 + delete failed recent runs)
+name: 🧹 Cleanup Workflow Runs (Keep latest 10 + delete failed recent runs + keep last success per workflow)
 
 on:
   push:
@@ -32,14 +32,22 @@ jobs:
             -q '.workflow_runs[] | {id: .id, name: .name, status: .status, conclusion: .conclusion, created_at: .created_at}' \
             | jq -s 'sort_by(.created_at) | reverse')
 
+          echo "🧩 Determining latest successful runs per workflow..."
+          # 各ワークフローごとに「最新の success」を抽出
+          LAST_SUCCESSES=$(echo "$RUNS" | jq -c 'group_by(.name) | map(first(select(.conclusion == "success")) | .id) | map(select(. != null))')
+
           echo "🧩 Selecting deletion targets..."
           # 最新10件は保持。ただし "Cleanup Workflow Runs" は保持対象でも削除する
-          TARGETS=$(echo "$RUNS" | jq -c '[.[10:][] 
-            | select((.conclusion == "failure") 
-              or (.conclusion == "cancelled") 
-              or (.conclusion == "timed_out") 
-              or (.conclusion == null) 
-              or (.name == "🧹 Cleanup Workflow Runs (Keep latest 10 + delete failed recent runs)"))]')
+          # さらに、各ワークフローの最後に成功した run は保持対象として除外
+          TARGETS=$(echo "$RUNS" | jq -c --argjson keepIds "$LAST_SUCCESSES" '[.[10:][] 
+            | select(
+                ((.conclusion == "failure") 
+                or (.conclusion == "cancelled") 
+                or (.conclusion == "timed_out") 
+                or (.conclusion == null) 
+                or (.name == "🧹 Cleanup Workflow Runs (Keep latest 10 + delete failed recent runs + keep last success per workflow)"))
+                and (.id as $id | ($keepIds | index($id)) | not)
+              )]')
 
           COUNT=$(echo "$TARGETS" | jq 'length')
           echo "🧹 Found $COUNT runs to delete."
