@@ -1,6 +1,6 @@
 targetScope = 'subscription'
 
-@description('割り当て対象のポリシー イニシアチブ ID (例: /providers/Microsoft.Authorization/policySetDefinitions/MCSBv2)')
+@description('割り当て対象のポリシー イニシアチブ ID (例: /providers/Microsoft.Authorization/policySetDefinitions/e3ec7e09-768c-4b64-882c-fcada3772047)')
 param policySetDefinitionId string
 
 @description('ポリシー割り当てのリソース名 (スコープ内で一意)')
