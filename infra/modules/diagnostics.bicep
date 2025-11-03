@@ -220,9 +220,6 @@ resource vmDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview
   scope: mongoVm
   properties: {
     workspaceId: workspaceId
-    logs: [
-      { category: 'SoftwareUpdates', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-    ]
     metrics: [
       { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
