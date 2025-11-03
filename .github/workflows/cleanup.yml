@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   cleanup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Delete failed, old, and all Cleanup runs (keep latest 10 successful)
         env:
