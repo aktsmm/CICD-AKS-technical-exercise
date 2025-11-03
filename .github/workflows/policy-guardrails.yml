@@ -62,5 +62,7 @@ jobs:
                   scope: subscription
                   region: ${{ env.LOCATION }}
                   template: ./infra/policy-guardrails.bicep
+                  parameters: >
+                      @infra/parameters/policy-dev.bicepparam
                   deploymentName: policy-guardrails-${{ github.run_number }}
                   failOnStdErr: false
