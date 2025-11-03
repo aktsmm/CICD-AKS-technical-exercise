@@ -12,24 +12,6 @@ param acrName string
 @description('AKS クラスター名')
 param aksName string
 
-// リソースグループのアクティビティログを送信
-resource rgDiagnostic 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: 'rg-activitylog-to-la'
-  properties: {
-    workspaceId: workspaceId
-    logs: [
-      { category: 'Administrative', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'Security', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'ServiceHealth', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'Alert', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'Recommendation', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'Policy', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'Autoscale', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'ResourceHealth', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-    ]
-  }
-}
-
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
   name: storageAccountName
 }
@@ -40,9 +22,7 @@ resource storageDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
   properties: {
     workspaceId: workspaceId
     logs: [
-      { category: 'StorageRead', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'StorageWrite', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'StorageDelete', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+      { categoryGroup: 'StorageLogs', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
     metrics: [
       { category: 'Transaction', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
