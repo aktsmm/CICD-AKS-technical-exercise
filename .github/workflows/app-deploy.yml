@@ -1,423 +1,455 @@
 name: Build and Deploy Application
 
 on:
-    # アプリコードのみの変更時は直接実行
-    push:
-        branches:
-            - main
-        paths:
-            - "app/**"
-            - ".github/workflows/app-deploy.yml"
-    workflow_dispatch:
-    # Infrastructure完了後に自動実行
-    workflow_run:
-        workflows: ["Deploy Infrastructure"]
-        types:
-            - completed
-        branches:
-            - main
+  # アプリコードのみの変更時は直接実行
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - ".github/workflows/app-deploy.yml"
+  workflow_dispatch:
+  # Infrastructure完了後に自動実行
+  workflow_run:
+    workflows: ["Deploy Infrastructure"]
+    types:
+      - completed
+    branches:
+      - main
 
 permissions:
-    contents: read
-    security-events: write
+  contents: read
+  security-events: write
 
 env:
-    IMAGE_NAME: ${{ vars.IMAGE_NAME }}
-    RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+  IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+  RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
 
 jobs:
-    scan-container:
-        name: Scan Container Image
-        runs-on: ubuntu-latest
-        # Infrastructure デプロイが成功した場合のみ実行
-        if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    # Infrastructure デプロイが成功した場合のみ実行
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Build Docker Image (for scanning)
-              run: |
-                  cd app
-                  docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
 
-            - name: Run Trivy Vulnerability Scanner
-              uses: aquasecurity/trivy-action@master
-              with:
-                  image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
-                  format: "sarif"
-                  output: "trivy-results.sarif"
-                  severity: "CRITICAL,HIGH"
-              continue-on-error: true
+      - name: Install Node.js Dependencies
+        working-directory: app
+        run: npm ci
 
-            - name: Upload Trivy Results
-              uses: github/codeql-action/upload-sarif@v3
-              if: always()
-              continue-on-error: true
-              with:
-                  sarif_file: trivy-results.sarif
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
 
-    build-push:
-        name: Build and Push to ACR
-        runs-on: ubuntu-latest
-        needs: scan-container
-        # Infrastructure デプロイが成功した場合のみ実行
-        if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-        outputs:
-            image_tag: ${{ steps.image.outputs.tag }}
-            acr_name: ${{ steps.get_acr.outputs.acr_name }}
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript"
 
-            - name: Azure Login
-              uses: azure/login@v1
-              with:
-                  creds: ${{ secrets.AZURE_CREDENTIALS }}
+  scan-container:
+    name: Scan Container Image
+    runs-on: ubuntu-latest
+    # Infrastructure デプロイが成功した場合のみ実行
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Get ACR Name
-              id: get_acr
-              run: |
-                  # リソースグループの存在確認（最大10回リトライ、30秒間隔）
-                  max_attempts=10
-                  attempt=1
+      - name: Build Docker Image (for scanning)
+        run: |
+          cd app
+          docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
 
-                  while [ $attempt -le $max_attempts ]; do
-                      echo "🔍 Attempt $attempt/$max_attempts: Checking resource group..."
-                      
-                      if az group show --name ${{ env.RESOURCE_GROUP }} &>/dev/null; then
-                          echo "✅ Resource group ${{ env.RESOURCE_GROUP }} found!"
-                          break
-                      fi
-                      
-                      if [ $attempt -eq $max_attempts ]; then
-                          echo "❌ Resource group ${{ env.RESOURCE_GROUP }} not found after $max_attempts attempts!"
-                          echo "Infrastructure deployment may not have completed yet."
-                          exit 1
-                      fi
-                      
-                      echo "⏳ Resource group not found. Waiting 30 seconds..."
-                      sleep 30
-                      attempt=$((attempt + 1))
-                  done
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH"
+        continue-on-error: true
 
-                  # ACRの取得（最大20回リトライ、30秒間隔 = 最大10分待機）
-                  max_acr_attempts=20
-                  acr_attempt=1
-                  ACR_NAME=""
+      - name: Upload Trivy Results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: trivy-results.sarif
 
-                  while [ $acr_attempt -le $max_acr_attempts ]; do
-                      echo "🔍 Attempt $acr_attempt/$max_acr_attempts: Checking ACR..."
-                      
-                      ACR_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
-                      
-                      if [ -n "$ACR_NAME" ]; then
-                          echo "✅ ACR found: ${ACR_NAME}"
-                          break
-                      fi
-                      
-                      if [ $acr_attempt -eq $max_acr_attempts ]; then
-                          echo "❌ No ACR found in resource group ${{ env.RESOURCE_GROUP }} after $max_acr_attempts attempts!"
-                          echo "Infrastructure deployment may still be in progress."
-                          echo "💡 Hint: ACR creation typically takes 5-10 minutes after resource group creation."
-                          exit 1
-                      fi
-                      
-                      echo "⏳ ACR not found yet. Waiting 30 seconds... (This is normal, ACR creation takes time)"
-                      sleep 30
-                      acr_attempt=$((acr_attempt + 1))
-                  done
+  build-push:
+    name: Build and Push to ACR
+    runs-on: ubuntu-latest
+    needs:
+      - scan-container
+      - codeql-analysis
+    # Infrastructure デプロイが成功した場合のみ実行
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      image_tag: ${{ steps.image.outputs.tag }}
+      acr_name: ${{ steps.get_acr.outputs.acr_name }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-                  echo "ACR Name: ${ACR_NAME}"
-                  echo "acr_name=${ACR_NAME}" >> $GITHUB_OUTPUT
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-            - name: Login to ACR
-              run: |
-                  az acr login --name ${{ steps.get_acr.outputs.acr_name }}
+      - name: Get ACR Name
+        id: get_acr
+        run: |
+          # リソースグループの存在確認（最大10回リトライ、30秒間隔）
+          max_attempts=10
+          attempt=1
 
-            - name: Build and Push Image
-              id: image
-              run: |
-                  cd app
-                  IMAGE_TAG="${{ github.sha }}"
-                  ACR_NAME="${{ steps.get_acr.outputs.acr_name }}"
-                  FULL_IMAGE="${ACR_NAME}.azurecr.io/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
+          while [ $attempt -le $max_attempts ]; do
+              echo "🔍 Attempt $attempt/$max_attempts: Checking resource group..."
+              
+              if az group show --name ${{ env.RESOURCE_GROUP }} &>/dev/null; then
+                  echo "✅ Resource group ${{ env.RESOURCE_GROUP }} found!"
+                  break
+              fi
+              
+              if [ $attempt -eq $max_attempts ]; then
+                  echo "❌ Resource group ${{ env.RESOURCE_GROUP }} not found after $max_attempts attempts!"
+                  echo "Infrastructure deployment may not have completed yet."
+                  exit 1
+              fi
+              
+              echo "⏳ Resource group not found. Waiting 30 seconds..."
+              sleep 30
+              attempt=$((attempt + 1))
+          done
 
-                  docker build -t $FULL_IMAGE .
-                  docker push $FULL_IMAGE
+          # ACRの取得（最大20回リトライ、30秒間隔 = 最大10分待機）
+          max_acr_attempts=20
+          acr_attempt=1
+          ACR_NAME=""
 
-                  # Tag as latest
-                  docker tag $FULL_IMAGE ${ACR_NAME}.azurecr.io/${{ env.IMAGE_NAME }}:latest
-                  docker push ${ACR_NAME}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          while [ $acr_attempt -le $max_acr_attempts ]; do
+              echo "🔍 Attempt $acr_attempt/$max_acr_attempts: Checking ACR..."
+              
+              ACR_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
+              
+              if [ -n "$ACR_NAME" ]; then
+                  echo "✅ ACR found: ${ACR_NAME}"
+                  break
+              fi
+              
+              if [ $acr_attempt -eq $max_acr_attempts ]; then
+                  echo "❌ No ACR found in resource group ${{ env.RESOURCE_GROUP }} after $max_acr_attempts attempts!"
+                  echo "Infrastructure deployment may still be in progress."
+                  echo "💡 Hint: ACR creation typically takes 5-10 minutes after resource group creation."
+                  exit 1
+              fi
+              
+              echo "⏳ ACR not found yet. Waiting 30 seconds... (This is normal, ACR creation takes time)"
+              sleep 30
+              acr_attempt=$((acr_attempt + 1))
+          done
 
-                  echo "tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "ACR Name: ${ACR_NAME}"
+          echo "acr_name=${ACR_NAME}" >> $GITHUB_OUTPUT
 
-    deploy-aks:
-        name: Deploy to AKS
-        runs-on: ubuntu-latest
-        needs: build-push
-        # Infrastructure デプロイが成功した場合のみ実行
-        if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+      - name: Login to ACR
+        run: |
+          az acr login --name ${{ steps.get_acr.outputs.acr_name }}
 
-            - name: Azure Login
-              uses: azure/login@v1
-              with:
-                  creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Build and Push Image
+        id: image
+        run: |
+          cd app
+          IMAGE_TAG="${{ github.sha }}"
+          ACR_NAME="${{ steps.get_acr.outputs.acr_name }}"
+          FULL_IMAGE="${ACR_NAME}.azurecr.io/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
 
-            - name: Get Infrastructure Details
-              id: infra
-              run: |
-                  echo "Querying Azure for infrastructure details..."
+          docker build -t $FULL_IMAGE .
+          docker push $FULL_IMAGE
 
-                  # AKSクラスター名を取得
-                  AKS_CLUSTER_NAME=$(az aks list -g ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
+          # Tag as latest
+          docker tag $FULL_IMAGE ${ACR_NAME}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          docker push ${ACR_NAME}.azurecr.io/${{ env.IMAGE_NAME }}:latest
 
-                  # MongoDB VMのプライベートIPを取得（VNet内通信用）
-                  MONGO_VM_IP=$(az vm list-ip-addresses -g ${{ env.RESOURCE_GROUP }} -n vm-mongo-dev --query "[0].virtualMachine.network.privateIpAddresses[0]" -o tsv)
+          echo "tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
-                  echo "AKS Cluster: ${AKS_CLUSTER_NAME}"
-                  echo "MongoDB VM IP: ${MONGO_VM_IP}"
+  deploy-aks:
+    name: Deploy to AKS
+    runs-on: ubuntu-latest
+    needs: build-push
+    # Infrastructure デプロイが成功した場合のみ実行
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-                  echo "aks_name=${AKS_CLUSTER_NAME}" >> $GITHUB_OUTPUT
-                  echo "mongo_ip=${MONGO_VM_IP}" >> $GITHUB_OUTPUT
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-            - name: Set AKS Context
-              run: |
-                  if [ -z "${{ steps.infra.outputs.aks_name }}" ]; then
-                    echo "Error: AKS cluster name is empty. Please run infra-deploy workflow first."
-                    exit 1
-                  fi
+      - name: Get Infrastructure Details
+        id: infra
+        run: |
+          echo "Querying Azure for infrastructure details..."
 
-                  # AKS がプロビジョニング完了するまで待機
-                  echo "Waiting for AKS cluster to be ready..."
-                  max_attempts=30
-                  attempt=1
+          # AKSクラスター名を取得
+          AKS_CLUSTER_NAME=$(az aks list -g ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
 
-                  while [ $attempt -le $max_attempts ]; do
-                    state=$(az aks show \
-                      --resource-group ${{ env.RESOURCE_GROUP }} \
-                      --name ${{ steps.infra.outputs.aks_name }} \
-                      --query provisioningState -o tsv)
-                    
-                    echo "Attempt $attempt/$max_attempts: AKS provisioning state = $state"
-                    
-                    if [ "$state" == "Succeeded" ]; then
-                      echo "AKS cluster is ready!"
-                      break
-                    elif [ "$state" == "Failed" ]; then
-                      echo "Error: AKS provisioning failed"
-                      exit 1
-                    fi
-                    
-                    if [ $attempt -eq $max_attempts ]; then
-                      echo "Error: Timeout waiting for AKS to be ready"
-                      exit 1
-                    fi
-                    
-                    echo "Waiting 30 seconds..."
-                    sleep 30
-                    attempt=$((attempt + 1))
-                  done
+          # MongoDB VMのプライベートIPを取得（VNet内通信用）
+          MONGO_VM_IP=$(az vm list-ip-addresses -g ${{ env.RESOURCE_GROUP }} -n vm-mongo-dev --query "[0].virtualMachine.network.privateIpAddresses[0]" -o tsv)
 
-                  az aks get-credentials \
-                    --resource-group ${{ env.RESOURCE_GROUP }} \
-                    --name ${{ steps.infra.outputs.aks_name }} \
-                    --overwrite-existing
+          echo "AKS Cluster: ${AKS_CLUSTER_NAME}"
+          echo "MongoDB VM IP: ${MONGO_VM_IP}"
 
-            - name: Replace Placeholders in K8s Manifests
-              run: |
-                  # Deployment - use dynamic image tag from build
-                  ACR_NAME="${{ needs.build-push.outputs.acr_name }}"
-                  MONGO_PASSWORD="${{ secrets.MONGO_ADMIN_PASSWORD }}"
+          echo "aks_name=${AKS_CLUSTER_NAME}" >> $GITHUB_OUTPUT
+          echo "mongo_ip=${MONGO_VM_IP}" >> $GITHUB_OUTPUT
 
-                  sed -i "s|<ACR_NAME>|${ACR_NAME}|g" app/k8s/deployment.yaml
-                  sed -i "s|<IMAGE_TAG>|${{ needs.build-push.outputs.image_tag }}|g" app/k8s/deployment.yaml
-                  sed -i "s|<MONGO_VM_IP>|${{ steps.infra.outputs.mongo_ip }}|g" app/k8s/deployment.yaml
-                  sed -i "s|<MONGO_ADMIN_PASSWORD>|${MONGO_PASSWORD}|g" app/k8s/deployment.yaml
+      - name: Set AKS Context
+        run: |
+          if [ -z "${{ steps.infra.outputs.aks_name }}" ]; then
+            echo "Error: AKS cluster name is empty. Please run infra-deploy workflow first."
+            exit 1
+          fi
 
-                  echo "=== Updated Deployment (credentials masked) ==="
-                  cat app/k8s/deployment.yaml | sed "s/${MONGO_PASSWORD}/***MASKED***/g"
+          # AKS がプロビジョニング完了するまで待機
+          echo "Waiting for AKS cluster to be ready..."
+          max_attempts=30
+          attempt=1
 
-            - name: Deploy to Kubernetes
-              run: |
-                  # 1. Deploy Ingress Controller (if not exists)
-                  echo "=== Deploying NGINX Ingress Controller ==="
-                  kubectl apply -f app/k8s/ingress-nginx-controller.yaml
+          while [ $attempt -le $max_attempts ]; do
+            state=$(az aks show \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --name ${{ steps.infra.outputs.aks_name }} \
+              --query provisioningState -o tsv)
+            
+            echo "Attempt $attempt/$max_attempts: AKS provisioning state = $state"
+            
+            if [ "$state" == "Succeeded" ]; then
+              echo "AKS cluster is ready!"
+              break
+            elif [ "$state" == "Failed" ]; then
+              echo "Error: AKS provisioning failed"
+              exit 1
+            fi
+            
+            if [ $attempt -eq $max_attempts ]; then
+              echo "Error: Timeout waiting for AKS to be ready"
+              exit 1
+            fi
+            
+            echo "Waiting 30 seconds..."
+            sleep 30
+            attempt=$((attempt + 1))
+          done
 
-                  # Wait for Ingress Controller to be ready
-                  echo "=== Waiting for Ingress Controller (2 min) ==="
-                  kubectl wait --namespace ingress-nginx \
-                    --for=condition=ready pod \
-                    --selector=app.kubernetes.io/component=controller \
-                    --timeout=120s || echo "⚠️ Ingress Controller not ready yet (will continue)"
+          az aks get-credentials \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ steps.infra.outputs.aks_name }} \
+            --overwrite-existing
 
-                  # 2. Apply vulnerable RBAC (demo purpose)
-                  echo "=== Deploying Vulnerable RBAC ==="
-                  kubectl apply -f app/k8s/rbac-vulnerable.yaml
+      - name: Replace Placeholders in K8s Manifests
+        run: |
+          # Deployment - use dynamic image tag from build
+          ACR_NAME="${{ needs.build-push.outputs.acr_name }}"
+          MONGO_PASSWORD="${{ secrets.MONGO_ADMIN_PASSWORD }}"
 
-                  # 3. Deploy application
-                  echo "=== Deploying Application ==="
-                  kubectl apply -f app/k8s/deployment.yaml
-                  kubectl apply -f app/k8s/service.yaml
+          sed -i "s|<ACR_NAME>|${ACR_NAME}|g" app/k8s/deployment.yaml
+          sed -i "s|<IMAGE_TAG>|${{ needs.build-push.outputs.image_tag }}|g" app/k8s/deployment.yaml
+          sed -i "s|<MONGO_VM_IP>|${{ steps.infra.outputs.mongo_ip }}|g" app/k8s/deployment.yaml
+          sed -i "s|<MONGO_ADMIN_PASSWORD>|${MONGO_PASSWORD}|g" app/k8s/deployment.yaml
 
-                  # 4. Deploy Ingress resource
-                  echo "=== Deploying Ingress ==="
-                  kubectl apply -f app/k8s/ingress.yaml
+          echo "=== Updated Deployment (credentials masked) ==="
+          cat app/k8s/deployment.yaml | sed "s/${MONGO_PASSWORD}/***MASKED***/g"
 
-            - name: Wait for Deployment
-              run: |
-                  echo "=== Checking Deployment Status ==="
-                  kubectl get deployment guestbook-app
+      - name: Deploy to Kubernetes
+        run: |
+          # 1. Deploy Ingress Controller (if not exists)
+          echo "=== Deploying NGINX Ingress Controller ==="
+          kubectl apply -f app/k8s/ingress-nginx-controller.yaml
 
-                  echo "=== Checking Pods ==="
-                  kubectl get pods -l app=guestbook
+          # Wait for Ingress Controller to be ready
+          echo "=== Waiting for Ingress Controller (2 min) ==="
+          kubectl wait --namespace ingress-nginx \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/component=controller \
+            --timeout=120s || echo "⚠️ Ingress Controller not ready yet (will continue)"
 
-                  echo "=== Waiting for Rollout (5 min timeout) ==="
-                  kubectl rollout status deployment/guestbook-app --timeout=5m || {
-                    echo "❌ Rollout failed or timed out. Debugging..."
-                    
-                    echo "=== Pod Details ==="
-                    kubectl get pods -l app=guestbook -o wide
-                    
-                    echo "=== Pod Events ==="
-                    kubectl get events --sort-by='.lastTimestamp' | grep -i guestbook || echo "No events found"
-                    
-                    echo "=== Pod Describe (if any pods exist) ==="
-                    POD_NAME=$(kubectl get pods -l app=guestbook -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-                    if [ ! -z "$POD_NAME" ]; then
-                      kubectl describe pod $POD_NAME
-                      
-                      echo "=== Pod Logs ==="
-                      kubectl logs $POD_NAME --tail=50 || echo "No logs available"
-                    fi
-                    
-                    echo "=== Deployment Describe ==="
-                    kubectl describe deployment guestbook-app
-                    
-                    exit 1
-                  }
+          # 2. Apply vulnerable RBAC (demo purpose)
+          echo "=== Deploying Vulnerable RBAC ==="
+          kubectl apply -f app/k8s/rbac-vulnerable.yaml
 
-            - name: Setup HTTPS with cert-manager
-              run: |
-                  echo "=== Installing cert-manager ==="
-                  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.yaml
+          # 3. Deploy application
+          echo "=== Deploying Application ==="
+          kubectl apply -f app/k8s/deployment.yaml
+          kubectl apply -f app/k8s/service.yaml
 
-                  echo "=== Waiting for cert-manager to be ready ==="
-                  kubectl wait --namespace cert-manager \
-                    --for=condition=ready pod \
-                    --selector=app.kubernetes.io/instance=cert-manager \
-                    --timeout=120s || echo "⚠️ cert-manager not ready yet (will continue)"
+          # 4. Deploy Ingress resource
+          echo "=== Deploying Ingress ==="
+          kubectl apply -f app/k8s/ingress.yaml
 
-                  sleep 10
+      - name: Wait for Deployment
+        run: |
+          echo "=== Checking Deployment Status ==="
+          kubectl get deployment guestbook-app
 
-                  echo "=== Creating Self-Signed ClusterIssuer ==="
-                  cat <<EOF | kubectl apply -f -
-                  apiVersion: cert-manager.io/v1
-                  kind: ClusterIssuer
-                  metadata:
-                    name: selfsigned-issuer
-                  spec:
-                    selfSigned: {}
-                  EOF
+          echo "=== Checking Pods ==="
+          kubectl get pods -l app=guestbook
 
-                  echo "=== Getting Ingress IP ==="
-                  INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "=== Waiting for Rollout (5 min timeout) ==="
+          kubectl rollout status deployment/guestbook-app --timeout=5m || {
+            echo "❌ Rollout failed or timed out. Debugging..."
+            
+            echo "=== Pod Details ==="
+            kubectl get pods -l app=guestbook -o wide
+            
+            echo "=== Pod Events ==="
+            kubectl get events --sort-by='.lastTimestamp' | grep -i guestbook || echo "No events found"
+            
+            echo "=== Pod Describe (if any pods exist) ==="
+            POD_NAME=$(kubectl get pods -l app=guestbook -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+            if [ ! -z "$POD_NAME" ]; then
+              kubectl describe pod $POD_NAME
+              
+              echo "=== Pod Logs ==="
+              kubectl logs $POD_NAME --tail=50 || echo "No logs available"
+            fi
+            
+            echo "=== Deployment Describe ==="
+            kubectl describe deployment guestbook-app
+            
+            exit 1
+          }
 
-                  if [ -z "$INGRESS_IP" ]; then
-                    echo "⏳ Waiting for External IP..."
-                    sleep 30
-                    INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-                  fi
+      - name: Setup HTTPS with cert-manager
+        run: |
+          echo "=== Installing cert-manager ==="
+          kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.yaml
 
-                  if [ -z "$INGRESS_IP" ]; then
-                    echo "❌ Could not get Ingress IP. Skipping HTTPS setup."
-                    exit 0
-                  fi
+          echo "=== Waiting for cert-manager to be ready ==="
+          kubectl wait --namespace cert-manager \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/instance=cert-manager \
+            --timeout=120s || echo "⚠️ cert-manager not ready yet (will continue)"
 
-                  DOMAIN="${INGRESS_IP}.nip.io"
-                  echo "📡 Using domain: ${DOMAIN}"
+          sleep 10
 
-                  echo "=== Updating Ingress with TLS ==="
-                  cat <<EOF | kubectl apply -f -
-                  apiVersion: networking.k8s.io/v1
-                  kind: Ingress
-                  metadata:
-                    name: guestbook-ingress
-                    namespace: default
-                    annotations:
-                      nginx.ingress.kubernetes.io/rewrite-target: /
-                      cert-manager.io/cluster-issuer: selfsigned-issuer
-                  spec:
-                    ingressClassName: nginx
-                    tls:
-                      - hosts:
-                          - ${DOMAIN}
-                        secretName: guestbook-tls-cert
-                    rules:
-                      - host: ${DOMAIN}
-                        http:
-                          paths:
-                            - path: /
-                              pathType: Prefix
-                              backend:
-                                service:
-                                  name: guestbook-service
-                                  port:
-                                    number: 80
-                      - http:
-                          paths:
-                            - path: /
-                              pathType: Prefix
-                              backend:
-                                service:
-                                  name: guestbook-service
-                                  port:
-                                    number: 80
-                  EOF
+          echo "=== Creating Self-Signed ClusterIssuer ==="
+          cat <<EOF | kubectl apply -f -
+          apiVersion: cert-manager.io/v1
+          kind: ClusterIssuer
+          metadata:
+            name: selfsigned-issuer
+          spec:
+            selfSigned: {}
+          EOF
 
-                  echo "=== Waiting for certificate ==="
-                  sleep 15
-                  kubectl get certificate
-                  kubectl describe certificate guestbook-tls-cert || echo "Certificate being created..."
+          echo "=== Getting Ingress IP ==="
+          INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
-            - name: Get Service Information
-              run: |
-                  echo "=== Pods ==="
-                  kubectl get pods -l app=guestbook -o wide
+          if [ -z "$INGRESS_IP" ]; then
+            echo "⏳ Waiting for External IP..."
+            sleep 30
+            INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          fi
 
-                  echo "=== Services ==="
-                  kubectl get svc guestbook-service
+          if [ -z "$INGRESS_IP" ]; then
+            echo "❌ Could not get Ingress IP. Skipping HTTPS setup."
+            exit 0
+          fi
 
-                  echo "=== Ingress Controller Service ==="
-                  kubectl get svc -n ingress-nginx ingress-nginx-controller
+          DOMAIN="${INGRESS_IP}.nip.io"
+          echo "📡 Using domain: ${DOMAIN}"
 
-                  echo "=== Ingress Resources ==="
-                  kubectl get ingress guestbook-ingress
-                  kubectl describe ingress guestbook-ingress
+          echo "=== Updating Ingress with TLS ==="
+          cat <<EOF | kubectl apply -f -
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: guestbook-ingress
+            namespace: default
+            annotations:
+              nginx.ingress.kubernetes.io/rewrite-target: /
+              cert-manager.io/cluster-issuer: selfsigned-issuer
+          spec:
+            ingressClassName: nginx
+            tls:
+              - hosts:
+                  - ${DOMAIN}
+                secretName: guestbook-tls-cert
+            rules:
+              - host: ${DOMAIN}
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: guestbook-service
+                          port:
+                            number: 80
+              - http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: guestbook-service
+                          port:
+                            number: 80
+          EOF
 
-                  echo "=== Certificate Status ==="
-                  kubectl get certificate guestbook-tls-cert || echo "No certificate found"
+          echo "=== Waiting for certificate ==="
+          sleep 15
+          kubectl get certificate
+          kubectl describe certificate guestbook-tls-cert || echo "Certificate being created..."
 
-                  echo ""
-                  echo "=== 🎉 Deployment Complete ==="
-                  echo "Access Flow:"
-                  echo "  [User] → [Azure Load Balancer] → [Ingress Controller (TLS)] → [Service] → [Pod]"
-                  echo ""
+      - name: Get Service Information
+        run: |
+          echo "=== Pods ==="
+          kubectl get pods -l app=guestbook -o wide
 
-                  INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "=== Services ==="
+          kubectl get svc guestbook-service
 
-                  if [ ! -z "$INGRESS_IP" ]; then
-                    DOMAIN="${INGRESS_IP}.nip.io"
-                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                    echo "🌐 Access URLs:"
-                    echo "   HTTPS: https://${DOMAIN}"
-                    echo "   HTTP:  http://${INGRESS_IP}"
-                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                    echo ""
-                    echo "⚠️  Note: Using self-signed certificate"
-                    echo "   Your browser will show a security warning - this is expected for demo."
-                  else
-                    echo "⏳ Waiting for External IP to be assigned..."
-                  fi
+          echo "=== Ingress Controller Service ==="
+          kubectl get svc -n ingress-nginx ingress-nginx-controller
+
+          echo "=== Ingress Resources ==="
+          kubectl get ingress guestbook-ingress
+          kubectl describe ingress guestbook-ingress
+
+          echo "=== Certificate Status ==="
+          kubectl get certificate guestbook-tls-cert || echo "No certificate found"
+
+          echo ""
+          echo "=== 🎉 Deployment Complete ==="
+          echo "Access Flow:"
+          echo "  [User] → [Azure Load Balancer] → [Ingress Controller (TLS)] → [Service] → [Pod]"
+          echo ""
+
+          INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+          if [ ! -z "$INGRESS_IP" ]; then
+            DOMAIN="${INGRESS_IP}.nip.io"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🌐 Access URLs:"
+            echo "   HTTPS: https://${DOMAIN}"
+            echo "   HTTP:  http://${INGRESS_IP}"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "⚠️  Note: Using self-signed certificate"
+            echo "   Your browser will show a security warning - this is expected for demo."
+          else
+            echo "⏳ Waiting for External IP to be assigned..."
+          fi
