@@ -2,13 +2,6 @@ name: 🧹 Cleanup Workflow Runs (Keep latest 10 successful runs only)
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - "app/**"
-      - "infra/**"
-      - ".github/workflows/cleanup.yml"
-
   workflow_dispatch:
   schedule:
     - cron: "0 */12 * * *" # 12時間ごとに実行（UTC）
