@@ -63,7 +63,7 @@ jobs:
           region: ${{ env.LOCATION }}
           template: ./infra/main.bicep
           parameters: >
-            @infra/parameters/main-dev.bicepparam
+            @infra/parameters/main-dev.parameters.json
             resourceGroupName=${{ env.RESOURCE_GROUP }}
             location=${{ env.LOCATION }}
             mongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }}

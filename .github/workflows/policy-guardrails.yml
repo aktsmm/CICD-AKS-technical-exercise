@@ -63,6 +63,6 @@ jobs:
                   region: ${{ env.LOCATION }}
                   template: ./infra/policy-guardrails.bicep
                   parameters: >
-                      @infra/parameters/policy-dev.bicepparam
+                      @infra/parameters/policy-dev.parameters.json
                   deploymentName: policy-guardrails-${{ github.run_number }}
                   failOnStdErr: false
