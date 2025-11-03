@@ -198,7 +198,7 @@
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## � 認証アーキテクチャ
+## 認証アーキテクチャ
 
 このプロジェクトでは、複数の認証メカニズムを組み合わせてセキュアなデプロイを実現しています。
 
@@ -473,7 +473,7 @@ az role assignment create \
   --scope <STORAGE_ACCOUNT_RESOURCE_ID>
 ```
 
-## � プレースホルダーと設定箇所
+## プレースホルダーと設定箇所
 
 このドキュメントでは、環境非依存にするためプレースホルダーを使用しています。実際の設定箇所は以下の通りです。
 
@@ -481,7 +481,7 @@ az role assignment create \
 
 | プレースホルダー         | 説明                         | 設定箇所                                                                                                                           | デフォルト値                       |
 | ------------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `<RESOURCE_GROUP_NAME>`  | リソースグループ名           | `infra/main.bicep` (Line 4)<br>`.github/workflows/infra-deploy.yml` (Line 18)<br>`.github/workflows/app-deploy.yml` (Line 26)      | `rg-bbs-cicd-aks-01`               |
+| `<RESOURCE_GROUP_NAME>`  | リソースグループ名           | `infra/main.bicep` (Line 4)<br>`.github/workflows/infra-deploy.yml` (Line 18)<br>`.github/workflows/app-deploy.yml` (Line 26)      | `rg-bbs-cicd-aks`                  |
 | `<AKS_CLUSTER_NAME>`     | AKS クラスター名             | `infra/modules/aks.bicep` (Line 13)<br>※ `aks${environment}` のパターン                                                            | `aksdev` (environment='dev'の場合) |
 | `<ACR_NAME>`             | Azure Container Registry 名  | `infra/modules/acr.bicep`<br>※ `acr${environment}${uniqueString}` のパターン<br>`.github/workflows/app-deploy.yml` (ACR_NAME 変数) | `acrdev` + ハッシュ                |
 | `<STORAGE_ACCOUNT_NAME>` | Storage Account 名           | `infra/modules/storage.bicep`<br>※ `stwiz${environment}${uniqueString}` のパターン                                                 | `stwizdev` + ハッシュ              |
@@ -500,7 +500,7 @@ az role assignment create \
 
 ```bicep
 // Line 4: リソースグループ名
-param resourceGroupName string = 'rg-bbs-cicd-aks-01'
+param resourceGroupName string = 'rg-bbs-cicd-aks'
 
 // Line 10: 環境名 (dev, prod, staging等)
 param environment string = 'dev'
@@ -511,7 +511,7 @@ param environment string = 'dev'
 ```yaml
 # Line 18: リソースグループ名
 env:
-  RESOURCE_GROUP: rg-bbs-cicd-aks-01
+  RESOURCE_GROUP: rg-bbs-cicd-aks
 ```
 
 #### 3. `.github/workflows/app-deploy.yml` (アプリデプロイ設定)
@@ -519,7 +519,7 @@ env:
 ```yaml
 # Line 26: リソースグループ名
 env:
-  RESOURCE_GROUP: rg-bbs-cicd-aks-01
+  RESOURCE_GROUP: rg-bbs-cicd-aks
   ACR_NAME: acrdev # Line 27: ACR名
 ```
 
@@ -535,7 +535,7 @@ var clusterName = 'aks${environment}'
 ```yaml
 # Line 6: リソースグループ名
 variables:
-  resourceGroup: "rg-bbs-cicd-aks-01"
+  resourceGroup: "rg-bbs-cicd-aks"
 ```
 
 ### 命名規則の説明
@@ -872,7 +872,7 @@ az ad sp delete --id $SP_ID
 - ✅ **定期的な削除** - 使用後は必ずリソースを削除してください
 - ✅ **コスト管理** - AKS/VM 稼働でコストが発生します
 
-## �📝 ライセンス
+## 📝 ライセンス
 
 このプロジェクトは MIT ライセンスの下で公開されています。詳細は [LICENSE](LICENSE) を参照してください。
 
