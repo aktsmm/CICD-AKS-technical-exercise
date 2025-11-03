@@ -82,10 +82,6 @@ resource aksDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
       { category: 'csi-azuredisk-controller', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
       { category: 'csi-azurefile-controller', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
       { category: 'csi-snapshot-controller', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'fleet-member-agent', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'fleet-member-net-controller-manager', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'fleet-mcs-controller-manager', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'karpenter-events', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
     metrics: [
       { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
