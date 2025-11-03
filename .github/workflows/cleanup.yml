@@ -1,7 +1,17 @@
-name: 🧹 Cleanup Workflow Runs (Delete ALL runs)
+name: 🧹 Cleanup Workflow Runs (Keep latest 10 + delete failed recent runs)
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "infra/**"
+      - ".github/workflows/cleanup.yml"
+
   workflow_dispatch:
+  schedule:
+    - cron: "0 */12 * * *" # 12時間ごとに実行（UTC）
 
 permissions:
   actions: write
@@ -11,31 +21,41 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete ALL workflow runs
+      - name: Delete old or failed workflow runs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPO="aktsmm/CICD-AKS-technical-exercise"
 
-          echo "🧾 Fetching ALL workflow runs..."
+          echo "🧾 Fetching workflow runs..."
           RUNS=$(gh api repos/$REPO/actions/runs --paginate \
-            -q '.workflow_runs[] | {id: .id, status: .status, conclusion: .conclusion, created_at: .created_at}' \
+            -q '.workflow_runs[] | {id: .id, name: .name, status: .status, conclusion: .conclusion, created_at: .created_at}' \
             | jq -s 'sort_by(.created_at) | reverse')
 
-          COUNT=$(echo "$RUNS" | jq 'length')
+          echo "🧩 Selecting deletion targets..."
+          # 最新10件は保持。ただし "Cleanup Workflow Runs" は保持対象でも削除する
+          TARGETS=$(echo "$RUNS" | jq -c '[.[10:][] 
+            | select((.conclusion == "failure") 
+              or (.conclusion == "cancelled") 
+              or (.conclusion == "timed_out") 
+              or (.conclusion == null) 
+              or (.name == "🧹 Cleanup Workflow Runs (Keep latest 10 + delete failed recent runs)"))]')
+
+          COUNT=$(echo "$TARGETS" | jq 'length')
           echo "🧹 Found $COUNT runs to delete."
 
           if (( COUNT == 0 )); then
-            echo "✅ No runs found. Exiting."
+            echo "✅ No runs to delete. Exiting."
             exit 0
           fi
 
-          echo "$RUNS" | jq -c '.[]' | while read -r run; do
+          echo "$TARGETS" | jq -c '.[]' | while read -r run; do
             ID=$(echo "$run" | jq -r '.id')
+            NAME=$(echo "$run" | jq -r '.name')
             STATUS=$(echo "$run" | jq -r '.status')
             CONCLUSION=$(echo "$run" | jq -r '.conclusion')
             CREATED_AT=$(echo "$run" | jq -r '.created_at')
 
-            echo "🧹 Deleting run ID: $ID ($STATUS/$CONCLUSION, created $CREATED_AT)"
+            echo "🧹 Deleting run ID: $ID [$NAME] ($STATUS/$CONCLUSION, created $CREATED_AT)"
             gh api repos/$REPO/actions/runs/$ID -X DELETE || echo "⚠️ Failed to delete run $ID"
           done
