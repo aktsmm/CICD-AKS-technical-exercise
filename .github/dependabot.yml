@@ -1,0 +1,24 @@
+version: 2
+# Dependabot で依存関係を定期チェック
+updates:
+  - package-ecosystem: "npm"
+    directory: "/app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    # Node.js アプリの依存ライブラリを週間サイクルで更新提案
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    # GitHub Actions ランナーやアクションの更新を追跡
