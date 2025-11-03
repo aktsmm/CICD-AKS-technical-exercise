@@ -28,7 +28,7 @@ env:
 jobs:
   codeql-analysis:
     name: CodeQL Analysis
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     # Infrastructure デプロイが成功した場合のみ実行
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
@@ -58,7 +58,7 @@ jobs:
 
   scan-container:
     name: Scan Container Image
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     # Infrastructure デプロイが成功した場合のみ実行
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     steps:
@@ -88,7 +88,7 @@ jobs:
 
   build-push:
     name: Build and Push to ACR
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     needs:
       - scan-container
       - codeql-analysis
@@ -185,7 +185,7 @@ jobs:
 
   deploy-aks:
     name: Deploy to AKS
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     needs: build-push
     # Infrastructure デプロイが成功した場合のみ実行
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
