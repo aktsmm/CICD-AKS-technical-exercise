@@ -215,34 +215,6 @@ resource mongoVmDcrAssociation 'Microsoft.Insights/dataCollectionRuleAssociation
   }
 }
 
-resource vmDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: 'vm-to-la'
-  scope: mongoVm
-  properties: {
-    workspaceId: workspaceId
-    logs: [
-      {
-        category: 'VMInsights'
-        enabled: true
-        retentionPolicy: {
-          enabled: false
-          days: 0
-        }
-      }
-    ]
-    metrics: [
-      {
-        category: 'GuestMetrics'
-        enabled: true
-        retentionPolicy: {
-          enabled: false
-          days: 0
-        }
-      }
-    ]
-  }
-}
-
 resource mongoNsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' existing = {
   name: nsgName
 }
