@@ -18,7 +18,7 @@ param nonComplianceMessage string = 'Review compliance results for this policy a
 @description('イニシアチブに渡すパラメーター。不要な場合は空のオブジェクトのまま。')
 param policyParameters object = {}
 
-// デモ環境の評価用としてサブスクリプション スコープに割り当てる。
+// デモ環境の評価用としてサブスクリプション全体にガードレールを適用する共通モジュール。
 resource initiativeAssignment 'Microsoft.Authorization/policyAssignments@2022-06-01' = {
   name: assignmentName
   scope: subscription()
