@@ -1,7 +1,7 @@
 targetScope = 'subscription'
 
 @description('リソースグループ名')
-param resourceGroupName string = 'rg-bbs-cicd-aks-01'
+param resourceGroupName string = 'rg-bbs-cicd-aks'
 
 @description('デプロイ先リージョン')
 param location string = 'japaneast'
@@ -133,6 +133,28 @@ module diagnostics 'modules/diagnostics.bicep' = {
     vmName: mongoVM.outputs.vmName
     nsgName: mongoVM.outputs.nsgName
     vnetName: networking.outputs.vnetName
+  }
+}
+
+module policyMcsb 'modules/policy-initiative-assignment.bicep' = {
+  name: 'policy-mcsb-${deploymentTimestamp}'
+  params: {
+    policySetDefinitionId: '/providers/Microsoft.Authorization/policySetDefinitions/MCSBv2'
+    assignmentName: 'asgmt-mcsb-${environment}'
+    displayName: 'Microsoft cloud security benchmark v2 (${environment})'
+    assignmentDescription: 'Assigns the Microsoft cloud security benchmark initiative to monitor the intentionally vulnerable demo scope.'
+    nonComplianceMessage: 'Use Defender for Cloud to review the Microsoft cloud security benchmark posture for this demo environment.'
+  }
+}
+
+module policyCis 'modules/policy-initiative-assignment.bicep' = {
+  name: 'policy-cis140-${deploymentTimestamp}'
+  params: {
+    policySetDefinitionId: '/providers/Microsoft.Authorization/policySetDefinitions/CISv1_4_0'
+    assignmentName: 'asgmt-cis140-${environment}'
+    displayName: 'CIS Microsoft Azure Foundations Benchmark v1.4.0 (${environment})'
+    assignmentDescription: 'Assigns the CIS v1.4.0 initiative so compliance drift can be reviewed without remediating intentional findings.'
+    nonComplianceMessage: 'Track CIS v1.4.0 recommendations after each deployment to confirm known gaps remain observable.'
   }
 }
 

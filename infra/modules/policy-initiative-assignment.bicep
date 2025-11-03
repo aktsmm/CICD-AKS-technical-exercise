@@ -1,0 +1,39 @@
+targetScope = 'subscription'
+
+@description('割り当て対象のポリシー イニシアチブ ID (例: /providers/Microsoft.Authorization/policySetDefinitions/MCSBv2)')
+param policySetDefinitionId string
+
+@description('ポリシー割り当てのリソース名 (スコープ内で一意)')
+param assignmentName string
+
+@description('ポリシー割り当ての表示名')
+param displayName string
+
+@description('ポリシー割り当ての説明')
+param assignmentDescription string = ''
+
+@description('コンプライアンス違反時に表示するメッセージ')
+param nonComplianceMessage string = 'Review compliance results for this policy assignment.'
+
+@description('イニシアチブに渡すパラメーター。不要な場合は空のオブジェクトのまま。')
+param policyParameters object = {}
+
+// デモ環境の評価用としてサブスクリプション スコープに割り当てる。
+resource initiativeAssignment 'Microsoft.Authorization/policyAssignments@2022-06-01' = {
+  name: assignmentName
+  scope: subscription()
+  properties: {
+    displayName: displayName
+    description: assignmentDescription
+    policyDefinitionId: policySetDefinitionId
+    nonComplianceMessages: [
+      {
+        message: nonComplianceMessage
+      }
+    ]
+    parameters: policyParameters
+    enforcementMode: 'Default'
+  }
+}
+
+output policyAssignmentId string = initiativeAssignment.id
