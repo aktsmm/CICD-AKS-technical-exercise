@@ -130,6 +130,9 @@ module diagnostics 'modules/diagnostics.bicep' = {
     storageAccountName: storage.outputs.storageAccountName
     acrName: acr.outputs.acrName
     aksName: aks.outputs.clusterName
+    vmName: mongoVM.outputs.vmName
+    nsgName: mongoVM.outputs.nsgName
+    vnetName: networking.outputs.vnetName
   }
 }
 

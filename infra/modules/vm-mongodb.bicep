@@ -172,3 +172,5 @@ resource vmExtension 'Microsoft.Compute/virtualMachines/extensions@2023-07-01' =
 output publicIP string = publicIP.properties.ipAddress
 output privateIP string = nic.properties.ipConfigurations[0].properties.privateIPAddress
 output vmIdentityPrincipalId string = vm.identity.principalId
+output vmName string = vm.name
+output nsgName string = nsg.name

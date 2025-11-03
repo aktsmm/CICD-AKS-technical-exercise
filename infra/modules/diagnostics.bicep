@@ -12,6 +12,15 @@ param acrName string
 @description('AKS クラスター名')
 param aksName string
 
+@description('MongoDB VM 名')
+param vmName string
+
+@description('MongoDB VM 用 NSG 名')
+param nsgName string
+
+@description('仮想ネットワーク名')
+param vnetName string
+
 resource storageBlobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' existing = {
   name: '${storageAccountName}/default'
 }
@@ -80,6 +89,57 @@ resource aksDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
     ]
     metrics: [
       { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+    ]
+  }
+}
+
+resource mongoVm 'Microsoft.Compute/virtualMachines@2023-07-01' existing = {
+  name: vmName
+}
+
+resource vmDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'vm-to-la'
+  scope: mongoVm
+  properties: {
+    workspaceId: workspaceId
+    logs: [
+      { category: 'SoftwareUpdateProfile', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+      { category: 'SoftwareUpdates', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+    ]
+    metrics: [
+      { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+    ]
+  }
+}
+
+resource mongoNsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' existing = {
+  name: nsgName
+}
+
+resource nsgDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'nsg-to-la'
+  scope: mongoNsg
+  properties: {
+    workspaceId: workspaceId
+    logs: [
+      { category: 'NetworkSecurityGroupEvent', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+      { category: 'NetworkSecurityGroupFlowEvent', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+      { category: 'NetworkSecurityGroupRuleCounter', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+    ]
+  }
+}
+
+resource virtualNetwork 'Microsoft.Network/virtualNetworks@2023-05-01' existing = {
+  name: vnetName
+}
+
+resource vnetDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'vnet-to-la'
+  scope: virtualNetwork
+  properties: {
+    workspaceId: workspaceId
+    logs: [
+      { category: 'VMProtectionAlerts', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
   }
 }
