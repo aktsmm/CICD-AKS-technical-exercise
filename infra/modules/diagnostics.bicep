@@ -43,10 +43,10 @@ resource storageDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
       { category: 'StorageRead', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
       { category: 'StorageWrite', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
       { category: 'StorageDelete', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'StorageAudit', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
     metrics: [
       { category: 'Transaction', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
+      { category: 'Capacity', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
   }
 }
@@ -63,7 +63,6 @@ resource acrDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
     logs: [
       { category: 'ContainerRegistryLoginEvents', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
       { category: 'ContainerRegistryRepositoryEvents', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'ContainerRegistryContentTrustEvents', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
     metrics: [
       { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
@@ -87,10 +86,6 @@ resource aksDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
       { category: 'cluster-autoscaler', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
       { category: 'kube-audit', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
       { category: 'kube-audit-admin', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'guard', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'cloud-controller-manager', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'csi-azuredisk-controller', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
-      { category: 'csi-azurefile-controller', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
     ]
     metrics: [
       { category: 'AllMetrics', enabled: true, retentionPolicy: { enabled: false, days: 0 } }
