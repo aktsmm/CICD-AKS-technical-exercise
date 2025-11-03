@@ -136,10 +136,11 @@ module diagnostics 'modules/diagnostics.bicep' = {
   }
 }
 
+// Microsoft cloud security benchmark v2 の割り当て。GUID 指定で定義リネーム時も影響を受けません。
 module policyMcsb 'modules/policy-initiative-assignment.bicep' = {
   name: 'policy-mcsb-${deploymentTimestamp}'
   params: {
-    policySetDefinitionId: '/providers/Microsoft.Authorization/policySetDefinitions/MCSBv2'
+    policySetDefinitionId: '/providers/Microsoft.Authorization/policySetDefinitions/e3ec7e09-768c-4b64-882c-fcada3772047'
     assignmentName: 'asgmt-mcsb-${environment}'
     displayName: 'Microsoft cloud security benchmark v2 (${environment})'
     assignmentDescription: 'Assigns the Microsoft cloud security benchmark initiative to monitor the intentionally vulnerable demo scope.'
@@ -147,10 +148,11 @@ module policyMcsb 'modules/policy-initiative-assignment.bicep' = {
   }
 }
 
+// CIS Microsoft Azure Foundations Benchmark v1.4.0 の割り当て。正式 GUID 参照で安定配信。
 module policyCis 'modules/policy-initiative-assignment.bicep' = {
   name: 'policy-cis140-${deploymentTimestamp}'
   params: {
-    policySetDefinitionId: '/providers/Microsoft.Authorization/policySetDefinitions/CISv1_4_0'
+    policySetDefinitionId: '/providers/Microsoft.Authorization/policySetDefinitions/c3f5c4d9-9a1d-4a99-85c0-7f93e384d5c5'
     assignmentName: 'asgmt-cis140-${environment}'
     displayName: 'CIS Microsoft Azure Foundations Benchmark v1.4.0 (${environment})'
     assignmentDescription: 'Assigns the CIS v1.4.0 initiative so compliance drift can be reviewed without remediating intentional findings.'
