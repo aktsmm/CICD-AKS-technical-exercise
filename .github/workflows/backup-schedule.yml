@@ -89,13 +89,23 @@ jobs:
                   VM_NAME="${{ env.MONGO_VM_NAME }}"
 
                   list_payload() {
-                    az vm run-command invoke \
+                    local script="$1"
+                    local raw
+                    if ! raw=$(az vm run-command invoke \
+                      --only-show-errors \
                       --resource-group "$RG" \
                       --name "$VM_NAME" \
                       --command-id RunShellScript \
-                      --scripts "$1" \
-                      --query "value[0].message" -o tsv |
-                      awk '/\[stdout\]/{flag=1;next}/\[stderr\]/{flag=0}flag'
+                      --scripts "$script" \
+                      --query "value[0].message" -o tsv 2>&1); then
+                      echo "$raw" >&2
+                      return 1
+                    fi
+
+                    echo "$raw" |
+                      awk '/\[stdout\]/{flag=1;next}/\[stderr\]/{flag=0}flag' |
+                      grep -v '^Optional parameters:' |
+                      sed '/^$/d'
                   }
 
                   FILE_LINES=$(list_payload "ls -lh /var/backups/mongodb/mongodb_backup_*.tar.gz 2>/dev/null" || true)
