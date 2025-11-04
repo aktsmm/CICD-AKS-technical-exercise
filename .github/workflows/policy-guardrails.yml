@@ -26,7 +26,7 @@ jobs:
     scan-iac:
         name: Scan Guardrail Bicep for Security Issues
         runs-on: ubuntu-latest
-        if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
         steps:
             - name: Checkout Code
               uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
         name: Deploy Policy Guardrails
         runs-on: ubuntu-latest
         needs: scan-iac
-        if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
         steps:
             - name: Checkout Code
               uses: actions/checkout@v4
@@ -87,6 +87,12 @@ jobs:
                   }
 
                   $definitionsFile = Export-JsonSection -Data $policySet.properties.policyDefinitions -FileName 'definitions.json'
+
+                  if ($policySet.properties.PSObject.Properties.Name -contains 'version') {
+                      # Remove unsupported version field because policy set definitions currently allow only a single version.
+                      $policySet.properties.PSObject.Properties.Remove('version') | Out-Null
+                  }
+
                   $cliArgs = @(
                       '--name', 'Custom-MCSB-Core',
                       '--subscription', $env:AZURE_SUBSCRIPTION_ID,
@@ -94,11 +100,6 @@ jobs:
                       '--description', $policySet.properties.description,
                       '--definitions', "@$definitionsFile"
                   )
-
-                  if ($policySet.properties.version) {
-                      $cliArgs += @('--version', $policySet.properties.version)
-                  }
-
                   if ($policySet.properties.parameters) {
                       $parametersFile = Export-JsonSection -Data $policySet.properties.parameters -FileName 'parameters.json'
                       $cliArgs += @('--params', "@$parametersFile")
