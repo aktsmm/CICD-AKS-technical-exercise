@@ -22,3 +22,5 @@ mongo_password.txt
 
 # 機密情報管理ディレクトリ (Phase 1 で追加)
 Docs_Secrets/
+Docs_issue_point/
+Docs_work_history/
