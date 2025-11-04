@@ -92,5 +92,6 @@ jobs:
           fi
 
           echo "🎉 Cleanup complete (kept 1 current + 7 human + 3 dependabot + 1 failed)."
-Docs_work_history にも反映。
-infra-deploy のワークフロー変数が最新化されているか再確認し、workflow_dispatch で動作を検証。
+
+# Docs_work_history にも反映。
+# infra-deploy のワークフロー変数が最新化されているか再確認し、workflow_dispatch で動作を検証。
