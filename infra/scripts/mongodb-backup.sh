@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="/var/backups/mongodb"
 BACKUP_FILE="mongodb_backup_${TIMESTAMP}.tar.gz"
@@ -11,21 +11,24 @@ mkdir -p "$BACKUP_DIR"
 
 echo "[$(date)] Starting backup (legacy script)..." | tee -a "$LOG_FILE"
 
-mongodump --out ${BACKUP_DIR}/dump_${TIMESTAMP} 2>&1 | tee -a "$LOG_FILE"
+if ! mongodump --out ${BACKUP_DIR}/dump_${TIMESTAMP} 2>&1 | tee -a "$LOG_FILE"; then
+  echo "[$(date)] ERROR: mongodump failed" | tee -a "$LOG_FILE"
+  exit 1
+fi
 
 cd ${BACKUP_DIR}
 tar -czf ${BACKUP_FILE} dump_${TIMESTAMP} 2>&1 | tee -a "$LOG_FILE"
 rm -rf dump_${TIMESTAMP}
 
-az storage blob upload \
+if ! az storage blob upload \
   --account-name ${STORAGE_ACCOUNT} \
   --container-name ${CONTAINER_NAME} \
   --name ${BACKUP_FILE} \
   --file ${BACKUP_DIR}/${BACKUP_FILE} \
-  --auth-mode login 2>&1 | tee -a "$LOG_FILE" || {
+  --auth-mode login 2>&1 | tee -a "$LOG_FILE"; then
   echo "[$(date)] ERROR: Upload failed" | tee -a "$LOG_FILE"
-  exit 0
-}
+  exit 1
+fi
 
 find ${BACKUP_DIR} -name "mongodb_backup_*.tar.gz" -mtime +7 -delete
 
