@@ -79,6 +79,41 @@ jobs:
                     echo "EOF"
                   } >> "$GITHUB_OUTPUT"
 
+            - name: Collect Backup Artifacts
+              id: artifacts
+              if: steps.runbackup.outputs.vm_found == 'true'
+              run: |
+                  set -euo pipefail
+
+                  RG="${{ env.RESOURCE_GROUP }}"
+                  VM_NAME="${{ env.MONGO_VM_NAME }}"
+
+                  INFO_OUTPUT=$(az vm run-command invoke \
+                    --resource-group "$RG" \
+                    --name "$VM_NAME" \
+                    --command-id RunShellScript \
+                    --scripts "python3 <<'PY'\nimport json, os, subprocess\nbackup_dir = '/var/backups/mongodb'\nfiles = []\ntry:\n    listing = subprocess.check_output(['ls', '-lh', backup_dir], text=True)\n    for line in listing.splitlines():\n        if 'mongodb_backup_' in line:\n            parts = line.split()\n            if len(parts) >= 9:\n                files.append({'size': parts[4], 'name': parts[-1]})\nexcept Exception:\n    pass\nget_line = lambda pattern: subprocess.getoutput(f"grep '{pattern}' /var/log/mongodb-backup.log | tail -n 1")\nsas_line = get_line('SAS URL:')\npublic_line = get_line('uploaded:')\nresult = {\n    'files': files,\n    'sas': sas_line.split('SAS URL: ', 1)[1] if 'SAS URL:' in sas_line else '',\n    'public': public_line.split('uploaded: ', 1)[1] if 'uploaded:' in public_line else ''\n}\nprint(json.dumps(result))\nPY" \
+                    --query "value[0].message" -o tsv)
+
+                  JSON=$(echo "$INFO_OUTPUT" | awk '/\[stdout\]/{flag=1;next}/\[stderr\]/{flag=0}flag')
+                  if [ -z "$JSON" ]; then
+                    JSON="{}"
+                  fi
+
+                  FILE_LINES=$(echo "$JSON" | jq -r '.files[]? | "- \(.name) (\(.size))"' || true)
+                  SAS_URL=$(echo "$JSON" | jq -r '.sas // ""' || true)
+                  PUBLIC_URL=$(echo "$JSON" | jq -r '.public // ""' || true)
+
+                  {
+                    echo "files<<EOF"
+                    if [ -n "$FILE_LINES" ]; then
+                      echo "$FILE_LINES"
+                    fi
+                    echo "EOF"
+                    echo "sas_url=$SAS_URL"
+                    echo "public_url=$PUBLIC_URL"
+                  } >> "$GITHUB_OUTPUT"
+
             - name: Publish Backup Summary
               run: |
                   if [[ "${{ steps.runbackup.outputs.vm_found }}" != "true" ]]; then
@@ -99,4 +134,19 @@ jobs:
                     echo '```'
                     echo "${{ steps.log.outputs.log }}"
                     echo '```'
+                    echo "- Backup Files:"
+                    if [[ "${{ steps.artifacts.outputs.files }}" != "" ]]; then
+                      echo "${{ steps.artifacts.outputs.files }}"
+                    else
+                      echo "  (取得できませんでした)"
+                    fi
+                    DOWNLOAD_URL="${{ steps.artifacts.outputs.sas_url != '' && steps.artifacts.outputs.sas_url || steps.artifacts.outputs.public_url }}"
+                    if [[ "$DOWNLOAD_URL" != "" ]]; then
+                      echo "- cURL Example:"
+                      echo '```'
+                      echo "curl -O \"$DOWNLOAD_URL\""
+                      echo '```'
+                    else
+                      echo "- cURL Example: 利用可能なURLを取得できませんでした"
+                    fi
                   } >> $GITHUB_STEP_SUMMARY
