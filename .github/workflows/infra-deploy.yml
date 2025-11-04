@@ -18,6 +18,7 @@ env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
   LOCATION: ${{ vars.AZURE_LOCATION }}
+  GRANT_OWNER_PARAMETER: ${{ vars.AZURE_GRANT_GITHUB_OWNER || 'false' }}
 
 jobs:
   scan-iac:
@@ -90,7 +91,10 @@ jobs:
             local scope="$1"
             local roleName="$2"
 
-            if az role assignment list --assignee-object-id "$PRINCIPAL_ID" --role "$roleName" --scope "$scope" --query "[].id" -o tsv | grep -q .; then
+            local existing
+            existing=$(az role assignment list --assignee-object-id "$PRINCIPAL_ID" --role "$roleName" --scope "$scope" --query "[].id" -o tsv)
+
+            if [[ -n "$existing" ]]; then
               echo "Role '$roleName' already present at scope '$scope'."
             else
               echo "Assigning role '$roleName' at scope '$scope'."
@@ -106,9 +110,25 @@ jobs:
 
           ensure_assignment "$RG_SCOPE" "User Access Administrator"
 
+          OWNER_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
+          OWNER_ASSIGNMENTS=$(az role assignment list --assignee-object-id "$PRINCIPAL_ID" --role "Owner" --scope "$OWNER_SCOPE" --query "[].id" -o tsv)
+
+          OWNER_PARAMETER="false"
+
           if [ "$GRANT_OWNER" = "true" ]; then
-            ensure_assignment "/subscriptions/${SUBSCRIPTION_ID}" "Owner"
+            if [[ -n "$OWNER_ASSIGNMENTS" ]]; then
+              echo "Owner role already present; Bicep module will be skipped."
+            else
+              echo "Owner role not detected; Bicep module will assign." # avoid double assignment errors later
+              OWNER_PARAMETER="true"
+            fi
+          else
+            if [[ -n "$OWNER_ASSIGNMENTS" ]]; then
+              echo "Owner role already assigned but automation flag is false; leaving as-is."
+            fi
           fi
+
+          echo "GRANT_OWNER_PARAMETER=$OWNER_PARAMETER" >> "$GITHUB_ENV"
 
       - name: Azure Logout (bootstrap context)
         if: ${{ vars.AZURE_GITHUB_PRINCIPAL_ID != '' }}
@@ -133,7 +153,7 @@ jobs:
               location=${{ env.LOCATION }} \
               mongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }} \
               automationPrincipalObjectId=${{ vars.AZURE_GITHUB_PRINCIPAL_ID }} \
-              grantAutomationPrincipalOwner=${{ vars.AZURE_GRANT_GITHUB_OWNER || 'false' }} \
+              grantAutomationPrincipalOwner=${{ env.GRANT_OWNER_PARAMETER }} \
             --result-format ResourceIdOnly
 
       - name: Deploy Bicep
@@ -149,7 +169,7 @@ jobs:
             location=${{ env.LOCATION }}
             mongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }}
             automationPrincipalObjectId=${{ vars.AZURE_GITHUB_PRINCIPAL_ID }}
-            grantAutomationPrincipalOwner=${{ vars.AZURE_GRANT_GITHUB_OWNER || 'false' }}
+            grantAutomationPrincipalOwner=${{ env.GRANT_OWNER_PARAMETER }}
           deploymentName: infra-deployment-${{ github.run_number }}
           failOnStdErr: false
 
