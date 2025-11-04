@@ -16,6 +16,16 @@ param mongoAdminPassword string
 @description('デプロイタイムスタンプ!! (ユニークなデプロイ名生成)')
 param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
 
+var defenderPlanNames = [
+  'VirtualMachines'
+  'AppServices'
+  'StorageAccounts'
+  'SqlServers'
+  'SqlServerVirtualMachines'
+  'KubernetesService'
+  'ContainerRegistry'
+]
+
 // リソースグループ作成
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: resourceGroupName
@@ -41,6 +51,55 @@ module monitoring 'modules/monitoring.bicep' = {
     environment: environment
   }
 }
+
+resource subscriptionActivityDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'activitylog-to-law-${environment}'
+  scope: subscription()
+  properties: {
+    workspaceId: monitoring.outputs.workspaceId
+    logs: [
+      {
+        category: 'Administrative'
+        enabled: true
+      }
+      {
+        category: 'Security'
+        enabled: true
+      }
+      {
+        category: 'ServiceHealth'
+        enabled: true
+      }
+      {
+        category: 'Alert'
+        enabled: true
+      }
+      {
+        category: 'Recommendation'
+        enabled: true
+      }
+      {
+        category: 'Policy'
+        enabled: true
+      }
+      {
+        category: 'Autoscale'
+        enabled: true
+      }
+      {
+        category: 'ResourceHealth'
+        enabled: true
+      }
+    ]
+  }
+}
+
+resource defenderForCloudPlans 'Microsoft.Security/pricings@2022-03-01' = [for planName in defenderPlanNames: {
+  name: planName
+  properties: {
+    pricingTier: 'Standard'
+  }
+}]
 
 // Storage Account (脆弱な構成)
 module storage 'modules/storage.bicep' = {

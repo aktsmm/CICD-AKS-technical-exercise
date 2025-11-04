@@ -14,18 +14,25 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.set("view engine", "ejs");
 
-// MongoDB接続
-mongoose
-  .connect(MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => {
+const connectToMongo = async () => {
+  try {
+    await mongoose.connect(MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
     console.log("✅ MongoDB接続成功");
-  })
-  .catch((err) => {
+  } catch (err) {
     console.error("❌ MongoDB接続失敗:", err);
+    throw err;
+  }
+};
+
+if (process.env.NODE_ENV !== "test") {
+  connectToMongo().catch((err) => {
+    console.error("MongoDBへの接続に失敗したためプロセスを終了します", err);
+    process.exit(1);
   });
+}
 
 // Messageスキーマ
 const messageSchema = new mongoose.Schema({
@@ -79,6 +86,10 @@ app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+}
+
+module.exports = { app, connectToMongo };

@@ -1,48 +1,64 @@
 # Wiz Technical Exercise - デモンストレーション手順書
 
-**日時**: 2025 年 10 月 31 日  
-**環境**: Azure (rg-bbs-cicd-aks)  
-**デモ時間**: 45 分
-
----
-
-## ⚙️ 環境変数（デモ前に確認・設定）
+<!-- markdownlint-disable MD001 MD022 MD024 MD031 MD032 MD034 MD040 -->
+### 3.1 AKS 接続
 
 ```powershell
-# MongoDB VM Public IP（事前確認）
-$MONGO_PUBLIC_IP = az network public-ip show -g rg-bbs-cicd-aks -n vm-mongo-dev-pip --query "ipAddress" -o tsv
-Write-Host "MongoDB VM IP: $MONGO_PUBLIC_IP" -ForegroundColor Cyan
-
-# Ingress External IP（事前確認）
-$INGRESS_IP = kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-Write-Host "Ingress IP: $INGRESS_IP" -ForegroundColor Cyan
-
-# アプリURL
-$APP_URL = "http://$INGRESS_IP"
-Write-Host "App URL: $APP_URL" -ForegroundColor Green
+# AKS 操作 (プライベート API のため az aks command invoke を使用)
+**構成要素**:
+  --resource-group rg-bbs-cicd-aks `
+  --name aks-dev `
+  --command "kubectl get nodes -o wide" `
+  --query "logs" -o tsv
 ```
 
-**⚠️ 注意**: 以降の手順で `<MONGO_PUBLIC_IP>` と `<INGRESS_IP>` が出てきたら、上記で取得した値に置き換えてください。
+### 3.2 ✅ アプリはコンテナ化され、MongoDB を使用
 
----
+```powershell
+# Pod確認
+az aks command invoke `
+  --resource-group rg-bbs-cicd-aks `
+  --name aks-dev `
+  --command "kubectl get pods -l app=guestbook -o wide" `
+  --query "logs" -o tsv
 
-## 📋 目次
+# Pod詳細確認 (MongoDB接続情報)
 
-1. [環境概要説明](#1-環境概要説明-5分)
-2. [MongoDB VM 要件デモ](#2-mongodb-vm要件デモ-10分)
-3. [Kubernetes アプリケーション要件デモ](#3-kubernetes-アプリケーション要件デモ-10分)
-4. [DevSecOps 要件デモ](#4-devsecops-要件デモ-10分)
-5. [クラウドネイティブセキュリティデモ](#5-クラウドネイティブセキュリティデモ-5分)
-6. [課題と解決策](#6-課題と解決策-5分)
+  --resource-group rg-bbs-cicd-aks `
+  --name aks-dev `
+  --command "kubectl describe pod -l app=guestbook" `
+  --query "logs" -o tsv | Select-String -Pattern "MONGO_URI"
+```
 
----
+**期待される出力**:
 
-## 1. 環境概要説明 (5 分)
+```
+NAME                             READY   STATUS    RESTARTS   AGE   IP
+guestbook-app-xxxxx              1/1     Running   0          30m   10.0.1.38
+guestbook-app-yyyyy              1/1     Running   0          30m   10.0.1.16
 
-### 1.1 アーキテクチャ図の提示
+Environment:
+  MONGO_URI: mongodb://mongoadmin:***@10.0.2.x:27017/guestbook?authSource=admin
+```
 
-**構成要素**:
+**アプリログ確認**:
 
+```powershell
+az aks command invoke `
+  --resource-group rg-bbs-cicd-aks `
+  --name aks-dev `
+  --command "kubectl logs -l app=guestbook --tail=5" `
+  --query "logs" -o tsv
+```
+
+**期待される出力**:
+
+```
+🚀 Server running on port 3000
+✅ MongoDB接続成功
+```
+
+**説明**: Node.js アプリがコンテナ化され、MongoDB 接続成功 ✅
 - Azure Kubernetes Service (AKS) - 2 nodes
 - MongoDB VM (Ubuntu 20.04)
 - Azure Blob Storage (バックアップ用)
@@ -352,8 +368,8 @@ env:
   - name: MONGO_URI
     valueFrom:
       secretKeyRef:
-        name: mongodb-secret
-        key: connection-string
+        name: mongo-credentials
+        key: uri
   - name: PORT
     value: "3000"
 ```

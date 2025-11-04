@@ -37,5 +37,46 @@ module policyCis 'modules/policy-initiative-assignment.bicep' = {
   }
 }
 
+resource auditPublicStoragePolicy 'Microsoft.Authorization/policyDefinitions@2021-06-01' = {
+  name: 'pd-storage-public-${environment}'
+  properties: {
+    displayName: 'Audit storage accounts with public blob access enabled'
+    description: 'Ensures storage accounts with allowBlobPublicAccess set to true are audited for governance visibility.'
+    mode: 'All'
+    policyRule: {
+      if: {
+        allOf: [
+          {
+            field: 'type'
+            equals: 'Microsoft.Storage/storageAccounts'
+          }
+          {
+            field: 'Microsoft.Storage/storageAccounts/allowBlobPublicAccess'
+            equals: true
+          }
+        ]
+      }
+      then: {
+        effect: 'audit'
+      }
+    }
+    metadata: {
+      category: 'Storage'
+      version: '1.0.0'
+    }
+  }
+}
+
+resource auditPublicStorageAssignment 'Microsoft.Authorization/policyAssignments@2022-06-01' = {
+  name: 'asgmt-storage-public-${environment}'
+  properties: {
+    displayName: 'Audit blob public access (${environment})'
+    description: 'Audits storage accounts that expose blobs publicly so the intentional vulnerability remains observable.'
+    policyDefinitionId: auditPublicStoragePolicy.id
+    enforcementMode: 'Default'
+  }
+}
+
 output mcsbAssignmentId string = policyMcsb.outputs.policyAssignmentId
 output cisAssignmentId string = policyCis.outputs.policyAssignmentId
+output storagePublicAuditAssignmentId string = auditPublicStorageAssignment.id

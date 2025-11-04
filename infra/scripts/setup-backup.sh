@@ -34,6 +34,8 @@ MONGO_USER="__MONGO_USER__"
 MONGO_PASSWORD="__MONGO_PASSWORD__"
 LOG_FILE="/var/log/mongodb-backup.log"
 
+mkdir -p "$BACKUP_DIR"
+
 echo "[$(date)] Starting backup..." | tee -a "$LOG_FILE"
 
 # Managed Identityで再ログイン（セッション切れ対策）
@@ -69,7 +71,24 @@ az storage blob upload \
 }
 
 find ${BACKUP_DIR} -name "mongodb_backup_*.tar.gz" -mtime +7 -delete
-echo "[$(date)] Backup completed and uploaded: ${BACKUP_FILE}" | tee -a "$LOG_FILE"
+PUBLIC_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}/${BACKUP_FILE}"
+SAS_EXPIRY=$(date -u -d "+1 day" "+%Y-%m-%dT%H:%MZ")
+SAS_TOKEN=$(az storage blob generate-sas \
+  --account-name ${STORAGE_ACCOUNT} \
+  --container-name ${CONTAINER_NAME} \
+  --name ${BACKUP_FILE} \
+  --permissions r \
+  --expiry ${SAS_EXPIRY} \
+  --https-only \
+  --auth-mode login 2>/dev/null || true)
+
+if [ -n "$SAS_TOKEN" ]; then
+  echo "[$(date)] SAS URL: ${PUBLIC_URL}?${SAS_TOKEN}" | tee -a "$LOG_FILE"
+else
+  echo "[$(date)] WARNING: SAS generation failed; falling back to public blob URL" | tee -a "$LOG_FILE"
+fi
+
+echo "[$(date)] Backup completed and uploaded: ${PUBLIC_URL}" | tee -a "$LOG_FILE"
 EOF
 
 echo "=== Configuring Backup Script ==="

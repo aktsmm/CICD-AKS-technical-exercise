@@ -21,7 +21,10 @@ spec:
             - containerPort: 3000
           env:
             - name: MONGO_URI
-              value: "mongodb://mongoadmin:<MONGO_ADMIN_PASSWORD>@<MONGO_VM_IP>:27017/guestbook?authSource=admin"
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-credentials
+                  key: uri
             - name: PORT
               value: "3000"
           resources:

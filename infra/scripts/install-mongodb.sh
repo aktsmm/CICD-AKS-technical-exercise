@@ -82,4 +82,16 @@ systemctl restart $SERVICE_NAME || {
 
 systemctl enable $SERVICE_NAME
 
+echo "=== Capturing MongoDB Version Evidence ==="
+
+VERSION_LOG="/var/log/mongodb-version.log"
+mkdir -p "$(dirname "$VERSION_LOG")"
+
+{
+  echo "[$(date -Is)] mongo --version"
+  mongo --version
+  echo "[$(date -Is)] mongod --version"
+  mongod --version
+} | tee "$VERSION_LOG"
+
 echo "=== MongoDB Installation Completed Successfully ==="
