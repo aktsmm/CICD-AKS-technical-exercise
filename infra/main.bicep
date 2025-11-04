@@ -149,7 +149,14 @@ module policyMcsb 'modules/policy-initiative-assignment.bicep' = {
     policyOverrides: [
       {
         kind: 'PolicyEffect'
-        policyDefinitionReferenceId: 'SimGroupCMKsEncryptDataRest'
+        selectors: [
+          {
+            kind: 'policyDefinitionReferenceId'
+            in: [
+              'SimGroupCMKsEncryptDataRest'
+            ]
+          }
+        ]
         value: {
           effect: 'Disabled'
         }

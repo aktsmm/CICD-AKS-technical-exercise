@@ -16,8 +16,8 @@
 1. 共通モジュール `infra/modules/policy-initiative-assignment.bicep` に `policyOverrides` パラメーターを追加。
    - `overrides` プロパティへ必要な設定だけを渡せるようにし、デフォルトでは null を渡すことで既存利用へ影響しないようにした。
 2. `infra/main.bicep` の MCSB 割り当てで `policyOverrides` を指定し、問題のポリシー参照を無効化。
-   - `policyDefinitionReferenceId: 'SimGroupCMKsEncryptDataRest'`
-   - `effect: 'Disabled'`
+   - `selectors.kind = policyDefinitionReferenceId` で `SimGroupCMKsEncryptDataRest` を指定。
+   - `value.effect = Disabled` を設定して該当ポリシーのみ無効化。
 3. コミット ID `ef476fa` (`fix: Microsoft.MobileNetwork 依存ポリシーを除外`) で main ブランチへ反映。
 
 ## 再発防止・確認ポイント
