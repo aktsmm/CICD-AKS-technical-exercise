@@ -54,12 +54,20 @@ jobs:
                     exit 0
                   fi
 
+                  TMP_SCRIPT=$(mktemp)
+                  cat <<'EOF' > "$TMP_SCRIPT"
+                  cd /usr/local/bin
+                  sudo ./mongodb-backup.sh
+                  EOF
+
                   RUN_RESULT=$(az vm run-command invoke \
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
-                    --scripts 'cd /usr/local/bin && sudo ./mongodb-backup.sh' \
+                    --scripts @$TMP_SCRIPT \
                     -o json)
+
+                  rm -f "$TMP_SCRIPT"
 
                   MESSAGE=$(echo "$RUN_RESULT" | jq -r '.value[0].message')
                   EXIT_CODE=$(echo "$RUN_RESULT" | jq -r '.value[0].instanceView.exitCode // 0')
