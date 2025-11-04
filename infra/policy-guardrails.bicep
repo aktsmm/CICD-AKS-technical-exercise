@@ -10,25 +10,11 @@ param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
 module policyMcsb 'modules/policy-initiative-assignment.bicep' = {
   name: 'policy-mcsb-${deploymentTimestamp}'
   params: {
-    policySetDefinitionId: '/providers/Microsoft.Authorization/policySetDefinitions/e3ec7e09-768c-4b64-882c-fcada3772047'
+    policySetDefinitionId: subscriptionResourceId('Microsoft.Authorization/policySetDefinitions', 'Custom-MCSB-Core')
     assignmentName: 'asgmt-mcsb-${environment}'
     displayName: 'Microsoft cloud security benchmark v2 (${environment})'
     assignmentDescription: 'Assigns the Microsoft cloud security benchmark initiative to monitor the intentionally vulnerable demo scope.'
     nonComplianceMessage: 'Use Defender for Cloud to review the Microsoft cloud security benchmark posture for this demo environment.'
-    policyOverrides: [
-      {
-        kind: 'PolicyEffect'
-        selectors: [
-          {
-            kind: 'policyDefinitionReferenceId'
-            in: [
-              'SimGroupCMKsEncryptDataRest'
-            ]
-          }
-        ]
-        value: 'Disabled'
-      }
-    ]
   }
 }
 

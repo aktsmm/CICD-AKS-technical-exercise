@@ -50,10 +50,28 @@ jobs:
             - name: Checkout Code
               uses: actions/checkout@v4
 
+            - name: Build Custom MCSB Definition
+              shell: pwsh
+              run: |
+                  ./Scripts/Build-CustomMcsb.ps1 -OutputPath ./infra/policies/mcsb-v2-pruned.json
+
             - name: Azure Login
               uses: azure/login@v1
               with:
                   creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+            - name: Publish Custom MCSB Policy Set
+              shell: pwsh
+              run: |
+                  $definitionPath = Join-Path $PWD 'infra/policies/mcsb-v2-pruned.json'
+                  az policy set-definition create --name Custom-MCSB-Core --subscription $env:AZURE_SUBSCRIPTION_ID --display-name "Custom MCSB (Core Controls)" --description "Microsoft cloud security benchmark trimmed to exclude MobileNetwork dependencies." --definition $definitionPath --mode All
+                  if ($LASTEXITCODE -ne 0) {
+                      Write-Host 'Create failed; attempting to update existing definition.'
+                      az policy set-definition update --name Custom-MCSB-Core --subscription $env:AZURE_SUBSCRIPTION_ID --display-name "Custom MCSB (Core Controls)" --description "Microsoft cloud security benchmark trimmed to exclude MobileNetwork dependencies." --definition $definitionPath --mode All
+                      if ($LASTEXITCODE -ne 0) {
+                          throw 'Failed to publish custom MCSB policy set.'
+                      }
+                  }
 
             - name: Deploy Guardrail Bicep
               uses: azure/arm-deploy@v1
