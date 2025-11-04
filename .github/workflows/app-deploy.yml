@@ -403,6 +403,8 @@ jobs:
           DOMAIN="${INGRESS_IP}.nip.io"
           echo "📡 Using domain: ${DOMAIN}"
 
+          echo "ip=${INGRESS_IP}" >> $GITHUB_OUTPUT
+
           cat <<EOF > rendered/ingress-tls.yaml
           apiVersion: networking.k8s.io/v1
           kind: Ingress
@@ -448,17 +450,37 @@ jobs:
           echo "domain=${DOMAIN}" >> $GITHUB_OUTPUT
 
       - name: Publish Deployment Summary
+        env:
+          SUMMARY_DOMAIN: ${{ steps.tls.outputs.domain }}
+          SUMMARY_IP: ${{ steps.tls.outputs.ip }}
         run: |
           RG='${{ env.RESOURCE_GROUP }}'
           CLUSTER='${{ steps.infra.outputs.aks_name }}'
 
           PODS=$(az aks command invoke --resource-group "$RG" --name "$CLUSTER" --command "kubectl get pods -n default -l app=guestbook -o wide" --query "logs" -o tsv)
 
+          DOMAIN_LINE="${SUMMARY_DOMAIN}"
+          if [ -z "$DOMAIN_LINE" ]; then
+            DOMAIN_LINE='Pending IP allocation'
+          fi
+
+          HTTPS_URL='Pending IP allocation'
+          if [ -n "$SUMMARY_DOMAIN" ]; then
+            HTTPS_URL="https://$SUMMARY_DOMAIN"
+          fi
+
+          HTTP_URL='Pending IP allocation'
+          if [ -n "$SUMMARY_IP" ]; then
+            HTTP_URL="http://$SUMMARY_IP"
+          fi
+
           {
             echo "### Deployment Summary"
             echo "- Cluster: ${CLUSTER}"
             echo "- Mongo VM IP: ${{ steps.infra.outputs.mongo_ip }}"
-            echo "- Domain: ${{ steps.tls.outputs.domain != '' && steps.tls.outputs.domain || 'Pending IP allocation' }}"
+            echo "- Domain: ${DOMAIN_LINE}"
+            echo "- HTTPS: ${HTTPS_URL}"
+            echo "- HTTP: ${HTTP_URL}"
             echo "- Image: ${{ needs.build-push.outputs.acr_name }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.image_tag }}"
             echo "- Pods:" 
             echo '```'
