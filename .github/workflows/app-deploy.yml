@@ -411,6 +411,7 @@ jobs:
             namespace: default
             annotations:
               nginx.ingress.kubernetes.io/rewrite-target: /
+              nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
               cert-manager.io/cluster-issuer: selfsigned-issuer
           spec:
             ingressClassName: nginx
@@ -421,6 +422,15 @@ jobs:
             rules:
               - host: ${DOMAIN}
                 http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: guestbook-service
+                          port:
+                            number: 80
+              - http:
                   paths:
                     - path: /
                       pathType: Prefix
