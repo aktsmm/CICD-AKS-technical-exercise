@@ -33,6 +33,13 @@ jobs:
             - name: Execute MongoDB Backup Script on VM
               id: runbackup
               run: |
+                  set -euo pipefail
+
+                  if ! command -v jq >/dev/null 2>&1; then
+                    echo "::error::jq is required but not available on PATH"
+                    exit 1
+                  fi
+
                   RG="${{ env.RESOURCE_GROUP }}"
                   VM_NAME="${{ env.MONGO_VM_NAME }}"
 
@@ -47,26 +54,55 @@ jobs:
                     exit 0
                   fi
 
-                  OUTPUT=$(az vm run-command invoke \
+                  RUN_RESULT=$(az vm run-command invoke \
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
                     --scripts "/usr/local/bin/mongodb-backup.sh" \
-                    --query "value[0].message" -o tsv)
+                    -o json)
 
-                  echo "$OUTPUT"
+                  MESSAGE=$(echo "$RUN_RESULT" | jq -r '.value[0].message')
+                  EXIT_CODE=$(echo "$RUN_RESULT" | jq -r '.value[0].instanceView.exitCode // 0')
+
+                  echo "$MESSAGE"
+
+                  if [ "$EXIT_CODE" -ne 0 ]; then
+                    echo "::error::Run Command failed with exit code $EXIT_CODE"
+                    exit "$EXIT_CODE"
+                  fi
+
+                  if echo "$MESSAGE" | grep -q "This is a sample script"; then
+                    echo "::error::Run Command returned the placeholder sample output"
+                    exit 1
+                  fi
+
+                  BACKUP_FILE=$(echo "$MESSAGE" | awk -F': ' '/^File:/ {gsub(/\r/,"",$2); print $2; exit}')
+                  BACKUP_SIZE=$(echo "$MESSAGE" | awk -F': ' '/^Size:/ {gsub(/\r/,"",$2); print $2; exit}')
+                  BACKUP_URL=$(echo "$MESSAGE" | awk -F': ' '/^URL:/ {gsub(/\r/,"",$2); print $2; exit}')
+                  BACKUP_CURL=$(echo "$MESSAGE" | awk -F': ' '/^cURL:/ {gsub(/\r/,"",$0); sub(/^cURL: /, "", $0); print $0; exit}')
+
+                  if [ -z "$BACKUP_FILE" ] || [ -z "$BACKUP_URL" ] || [ -z "$BACKUP_CURL" ]; then
+                    echo "::error::Failed to parse backup summary from script output"
+                    exit 1
+                  fi
 
                   {
                     echo "vm_found=true"
                     echo "stdout<<EOF"
-                    printf '%s\n' "$OUTPUT"
+                    printf '%s\n' "$MESSAGE"
                     echo "EOF"
+                    echo "backup_file=$BACKUP_FILE"
+                    echo "backup_size=$BACKUP_SIZE"
+                    echo "backup_url=$BACKUP_URL"
+                    echo "backup_curl=$BACKUP_CURL"
                   } >> "$GITHUB_OUTPUT"
 
             - name: Collect Latest Backup Log
               id: log
               if: steps.runbackup.outputs.vm_found == 'true'
               run: |
+                  set -euo pipefail
+
                   RG="${{ env.RESOURCE_GROUP }}"
                   VM_NAME="${{ env.MONGO_VM_NAME }}"
 
@@ -118,10 +154,9 @@ jobs:
                   }
 
                   FILE_LINES=$(list_payload "ls -lh /var/backups/mongodb/mongodb_backup_*.tar.gz 2>/dev/null" || true)
-                  SAS_URL=$(list_payload "grep 'SAS URL:' /var/log/mongodb-backup.log | tail -n 1 | sed -e 's/.*SAS URL: //'" || true)
-                  PUBLIC_URL=$(list_payload "grep 'uploaded:' /var/log/mongodb-backup.log | tail -n 1 | sed -e 's/.*uploaded: //'" || true)
+                  SAS_URL=""
+                  PUBLIC_URL=$(list_payload "grep 'Backup completed and uploaded to' /var/log/mongodb-backup.log | tail -n 1 | sed -e 's/.*uploaded to //'" || true)
 
-                  SAS_URL=$(first_line "$SAS_URL")
                   PUBLIC_URL=$(first_line "$PUBLIC_URL")
 
                   {
@@ -130,7 +165,6 @@ jobs:
                       echo "$FILE_LINES" | sed 's/^/- /'
                     fi
                     echo "EOF"
-                    echo "sas_url=$SAS_URL"
                     echo "public_url=$PUBLIC_URL"
                   } >> "$GITHUB_OUTPUT"
 
@@ -150,6 +184,12 @@ jobs:
                     echo '```'
                     echo "${{ steps.runbackup.outputs.stdout != '' && steps.runbackup.outputs.stdout || 'Executed (no stdout)' }}"
                     echo '```'
+                    if [[ "${{ steps.runbackup.outputs.backup_file }}" != "" ]]; then
+                      echo "- Backup File: ${{ steps.runbackup.outputs.backup_file }}"
+                    fi
+                    if [[ "${{ steps.runbackup.outputs.backup_size }}" != "" ]]; then
+                      echo "- Backup Size: ${{ steps.runbackup.outputs.backup_size }}"
+                    fi
                     echo "- Latest Log Snippet:"
                     echo '```'
                     echo "${{ steps.log.outputs.log }}"
@@ -160,11 +200,15 @@ jobs:
                     else
                       echo "  (取得できませんでした)"
                     fi
-                    DOWNLOAD_URL="${{ steps.artifacts.outputs.sas_url != '' && steps.artifacts.outputs.sas_url || steps.artifacts.outputs.public_url }}"
+                    DOWNLOAD_URL="${{ steps.runbackup.outputs.backup_url != '' && steps.runbackup.outputs.backup_url || steps.artifacts.outputs.public_url }}"
                     if [[ "$DOWNLOAD_URL" != "" ]]; then
                       echo "- cURL Example:"
                       echo '```'
-                      echo "curl -O \"$DOWNLOAD_URL\""
+                      if [[ "${{ steps.runbackup.outputs.backup_curl }}" != "" ]]; then
+                        echo "${{ steps.runbackup.outputs.backup_curl }}"
+                      else
+                        echo "curl -O \"$DOWNLOAD_URL\""
+                      fi
                       echo '```'
                     else
                       echo "- cURL Example: 利用可能なURLを取得できませんでした"
