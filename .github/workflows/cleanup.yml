@@ -1,4 +1,4 @@
-name: 🧹 Cleanup Workflow Runs (Keep latest 7 human + 3 dependabot runs)
+name: 3. 🧹 Cleanup Workflow Runs (Keep latest 7 human + 3 dependabot runs)
 
 on:
   # ✅ 定期実行（30分ごと、UTC基準）
