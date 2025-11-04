@@ -64,10 +64,10 @@ jobs:
               shell: pwsh
               run: |
                   $definitionPath = Join-Path $PWD 'infra/policies/mcsb-v2-pruned.json'
-                  az policy set-definition create --name Custom-MCSB-Core --subscription $env:AZURE_SUBSCRIPTION_ID --display-name "Custom MCSB (Core Controls)" --description "Microsoft cloud security benchmark trimmed to exclude MobileNetwork dependencies." --definition $definitionPath --mode All
+                  az policy set-definition create --name Custom-MCSB-Core --subscription $env:AZURE_SUBSCRIPTION_ID --display-name "Custom MCSB (Core Controls)" --description "Microsoft cloud security benchmark trimmed to exclude MobileNetwork dependencies." --definitions @$definitionPath --mode All
                   if ($LASTEXITCODE -ne 0) {
                       Write-Host 'Create failed; attempting to update existing definition.'
-                      az policy set-definition update --name Custom-MCSB-Core --subscription $env:AZURE_SUBSCRIPTION_ID --display-name "Custom MCSB (Core Controls)" --description "Microsoft cloud security benchmark trimmed to exclude MobileNetwork dependencies." --definition $definitionPath --mode All
+                      az policy set-definition update --name Custom-MCSB-Core --subscription $env:AZURE_SUBSCRIPTION_ID --display-name "Custom MCSB (Core Controls)" --description "Microsoft cloud security benchmark trimmed to exclude MobileNetwork dependencies." --definitions @$definitionPath --mode All
                       if ($LASTEXITCODE -ne 0) {
                           throw 'Failed to publish custom MCSB policy set.'
                       }
