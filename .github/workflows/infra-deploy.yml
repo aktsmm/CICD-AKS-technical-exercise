@@ -75,6 +75,24 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Ensure Resource Group Exists (bootstrap phase)
+        if: ${{ vars.AZURE_GITHUB_PRINCIPAL_ID != '' }}
+        env:
+          SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
+          LOCATION: ${{ env.LOCATION }}
+        run: |
+          set -euo pipefail
+
+          az account set --subscription "$SUBSCRIPTION_ID"
+
+          if az group exists --name "$RESOURCE_GROUP" | grep -iq true; then
+            echo "Resource group '$RESOURCE_GROUP' already exists."
+          else
+            echo "Creating resource group '$RESOURCE_GROUP' in '$LOCATION'."
+            az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
+          fi
+
       - name: Ensure RBAC for GitHub Actions Principal
         if: ${{ vars.AZURE_GITHUB_PRINCIPAL_ID != '' }}
         env:
