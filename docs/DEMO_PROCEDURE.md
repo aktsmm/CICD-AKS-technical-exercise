@@ -1,7 +1,7 @@
 # Wiz Technical Exercise - デモンストレーション手順書
 
 **日時**: 2025 年 10 月 31 日  
-**環境**: Azure (rg-bbs-cicd-aks0000)  
+**環境**: Azure (rg-bbs-cicd-aks)  
 **デモ時間**: 45 分
 
 ---
@@ -10,7 +10,7 @@
 
 ```powershell
 # MongoDB VM Public IP（事前確認）
-$MONGO_PUBLIC_IP = az network public-ip show -g rg-bbs-cicd-aks0000 -n vm-mongo-dev-pip --query "ipAddress" -o tsv
+$MONGO_PUBLIC_IP = az network public-ip show -g rg-bbs-cicd-aks -n vm-mongo-dev-pip --query "ipAddress" -o tsv
 Write-Host "MongoDB VM IP: $MONGO_PUBLIC_IP" -ForegroundColor Cyan
 
 # Ingress External IP（事前確認）
@@ -57,7 +57,7 @@ az group list --query "[?starts_with(name, 'rg-bbs-cicd-aks')].{Name:name, Locat
 
 # 期待される出力
 # Name                 Location   State
-# rg-bbs-cicd-aks0000  japaneast  Succeeded
+# rg-bbs-cicd-aks  japaneast  Succeeded
 ```
 
 ### 1.3 GitHub リポジトリ紹介
@@ -79,7 +79,7 @@ az group list --query "[?starts_with(name, 'rg-bbs-cicd-aks')].{Name:name, Locat
 
 ```powershell
 # VM OS情報確認
-az vm show -g rg-bbs-cicd-aks0000 -n vm-mongo-dev --query "storageProfile.imageReference" -o json
+az vm show -g rg-bbs-cicd-aks -n vm-mongo-dev --query "storageProfile.imageReference" -o json
 ```
 
 **期待される出力**:
@@ -99,10 +99,10 @@ az vm show -g rg-bbs-cicd-aks0000 -n vm-mongo-dev --query "storageProfile.imageR
 
 ```powershell
 # パブリックIP確認
-az network public-ip show -g rg-bbs-cicd-aks0000 -n vm-mongo-dev-pip --query "{IP:ipAddress, Method:publicIPAllocationMethod}" -o json
+az network public-ip show -g rg-bbs-cicd-aks -n vm-mongo-dev-pip --query "{IP:ipAddress, Method:publicIPAllocationMethod}" -o json
 
 # NSGルール確認
-az network nsg rule show -g rg-bbs-cicd-aks0000 --nsg-name nsg-mongo-dev -n allow-ssh --query "{Priority:priority, Direction:direction, Access:access, Protocol:protocol, DestinationPortRange:destinationPortRange, SourceAddressPrefix:sourceAddressPrefix}" -o json
+az network nsg rule show -g rg-bbs-cicd-aks --nsg-name nsg-mongo-dev -n allow-ssh --query "{Priority:priority, Direction:direction, Access:access, Protocol:protocol, DestinationPortRange:destinationPortRange, SourceAddressPrefix:sourceAddressPrefix}" -o json
 ```
 
 **期待される出力**:
@@ -131,7 +131,7 @@ az network nsg rule show -g rg-bbs-cicd-aks0000 --nsg-name nsg-mongo-dev -n allo
 
 ```powershell
 # Managed Identity確認
-az vm identity show -g rg-bbs-cicd-aks0000 -n vm-mongo-dev --query "principalId" -o tsv
+az vm identity show -g rg-bbs-cicd-aks -n vm-mongo-dev --query "principalId" -o tsv
 
 # ロール割り当て確認
 az role assignment list --assignee <PRINCIPAL_ID> --query "[].{Role:roleDefinitionName, Scope:scope}" -o table
@@ -151,7 +151,7 @@ Contributor  /subscriptions/832c4080-181c-476b-9db0-b3ce9596d40a/...
 
 ```powershell
 # MongoDB バージョン確認
-az vm run-command invoke -g rg-bbs-cicd-aks0000 -n vm-mongo-dev --command-id RunShellScript --scripts "mongod --version | head -3"
+az vm run-command invoke -g rg-bbs-cicd-aks -n vm-mongo-dev --command-id RunShellScript --scripts "mongod --version | head -3"
 ```
 
 **期待される出力**:
@@ -168,7 +168,7 @@ Build Info: {
 
 ```powershell
 # MongoDB NSG確認
-az network nsg rule list -g rg-bbs-cicd-aks0000 --nsg-name nsg-mongo-dev --query "[?destinationPortRange=='27017'].{Name:name, Priority:priority, SourceAddressPrefix:sourceAddressPrefix, Access:access}" -o table
+az network nsg rule list -g rg-bbs-cicd-aks --nsg-name nsg-mongo-dev --query "[?destinationPortRange=='27017'].{Name:name, Priority:priority, SourceAddressPrefix:sourceAddressPrefix, Access:access}" -o table
 ```
 
 **期待される出力**:
@@ -185,7 +185,7 @@ allow-mongodb-aks  110      10.0.1.0/24          Allow
 
 ```powershell
 # MongoDB認証設定確認
-az vm run-command invoke -g rg-bbs-cicd-aks0000 -n vm-mongo-dev --command-id RunShellScript --scripts "grep -A 2 '^security:' /etc/mongod.conf"
+az vm run-command invoke -g rg-bbs-cicd-aks -n vm-mongo-dev --command-id RunShellScript --scripts "grep -A 2 '^security:' /etc/mongod.conf"
 ```
 
 **期待される出力**:
@@ -199,10 +199,10 @@ security:
 
 ```powershell
 # 認証なしでアクセス (失敗するはず)
-az vm run-command invoke -g rg-bbs-cicd-aks0000 -n vm-mongo-dev --command-id RunShellScript --scripts "mongo admin --eval 'db.getUsers()'"
+az vm run-command invoke -g rg-bbs-cicd-aks -n vm-mongo-dev --command-id RunShellScript --scripts "mongo admin --eval 'db.getUsers()'"
 
 # 認証ありでアクセス (成功するはず)
-az vm run-command invoke -g rg-bbs-cicd-aks0000 -n vm-mongo-dev --command-id RunShellScript --scripts "mongo admin -u mongoadmin -p <PASSWORD> --eval 'db.getUsers()'"
+az vm run-command invoke -g rg-bbs-cicd-aks -n vm-mongo-dev --command-id RunShellScript --scripts "mongo admin -u mongoadmin -p <PASSWORD> --eval 'db.getUsers()'"
 ```
 
 **説明**: 認証必須で、mongoadmin ユーザーのみアクセス可能 ✅
@@ -211,7 +211,7 @@ az vm run-command invoke -g rg-bbs-cicd-aks0000 -n vm-mongo-dev --command-id Run
 
 ```powershell
 # Cron設定確認
-az vm run-command invoke -g rg-bbs-cicd-aks0000 -n vm-mongo-dev --command-id RunShellScript --scripts "crontab -l | grep mongodb-backup"
+az vm run-command invoke -g rg-bbs-cicd-aks -n vm-mongo-dev --command-id RunShellScript --scripts "crontab -l | grep mongodb-backup"
 ```
 
 **期待される出力**:
@@ -278,7 +278,7 @@ Start-Process "https://stwizdevj2axc7dgverlk.blob.core.windows.net/backups/mongo
 
 ```powershell
 # AKS認証情報取得
-az aks get-credentials --resource-group rg-bbs-cicd-aks0000 --name aks-dev --overwrite-existing
+az aks get-credentials --resource-group rg-bbs-cicd-aks --name aks-dev --overwrite-existing
 ```
 
 ### 3.2 ✅ アプリはコンテナ化され、MongoDB を使用
@@ -321,7 +321,7 @@ kubectl logs -l app=guestbook --tail=5
 
 ```powershell
 # AKS Subnet確認
-az aks show -g rg-bbs-cicd-aks0000 -n aks-dev --query "agentPoolProfiles[0].vnetSubnetId" -o tsv
+az aks show -g rg-bbs-cicd-aks -n aks-dev --query "agentPoolProfiles[0].vnetSubnetId" -o tsv
 
 # Subnet詳細確認
 az network vnet subnet show --ids <SUBNET_ID> --query "{Name:name, AddressPrefix:addressPrefix}" -o json
@@ -500,7 +500,7 @@ kubectl scale deployment guestbook-app --replicas=2
 **MongoDB で直接確認**:
 
 ```powershell
-az vm run-command invoke -g rg-bbs-cicd-aks0000 -n vm-mongo-dev --command-id RunShellScript --scripts "mongo guestbook -u mongoadmin -p <PASSWORD> --authenticationDatabase admin --eval 'db.messages.find().pretty()'"
+az vm run-command invoke -g rg-bbs-cicd-aks -n vm-mongo-dev --command-id RunShellScript --scripts "mongo guestbook -u mongoadmin -p <PASSWORD> --authenticationDatabase admin --eval 'db.messages.find().pretty()'"
 ```
 
 **期待される出力**:
@@ -626,7 +626,7 @@ run: kubectl set image deployment/guestbook-app ...
 
 ```powershell
 # ACR名取得
-$ACR_NAME = az acr list -g rg-bbs-cicd-aks0000 --query "[0].name" -o tsv
+$ACR_NAME = az acr list -g rg-bbs-cicd-aks --query "[0].name" -o tsv
 
 # イメージ一覧
 az acr repository list --name $ACR_NAME -o table
@@ -677,7 +677,7 @@ cat .github/workflows/app-deploy.yml | Select-String -Pattern "trivy" -Context 2
 
 ```powershell
 # Azure Activity Log確認
-az monitor activity-log list --resource-group rg-bbs-cicd-aks0000 --max-events 5 --query "[].{Time:eventTimestamp, Caller:caller, Operation:operationName.value, Status:status.value}" -o table
+az monitor activity-log list --resource-group rg-bbs-cicd-aks --max-events 5 --query "[].{Time:eventTimestamp, Caller:caller, Operation:operationName.value, Status:status.value}" -o table
 ```
 
 **期待される出力**:
@@ -697,7 +697,7 @@ Time                          Caller                    Operation               
 
 ```powershell
 # NSGルール一覧
-az network nsg rule list -g rg-bbs-cicd-aks0000 --nsg-name nsg-mongo-dev --query "[].{Name:name, Priority:priority, Direction:direction, Access:access, Protocol:protocol, SourcePort:sourcePortRange, DestPort:destinationPortRange, Source:sourceAddressPrefix}" -o table
+az network nsg rule list -g rg-bbs-cicd-aks --nsg-name nsg-mongo-dev --query "[].{Name:name, Priority:priority, Direction:direction, Access:access, Protocol:protocol, SourcePort:sourcePortRange, DestPort:destinationPortRange, Source:sourceAddressPrefix}" -o table
 ```
 
 **期待される出力**:
@@ -717,14 +717,14 @@ allow-mongodb-aks 110       Inbound    Allow   Tcp       *           27017     1
 
 ```powershell
 # Log Analytics Workspace確認
-az monitor log-analytics workspace list -g rg-bbs-cicd-aks0000 --query "[].{Name:name, Location:location, RetentionDays:retentionInDays}" -o table
+az monitor log-analytics workspace list -g rg-bbs-cicd-aks --query "[].{Name:name, Location:location, RetentionDays:retentionInDays}" -o table
 ```
 
 **AKS コンテナログ確認**:
 
 ```powershell
 # Container Insights有効化確認
-az aks show -g rg-bbs-cicd-aks0000 -n aks-dev --query "addonProfiles.omsagent.enabled" -o tsv
+az aks show -g rg-bbs-cicd-aks -n aks-dev --query "addonProfiles.omsagent.enabled" -o tsv
 ```
 
 **説明**: Log Analytics によるログ収集・分析が可能 (検知的コントロール)
@@ -883,7 +883,7 @@ az aks show -g rg-bbs-cicd-aks0000 -n aks-dev --query "addonProfiles.omsagent.en
 - **GitHub**: https://github.com/aktsmm/CICD-AKS-technical-exercise
 - **アーキテクチャ図**: `docs/architecture-diagram.png`
 - **トラブルシューティング**: `Docs_issue_point/Phase20_MongoDB認証スクリプト修正_2025-10-31.md`
-- **Azure Portal**: リソースグループ `rg-bbs-cicd-aks0000`
+- **Azure Portal**: リソースグループ `rg-bbs-cicd-aks`
 
 ---
 

@@ -1,7 +1,7 @@
-# Phase 21: wizexercise.txt 公開機能とレトロ BBS 風 UI 実装
+# Phase 21: wizexercise.txt 公開機能とサンセット UI リフレッシュ
 
 **日時**: 2025 年 10 月 31 日  
-**目的**: wizexercise.txt のブラウザアクセス実装、トップページリンク追加、レトロ BBS 風デザイン変更
+**目的**: wizexercise.txt のブラウザアクセス実装、トップページリンク追加、サンセット調の UI リフレッシュ
 
 ---
 
@@ -28,34 +28,27 @@
 **app/app.js に 2 つのエンドポイント追加**:
 
 ```javascript
-// ルート1: HTMLプレビュー版（既存）
+// HTMLプレビュー: wizexercise.txt の内容をシンプルに描画
 app.get("/wizfile", (req, res) => {
   const filePath = path.join(__dirname, "wizexercise.txt");
-  if (fs.existsSync(filePath)) {
-    const content = fs.readFileSync(filePath, "utf-8");
-    res.send(`<pre>${content}</pre>`);
-  } else {
-    res.status(404).send("wizexercise.txt が見つかりません");
-  }
+  const content = fs.readFileSync(filePath, "utf-8");
+  res.send(`<pre>${content}</pre>`);
 });
 
-// ルート2: 直接ファイル提供（新規追加）
+// プレーンテキスト: ブラウザや curl から直接取得
 app.get("/wizexercise.txt", (req, res) => {
   const filePath = path.join(__dirname, "wizexercise.txt");
-  if (fs.existsSync(filePath)) {
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.sendFile(filePath);
-  } else {
-    res.status(404).send("wizexercise.txt が見つかりません");
-  }
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.sendFile(filePath);
 });
 ```
 
 **特徴**:
 
-- `/wizexercise.txt` - ファイル名そのままでアクセス可能（プレーンテキスト）
-- `/wizfile` - HTML でラップして表示
-- Content-Type ヘッダー設定で文字化け防止
+- `/wizexercise.txt` でプレーンテキストとして直接参照・ダウンロードが可能
+- `/wizfile` で HTML ラップしたプレビューを提供
+- Content-Type ヘッダーを明示し文字化けを防止
+- デモ優先のためファイル存在チェックは未実装（404 ハンドリングは今後検討）
 
 #### wizexercise.txt にアクセス方法を追記
 
@@ -72,10 +65,9 @@ URL: http://<INGRESS_IP>/wizexercise.txt
 
 【方法3】curl コマンド
 $ curl http://<INGRESS_IP>/wizexercise.txt
-
-【方法4】HTMLプレビュー版
-URL: http://<INGRESS_IP>/wizfile
 ```
+
+※ HTML プレビュー版 `/wizfile` はアプリで提供しつつ、ファイル内では 3 パターンに絞って案内。
 
 ---
 
@@ -87,32 +79,27 @@ URL: http://<INGRESS_IP>/wizfile
 
 #### 実装内容
 
-**app/views/index.ejs のヘッダー部分に追加**:
+**app/views/index.ejs のヘッダー部にリンクを常設**:
 
 ```html
-<p style="margin-top: 15px;">
-  <a
-    href="/wizexercise.txt"
-    style="color: #fff; text-decoration: none; background: rgba(255,255,255,0.2); 
-            padding: 8px 16px; border-radius: 5px; font-size: 0.9em; 
-            display: inline-block; transition: all 0.3s;"
-    onmouseover="this.style.background='rgba(255,255,255,0.3)'"
-    onmouseout="this.style.background='rgba(255,255,255,0.2)'"
-  >
-    🔐 シークレットファイル
-  </a>
-</p>
+<div class="header-info">
+  <span>Azure Kubernetes Service Demo</span>
+  <span class="badge vulnerable">⚠️ VULNERABLE</span>
+  <!-- Secret file shortcut for the demo walkthrough -->
+  <a href="/wizexercise.txt" class="secret-link">🔒 Secret File</a>
+  <span class="server-info">� <%= serverHost %></span>
+</div>
 ```
 
 **特徴**:
 
-- ✅ ヘッダー部分に配置（タイトルの下）
-- ✅ ホバーエフェクト付き
-- ✅ アイコン（🔐）で視認性向上
+- ✅ ヘッダー右側に常時表示され、デモ中に迷わずアクセス可能
+- ✅ `secret-link` クラスでホバー時の背景トーンを制御
+- ✅ アイコンを英語ラベルに変更し、海外メンバーにも意図が伝わるよう調整
 
 ---
 
-### 3. レトロ BBS 風 UI デザイン変更
+### 3. サンセット BBS 風 UI デザイン刷新
 
 #### 背景
 
@@ -123,76 +110,36 @@ URL: http://<INGRESS_IP>/wizfile
 - ❌ ホバーで浮き上がる演出
 - ❌ 絵文字多用
 
-**ユーザー要望**: 「レトロ BBS 風 × ちょっとだけモダン」
+**ユーザー要望**: 「派手すぎないが記憶に残る“サンセット”テイストに刷新してほしい」
 
 #### 実装内容
 
-**削除した要素**:
+**主なスタイル調整**:
 
 ```css
-/* Before */
-background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-border-radius: 10px;
-transform: translateY(-2px);
+/* Warm gradient and softer card edges introduced in Phase21 */
+body {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+/* Header now adopts a sunset palette with readable contrast */
+.header {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #78350f;
+}
 ```
 
-**追加したレトロ要素**:
+- フォントはサンセリフ系を維持しつつ、ヘッダーとボタンの配色を琥珀系に統一
+- `.message-card` の影と角丸を調整してカードリストの可読性を向上
+- `.stats` セクションを追加し、投稿数やステータスをワンビューで把握できるようにした
 
-1. **90 年代 BBS 風レイアウト**
+**微調整ポイント**:
 
-   - テーブルベースのフォーム・メッセージ表示
-   - ダブルボーダー (`border: 3px double #666`)
-   - グレー背景 (`#e0e0e0`)
-
-2. **クラシックなヘッダー**
-
-   ```css
-   .header {
-     background: #336699; /* 懐かしい青 */
-     color: #fff;
-     border-bottom: 3px solid #224466;
-   }
-   ```
-
-3. **outset ボタン（3D 効果）**
-
-   ```css
-   .btn-submit {
-     border: 2px outset #336699;
-   }
-   .btn-submit:active {
-     border-style: inset; /* クリック時に凹む */
-   }
-   ```
-
-4. **レトロフォント**
-
-   ```css
-   font-family: "MS PGothic", "Osaka-Mono", monospace, sans-serif;
-   ```
-
-5. **テーブル型メッセージ表示**
-   ```html
-   <table class="message-table">
-     <thead>
-       <tr>
-         <th>投稿者</th>
-         <th>メッセージ</th>
-       </tr>
-     </thead>
-     <tbody>
-       <!-- 偶数行は薄いグレー背景 -->
-     </tbody>
-   </table>
-   ```
-
-**ちょっとだけモダンな要素**:
-
-- ✅ ホバーで行がハイライト（黄色 `#ffffcc`）
-- ✅ レスポンシブ対応
-- ✅ シンプルなフッター
-- ✅ 最低限の CSS transition
+- `secret-link` クラスでリンクのホバー挙動をコントロール（背景を 30% 透明に）
+- `.form-section` と `.messages-section` に余白と落ち着いた背景色を付け、長文投稿でも読みやすいレイアウトへ
+- フッター背景を #78350f に揃え、全体のトーンをサンセット調で統一
 
 ---
 
@@ -249,9 +196,11 @@ a814d6c docs: Update demo procedure with browser access method for wizexercise.t
 # 3. トップページリンク + IPプレースホルダー化
 52dd365 feat: Add secret file link to homepage and use IP placeholders in demo docs
 
-# 4. レトロBBS風UIデザイン変更
+# 4. サンセット UI 仕上げ（commit msg: retro BBS style）
 972f85a style: Redesign UI to retro BBS style with modern touch
 ```
+
+> 💡 `972f85a` のコミットメッセージは「retro BBS style」だが、最終リファインでサンセット調に寄せたことを本ドキュメントで補足。
 
 ---
 
@@ -265,24 +214,24 @@ a814d6c docs: Update demo procedure with browser access method for wizexercise.t
 | ブラウザ直接       | ✅ 完了  | `http://<INGRESS_IP>/wizexercise.txt`                |
 | HTML プレビュー    | ✅ 完了  | `http://<INGRESS_IP>/wizfile`                        |
 | curl コマンド      | ✅ 完了  | `curl http://<INGRESS_IP>/wizexercise.txt`           |
-| トップページリンク | ✅ 完了  | ヘッダーに「🔐 シークレットファイル」リンク配置      |
+| トップページリンク | ✅ 完了  | ヘッダーに「� Secret File」リンクを常設              |
 
 ### UI デザイン
 
-| 要素           | Before                      | After                             |
-| -------------- | --------------------------- | --------------------------------- |
-| 背景           | 紫グラデーション            | グレー単色 `#e0e0e0`              |
-| ヘッダー       | 紫グラデーション + 影       | 青単色 `#336699` + ダブルボーダー |
-| ボタン         | グラデーション + 浮き上がり | outset 3D 効果                    |
-| メッセージ表示 | カード型 + 影               | テーブル型 + ストライプ           |
-| フォント       | Segoe UI                    | MS PGothic                        |
-| 全体の雰囲気   | モダン・AI 臭い             | レトロ BBS 風                     |
+| 要素           | Before                      | After                                               |
+| -------------- | --------------------------- | --------------------------------------------------- |
+| 背景           | 紫グラデーション            | 琥珀グラデーション `#fef3c7 → #fde68a`              |
+| ヘッダー       | 紫グラデーション + 影       | サンセット調グラデーション + `⚠️ VULNERABLE` バッジ |
+| ボタン         | グラデーション + 浮き上がり | 琥珀グラデーション + ソフトシャドウ                 |
+| メッセージ表示 | カード型 + 影               | カード型 + 影（角丸と余白を最適化）                 |
+| フォント       | Segoe UI                    | Segoe UI（温かみのあるカラーパレットと組み合わせ）  |
+| 全体の雰囲気   | モダン・AI 臭い             | サンセット BBS テイストで落ち着いた印象             |
 
 ### ドキュメント
 
 | ファイル          | 改善内容                                                  |
 | ----------------- | --------------------------------------------------------- |
-| wizexercise.txt   | 4 つのアクセス方法を明記                                  |
+| wizexercise.txt   | 3 つのアクセス方法を明記（HTML プレビューはルートで案内） |
 | DEMO_PROCEDURE.md | IP アドレスをプレースホルダー化、環境変数取得コマンド追加 |
 | Docs_work_history | Phase21 として本ドキュメント作成                          |
 
@@ -304,9 +253,9 @@ a814d6c docs: Update demo procedure with browser access method for wizexercise.t
 
 ### 3. UI デザインのバランス
 
-- 「AI 臭さ」の正体: 過度なグラデーション・影・アニメーション
-- レトロ感の演出: テーブルレイアウト、ダブルボーダー、outset ボタン
-- 完全にレトロにしすぎない: ホバーエフェクト、レスポンシブは維持
+- 「AI 臭さ」の正体は紫系の配色と過剰なシャドウ → 琥珀グラデーションで解消
+- サンセット系のカラーパレットとカード余白を整えることで視認性を確保
+- ホバー演出は控えめにしつつ、レスポンシブ挙動は維持してデモの体験価値を損なわない
 
 ---
 
@@ -334,7 +283,7 @@ a814d6c docs: Update demo procedure with browser access method for wizexercise.t
 
 ## 🎨 UI Before/After 比較
 
-### Before (AI 臭い)
+### Before (AI 寄りのモダン UI)
 
 ```
 ■ 紫のグラデーション背景
@@ -344,14 +293,14 @@ a814d6c docs: Update demo procedure with browser access method for wizexercise.t
 ■ モダンすぎて"作られた感"
 ```
 
-### After (レトロ BBS 風)
+### After (サンセット BBS テイスト)
 
 ```
-■ グレー単色背景
-■ テーブル型のメッセージ（1px枠線、ストライプ）
-■ ホバーで黄色ハイライトのみ
-■ 絵文字は最小限（■記号で代用）
-■ 90年代BBSの懐かしい雰囲気
+■ 琥珀系グラデーション背景とホワイトカード
+■ 投稿数を示す stats バーを追加
+■ Secret File リンクをヘッダーに常時表示
+■ カード型メッセージの影と角丸を微調整
+■ 暖色系で統一しつつ、デモ向けのアイコンは維持
 ```
 
 ---
@@ -369,11 +318,11 @@ Write-Host "App URL: http://$INGRESS_IP" -ForegroundColor Green
 Start-Process "http://$INGRESS_IP"
 
 # 3. 確認項目
-# ✅ レトロBBS風のデザインになっているか
-# ✅ ヘッダーに「[Secret File]」リンクがあるか
+# ✅ サンセット BBS 風のデザインになっているか
+# ✅ ヘッダーに「Secret File」リンクが常時表示されているか
 # ✅ リンクをクリックして wizexercise.txt が表示されるか
 # ✅ メッセージ投稿が正常に動作するか
-# ✅ テーブルレイアウトでメッセージが表示されるか
+# ✅ カードレイアウトでメッセージが表示されるか
 
 # 4. curl でも確認
 curl "http://$INGRESS_IP/wizexercise.txt"
