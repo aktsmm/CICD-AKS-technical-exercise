@@ -23,9 +23,14 @@ $policySet.properties.policyDefinitions = $filtered
 $policySet.properties.displayName = 'Custom MCSB (Core Controls)'
 $policySet.properties.description = 'Microsoft cloud security benchmark trimmed to exclude MobileNetwork dependencies.'
 if (-not $policySet.properties.metadata) {
-    $policySet.properties | Add-Member -MemberType NoteProperty -Name metadata -Value @{}
+    $policySet.properties | Add-Member -MemberType NoteProperty -Name metadata -Value ([ordered]@{})
 }
-$policySet.properties.metadata.customizedOn = (Get-Date).ToString('s')
+$metadata = $policySet.properties.metadata
+if ($metadata -is [System.Collections.IDictionary]) {
+    $metadata['customizedOn'] = (Get-Date).ToString('s')
+} else {
+    $policySet.properties.metadata | Add-Member -MemberType NoteProperty -Name customizedOn -Value ((Get-Date).ToString('s')) -Force
+}
 
 $directory = Split-Path -Path $OutputPath -Parent
 if ($directory -and -not (Test-Path $directory)) {
