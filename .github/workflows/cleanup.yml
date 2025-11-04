@@ -1,12 +1,18 @@
 name: 🧹 Cleanup Workflow Runs (Keep latest 7 human + 3 dependabot runs)
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  # ✅ 定期実行（30分ごと、UTC基準）
   schedule:
-    - cron: "0 */12 * * *" # 12時間ごとに実行（UTC）
+    - cron: "*/30 * * * *"
+
+  # ✅ 手動実行（必要に応じて）
+  workflow_dispatch:
+
+  # ✅ 他ワークフローが「失敗」したときに実行
+  workflow_run:
+    workflows: ["Deploy Infrastructure", "Build and Deploy Application"]
+    types:
+      - completed
 
 permissions:
   actions: write
@@ -14,14 +20,20 @@ permissions:
 
 jobs:
   cleanup:
-    if: ${{ github.ref == 'refs/heads/main' && github.actor != 'dependabot[bot]' }}
+    # 🔒 mainブランチかつ Cleanup 自身のワークフロー以外で実行時
+    if: |
+      github.ref == 'refs/heads/main' &&
+      github.workflow != '🧹 Cleanup Workflow Runs (Keep latest 7 human + 3 dependabot runs)' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure')
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Delete failed, old, and all Cleanup runs (keep latest 7 human + 3 dependabot)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          REPO="aktsmm/CICD-AKS-technical-exercise"
+          REPO="${{ github.repository }}"
           SELF_NAME="🧹 Cleanup Workflow Runs (Keep latest 7 human + 3 dependabot runs)"
 
           echo "🧾 Fetching workflow runs..."
