@@ -58,13 +58,16 @@ jobs:
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
-                    --scripts "/usr/local/bin/mongodb-backup.sh" \
+                    --scripts "bash /usr/local/bin/mongodb-backup.sh" \
                     -o json)
 
                   MESSAGE=$(echo "$RUN_RESULT" | jq -r '.value[0].message')
                   EXIT_CODE=$(echo "$RUN_RESULT" | jq -r '.value[0].instanceView.exitCode // 0')
 
+                  echo "::group::VM command output ($VM_NAME)"
                   echo "$MESSAGE"
+                  echo "::endgroup::"
+                  echo "::notice::MongoDB backup script finished on $VM_NAME (exit code $EXIT_CODE)"
 
                   if [ "$EXIT_CODE" -ne 0 ]; then
                     echo "::error::Run Command failed with exit code $EXIT_CODE"
