@@ -104,13 +104,21 @@ jobs:
 
                     echo "$raw" |
                       awk '/\[stdout\]/{flag=1;next}/\[stderr\]/{flag=0}flag' |
-                      grep -v '^Optional parameters:' |
+                      sed 's/\r$//' |
+                      grep -v '^[[:space:]]*Optional parameters:' |
                       sed '/^$/d'
+                  }
+
+                  first_line() {
+                    echo "$1" | sed 's/\r$//' | grep -v '^[[:space:]]*Optional parameters:' | head -n 1
                   }
 
                   FILE_LINES=$(list_payload "ls -lh /var/backups/mongodb/mongodb_backup_*.tar.gz 2>/dev/null" || true)
                   SAS_URL=$(list_payload "grep 'SAS URL:' /var/log/mongodb-backup.log | tail -n 1 | sed -e 's/.*SAS URL: //'" || true)
                   PUBLIC_URL=$(list_payload "grep 'uploaded:' /var/log/mongodb-backup.log | tail -n 1 | sed -e 's/.*uploaded: //'" || true)
+
+                  SAS_URL=$(first_line "$SAS_URL")
+                  PUBLIC_URL=$(first_line "$PUBLIC_URL")
 
                   {
                     echo "files<<EOF"
