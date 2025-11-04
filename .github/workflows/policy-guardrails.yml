@@ -1,4 +1,4 @@
-name: Deploy Policy Guardrails
+name: 2-2. Deploy Policy Guardrails
 
 on:
     workflow_run:
