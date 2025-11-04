@@ -41,6 +41,7 @@
    - 各 `azure/login@v1` ステップで OIDC を利用する設定へ変更 (`permissions: id-token: write` を維持)。
    - `.github/workflows/infra-deploy.yml` に RBAC ロール割り当てステップを追加し、MongoDB VM Managed Identity と AKS Kubelet Identity へ必要ロールを付与。
    - `workflow_run` 依存関係を最新版のワークフロー名 (番号付き) に更新。
+   - `3. Scheduled Mongo Backup` を GitHub Variables (`MONGO_VM_NAME`) で切り替え可能にし、VM 未存在時はスキップ警告のみでジョブ失敗を避けるよう調整。
 
 5. **Issue 管理**
    - フェデレーションクレデンシャル不足による `AADSTS700213` 対応は [Phase29](./Phase29_OIDCEnvironmentCredential_2025-11-05.md) を参照。

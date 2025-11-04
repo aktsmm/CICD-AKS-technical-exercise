@@ -12,6 +12,7 @@ permissions:
 
 env:
     RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+    MONGO_VM_NAME: ${{ vars.MONGO_VM_NAME != '' && vars.MONGO_VM_NAME || 'vm-mongo-dev' }}
 
 jobs:
     trigger-backup:
@@ -28,9 +29,23 @@ jobs:
             - name: Execute MongoDB Backup Script on VM
               id: runbackup
               run: |
+                  RG="${{ env.RESOURCE_GROUP }}"
+                  VM_NAME="${{ env.MONGO_VM_NAME }}"
+
+                  if ! az vm show --resource-group "$RG" --name "$VM_NAME" >/dev/null 2>&1; then
+                    echo "::warning::VM '$VM_NAME' not found in resource group '$RG'. Skipping backup trigger."
+                    {
+                      echo "vm_found=false"
+                      echo "stdout<<'EOF'"
+                      echo "Skip: VM '$VM_NAME' not found in resource group '$RG'."
+                      echo 'EOF'
+                    } >> "$GITHUB_OUTPUT"
+                    exit 0
+                  fi
+
                   OUTPUT=$(az vm run-command invoke \
-                    --resource-group ${{ env.RESOURCE_GROUP }} \
-                    --name vm-mongo-dev \
+                    --resource-group "$RG" \
+                    --name "$VM_NAME" \
                     --command-id RunShellScript \
                     --scripts "/usr/local/bin/mongodb-backup.sh" \
                     --query "value[0].message" -o tsv)
@@ -38,17 +53,22 @@ jobs:
                   echo "$OUTPUT"
 
                   {
+                    echo "vm_found=true"
                     echo "stdout<<'EOF'"
                     echo "$OUTPUT"
                     echo 'EOF'
-                  } >> $GITHUB_OUTPUT
+                  } >> "$GITHUB_OUTPUT"
 
             - name: Collect Latest Backup Log
               id: log
+              if: steps.runbackup.outputs.vm_found == 'true'
               run: |
+                  RG="${{ env.RESOURCE_GROUP }}"
+                  VM_NAME="${{ env.MONGO_VM_NAME }}"
+
                   LOG_OUTPUT=$(az vm run-command invoke \
-                    --resource-group ${{ env.RESOURCE_GROUP }} \
-                    --name vm-mongo-dev \
+                    --resource-group "$RG" \
+                    --name "$VM_NAME" \
                     --command-id RunShellScript \
                     --scripts "tail -n 20 /var/log/mongodb-backup.log" \
                     --query "value[0].message" -o tsv)
@@ -57,10 +77,18 @@ jobs:
                     echo "log<<'EOF'"
                     echo "$LOG_OUTPUT"
                     echo 'EOF'
-                  } >> $GITHUB_OUTPUT
+                  } >> "$GITHUB_OUTPUT"
 
             - name: Publish Backup Summary
               run: |
+                  if [[ "${{ steps.runbackup.outputs.vm_found }}" != "true" ]]; then
+                    {
+                      echo "### MongoDB Backup Trigger"
+                      echo "- Result: VM '${{ env.MONGO_VM_NAME }}' not found in resource group '${{ env.RESOURCE_GROUP }}'. Backup skipped."
+                    } >> $GITHUB_STEP_SUMMARY
+                    exit 0
+                  fi
+
                   {
                     echo "### MongoDB Backup Trigger"
                     echo "- VM Command Output:"
