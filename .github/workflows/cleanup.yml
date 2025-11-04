@@ -14,6 +14,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/cleanup.yml"
+      - ".github/workflows/🧹*.yml"
 
 permissions:
   actions: write
@@ -32,12 +33,12 @@ jobs:
           REPO="${{ github.repository }}"
           SELF_NAME="🧹 Cleanup Workflow Runs (Keep latest 7 human + 3 dependabot runs)"
 
-          echo "🔍 Getting all workflow runs..."
-          RUNS=$(gh run list --workflow "$SELF_NAME" --json databaseId,headBranch,status,conclusion,createdAt,actor --limit 1000)
+          echo "🔍 Getting all Cleanup workflow runs..."
+          RUNS=$(gh run list --workflow "$SELF_NAME" --json databaseId,headBranch,status,conclusion,createdAt --limit 1000)
           COUNT=$(echo "$RUNS" | jq 'length')
           echo "🧾 Found $COUNT Cleanup runs total."
 
-          # 最新の（今まさに動いている）Run IDを取得
+          # 現在の Cleanup 実行中の ID を取得
           CURRENT_ID=$(echo "$RUNS" | jq -r '.[] | select(.status=="in_progress" or .status=="queued") | .databaseId' | head -n 1)
           echo "🟢 Current Cleanup Run ID: ${CURRENT_ID:-none}"
 
@@ -54,7 +55,7 @@ jobs:
           fi
 
           echo "🧩 Cleaning other workflows (7 human + 3 dependabot)..."
-          ALL_RUNS=$(gh api repos/$REPO/actions/runs --paginate -q '.workflow_runs[] | {id: .id, name: .name, conclusion: .conclusion, actor: .actor.login, created_at: .created_at}' | jq -s 'sort_by(.created_at) | reverse')
+          ALL_RUNS=$(gh api repos/$REPO/actions/runs --paginate -q '.workflow_runs[] | {id: .id, name: .name, conclusion: .conclusion, created_at: .created_at, actor: (.actor.login // "unknown")}' | jq -s 'sort_by(.created_at) | reverse')
 
           KEEP_HUMAN=$(echo "$ALL_RUNS" | jq -c '[.[] | select(.actor != "dependabot[bot]" and .conclusion == "success")][:7] | map(.id)')
           KEEP_DEPENDABOT=$(echo "$ALL_RUNS" | jq -c '[.[] | select(.actor == "dependabot[bot]" and .conclusion == "success")][:3] | map(.id)')
@@ -64,7 +65,7 @@ jobs:
             [ .[] | select((.conclusion != "success") or (.id as $id | ($keepIds | index($id)) | not)) ]')
 
           COUNT=$(echo "$TARGETS" | jq 'length')
-          echo "🧹 Found $COUNT runs to delete."
+          echo "🧹 Found $COUNT other workflow runs to delete."
 
           if (( COUNT > 0 )); then
             echo "$TARGETS" | jq -c '.[]' | while read -r run; do
