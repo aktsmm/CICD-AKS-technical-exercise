@@ -8,7 +8,7 @@ on:
   # ✅ 手動実行
   workflow_dispatch:
 
-  # ✅ 他ワークフローが完了したとき（成功・失敗どちらでも）
+  # ✅ 他ワークフロー完了時（成功・失敗どちらでも）
   workflow_run:
     workflows:
       - "Deploy Infrastructure"
@@ -17,13 +17,21 @@ on:
     types:
       - completed
 
+  # ✅ 自分自身のファイルが変更されたときにも実行
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/cleanup.yml" # ← Cleanupのファイル名に合わせる
+      - ".github/workflows/🧹*.yml" # ← 絵文字つきファイル名対策（念のため）
+
 permissions:
   actions: write
   contents: read
 
 jobs:
   cleanup:
-    # ✅ mainブランチでのみ実行
+    # ✅ mainブランチで実行
     if: |
       (
         github.ref == 'refs/heads/main' ||
@@ -35,6 +43,7 @@ jobs:
       (
         github.event_name == 'schedule' ||
         github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'push' ||
         (
           github.event_name == 'workflow_run' &&
           (
@@ -52,6 +61,8 @@ jobs:
           echo "Event: ${{ github.event_name }}"
           echo "Workflow Run Conclusion: ${{ github.event.workflow_run.conclusion }}"
           echo "Head Branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Committer: ${{ github.actor }}"
+          echo "Workflow file changed: ${{ github.event.head_commit.message }}"
 
       - name: 🧹 Cleanup old workflow runs (keep latest 7 human + 3 dependabot + current cleanup)
         env:
@@ -67,7 +78,7 @@ jobs:
 
           echo "🧩 Selecting deletion targets..."
 
-          # ✅ 最新のCleanup Run（＝今回分）を取得して保持
+          # ✅ 最新のCleanup Run（＝今回分）を保持
           CURRENT_RUN_ID=$(gh run list --workflow "$SELF_NAME" --json databaseId,status \
             | jq -r '.[] | select(.status=="in_progress" or .status=="queued") | .databaseId' | head -n 1)
 
@@ -79,7 +90,7 @@ jobs:
           # 🤖 Dependabot実行: 最新3件のみ保持
           KEEP_DEPENDABOT=$(echo "$RUNS" | jq -c '[.[] | select(.actor == "dependabot[bot]" and .conclusion == "success")][:3] | map(.id)')
 
-          # 🧩 保持対象（Cleanupの現行Run含む）を統合
+          # 🧩 保持対象（Cleanup現行Run含む）
           KEEP_ALL=$(jq -n \
             --argjson a "$KEEP_HUMAN" \
             --argjson b "$KEEP_DEPENDABOT" \
