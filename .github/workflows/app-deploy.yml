@@ -455,6 +455,9 @@ jobs:
             echo "$PODS"
             echo '```'
           } >> $GITHUB_STEP_SUMMARY
+
+          # Early exit to prevent legacy inline commands below from executing
+          exit 0
               - http:
                   paths:
                     - path: /
