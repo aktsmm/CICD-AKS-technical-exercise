@@ -21,11 +21,9 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
   }
   properties: {
     dnsPrefix: clusterName
-    // パブリッククラスター設定: GitHub Actions からデプロイ可能
-    // アプリケーションへのアクセスは LoadBalancer で制御
+    // パブリック クラスターを想定して API Server を公開
     apiServerAccessProfile: {
-      enablePrivateCluster: true
-      privateDNSZone: 'System'
+      enablePrivateCluster: false
     }
     agentPoolProfiles: [
       {

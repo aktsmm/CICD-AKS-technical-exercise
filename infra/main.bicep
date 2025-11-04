@@ -152,35 +152,6 @@ module aks 'modules/aks.bicep' = {
   }
 }
 
-// 脆弱性: MongoDB VMに過剰なクラウド権限(Contributor)を付与
-module vmRoleAssignment 'modules/vm-role-assignment.bicep' = {
-  scope: rg
-  name: 'vm-role-${deploymentTimestamp}'
-  params: {
-    vmPrincipalId: mongoVM.outputs.vmIdentityPrincipalId
-  }
-}
-
-// MongoDB VMにStorage Blob Data Contributor権限を付与（バックアップ用）
-module vmStorageRole 'modules/vm-storage-role.bicep' = {
-  scope: rg
-  name: 'vm-storage-role-${deploymentTimestamp}'
-  params: {
-    vmPrincipalId: mongoVM.outputs.vmIdentityPrincipalId
-    storageAccountName: storage.outputs.storageAccountName
-  }
-}
-
-// AKS に ACR からイメージを pull する権限を付与
-module aksAcrRole 'modules/aks-acr-role.bicep' = {
-  scope: rg
-  name: 'aks-acr-role-${deploymentTimestamp}'
-  params: {
-    kubeletIdentityPrincipalId: aks.outputs.kubeletIdentity
-    acrName: acr.outputs.acrName
-  }
-}
-
 module diagnostics 'modules/diagnostics.bicep' = {
   scope: rg
   name: 'diagnostics-${deploymentTimestamp}'
@@ -201,3 +172,5 @@ output mongoVMPrivateIP string = mongoVM.outputs.privateIP
 output storageAccountName string = storage.outputs.storageAccountName
 output acrName string = acr.outputs.acrName
 output acrLoginServer string = acr.outputs.acrLoginServer
+output kubeletIdentityPrincipalId string = aks.outputs.kubeletIdentity
+output mongoVMIdentityPrincipalId string = mongoVM.outputs.vmIdentityPrincipalId
