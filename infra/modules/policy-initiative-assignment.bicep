@@ -18,6 +18,9 @@ param nonComplianceMessage string = 'Review compliance results for this policy a
 @description('イニシアチブに渡すパラメーター。不要な場合は空のオブジェクトのまま。')
 param policyParameters object = {}
 
+@description('特定のポリシー参照の効果を上書きする設定。ポリシー除外が必要な場合に利用します。')
+param policyOverrides array = []
+
 // デモ環境の評価用としてサブスクリプション全体にガードレールを適用する共通モジュール。
 resource initiativeAssignment 'Microsoft.Authorization/policyAssignments@2022-06-01' = {
   name: assignmentName
@@ -32,6 +35,7 @@ resource initiativeAssignment 'Microsoft.Authorization/policyAssignments@2022-06
       }
     ]
     parameters: policyParameters
+    overrides: length(policyOverrides) == 0 ? null : policyOverrides
     enforcementMode: 'Default'
   }
 }

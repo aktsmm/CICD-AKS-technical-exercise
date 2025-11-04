@@ -145,6 +145,16 @@ module policyMcsb 'modules/policy-initiative-assignment.bicep' = {
     displayName: 'Microsoft cloud security benchmark v2 (${environment})'
     assignmentDescription: 'Assigns the Microsoft cloud security benchmark initiative to monitor the intentionally vulnerable demo scope.'
     nonComplianceMessage: 'Use Defender for Cloud to review the Microsoft cloud security benchmark posture for this demo environment.'
+    // Microsoft.MobileNetwork プロバイダー依存ポリシーだけを無効化して登録制限に対応
+    policyOverrides: [
+      {
+        kind: 'PolicyEffect'
+        policyDefinitionReferenceId: 'SimGroupCMKsEncryptDataRest'
+        value: {
+          effect: 'Disabled'
+        }
+      }
+    ]
   }
 }
 
