@@ -46,7 +46,6 @@ find ${BACKUP_DIR} -name "mongodb_backup_*.tar.gz" -mtime +7 -delete
 PUBLIC_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}/${BACKUP_FILE}"
 
 SUMMARY=$(cat <<EOF
-MongoDB backup completed successfully.
 File: ${BACKUP_FILE}
 Size: ${FILE_SIZE}
 URL: ${PUBLIC_URL}
@@ -55,4 +54,6 @@ EOF
 )
 
 log_line "Backup completed and uploaded to ${PUBLIC_URL}"
-echo "$SUMMARY" | tee -a "$LOG_FILE"
+echo "$SUMMARY"
+echo "MongoDB backup completed successfully." >> "$LOG_FILE"
+echo "$SUMMARY" >> "$LOG_FILE"
