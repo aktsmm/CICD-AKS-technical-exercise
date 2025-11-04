@@ -26,7 +26,9 @@ module policyMcsb 'modules/policy-initiative-assignment.bicep' = {
             ]
           }
         ]
-        value: 'Disabled'
+        value: {
+          effect: 'Disabled'
+        }
       }
     ]
   }
