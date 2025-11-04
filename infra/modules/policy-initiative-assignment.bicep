@@ -21,10 +21,20 @@ param policyParameters object = {}
 @description('特定のポリシー参照の効果を上書きする設定。ポリシー除外が必要な場合に利用します。')
 param policyOverrides array = []
 
+@description('ポリシー割り当てにマネージド ID を付与するかどうか。Modify / DeployIfNotExists 効果を含む場合は true にします。')
+param enableManagedIdentity bool = false
+
+@description('マネージド ID を有効化した際に使用する Azure リージョン。')
+param managedIdentityLocation string = ''
+
 // デモ環境の評価用としてサブスクリプション全体にガードレールを適用する共通モジュール。
 resource initiativeAssignment 'Microsoft.Authorization/policyAssignments@2022-06-01' = {
   name: assignmentName
   scope: subscription()
+  location: enableManagedIdentity ? managedIdentityLocation : null
+  identity: enableManagedIdentity ? {
+    type: 'SystemAssigned'
+  } : null
   properties: {
     displayName: displayName
     description: assignmentDescription

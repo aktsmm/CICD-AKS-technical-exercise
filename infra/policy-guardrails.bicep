@@ -6,6 +6,9 @@ param environment string = 'dev'
 @description('デプロイタイムスタンプ (モジュール名を一意化)')
 param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
 
+@description('deployIfNotExists / Modify ポリシーを割り当てる際に利用するマネージド ID のリージョン。')
+param managedIdentityLocation string = deployment().location
+
 // Microsoft cloud security benchmark v2 を適用するガードレール。GUID 指定で別名変更時も追従不要。
 module policyMcsb 'modules/policy-initiative-assignment.bicep' = {
   name: 'policy-mcsb-${deploymentTimestamp}'
@@ -15,6 +18,8 @@ module policyMcsb 'modules/policy-initiative-assignment.bicep' = {
     displayName: 'Microsoft cloud security benchmark v2 (${environment})'
     assignmentDescription: 'Assigns the Microsoft cloud security benchmark initiative to monitor the intentionally vulnerable demo scope.'
     nonComplianceMessage: 'Use Defender for Cloud to review the Microsoft cloud security benchmark posture for this demo environment.'
+    enableManagedIdentity: true
+    managedIdentityLocation: managedIdentityLocation
   }
 }
 
@@ -27,6 +32,8 @@ module policyCis 'modules/policy-initiative-assignment.bicep' = {
     displayName: 'CIS Microsoft Azure Foundations Benchmark v1.4.0 (${environment})'
     assignmentDescription: 'Assigns the CIS v1.4.0 initiative so compliance drift can be reviewed without remediating intentional findings.'
     nonComplianceMessage: 'Track CIS v1.4.0 recommendations after each deployment to confirm known gaps remain observable.'
+    enableManagedIdentity: true
+    managedIdentityLocation: managedIdentityLocation
   }
 }
 
