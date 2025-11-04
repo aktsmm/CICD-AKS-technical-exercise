@@ -441,6 +441,7 @@ jobs:
         run: |
           RG='${{ env.RESOURCE_GROUP }}'
           CLUSTER='${{ steps.infra.outputs.aks_name }}'
+          DOMAIN='${{ steps.tls.outputs.domain }}'
 
           PODS=$(az aks command invoke --resource-group "$RG" --name "$CLUSTER" --command "kubectl get pods -n default -l app=guestbook -o wide" --query "logs" -o tsv)
 
@@ -448,7 +449,11 @@ jobs:
             echo "### Deployment Summary"
             echo "- Cluster: ${CLUSTER}"
             echo "- Mongo VM IP: ${{ steps.infra.outputs.mongo_ip }}"
-            echo "- Domain: ${{ steps.tls.outputs.domain != '' && steps.tls.outputs.domain || 'Pending IP allocation' }}"
+            if [ -n "$DOMAIN" ]; then
+              echo "- Domain: ${DOMAIN}"
+            else
+              echo "- Domain: Pending IP allocation"
+            fi
             echo "- Image: ${{ needs.build-push.outputs.acr_name }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.image_tag }}"
             echo "- Pods:" 
             echo '```'
