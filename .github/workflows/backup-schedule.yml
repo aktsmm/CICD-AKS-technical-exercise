@@ -20,7 +20,7 @@ env:
 
 jobs:
     trigger-backup:
-        name: Run mongodump from Azure Automation Replacement
+        name: Run mongo dump from Azure VM
         runs-on: ubuntu-latest
         steps:
             - name: Azure Login
