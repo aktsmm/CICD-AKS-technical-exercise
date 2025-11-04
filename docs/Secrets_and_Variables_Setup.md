@@ -44,12 +44,12 @@
 
 ## 2. GitHub Variables (非機密設定)
 
-| 名前 | 推奨値 | 用途/補足 |
-| --- | --- | --- |
-| `AZURE_LOCATION` | `japaneast` | 既定のデプロイリージョン。Bicep/Actions 双方で参照。 |
+| 名前                   | 推奨値            | 用途/補足                                                                                                         |
+| ---------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `AZURE_LOCATION`       | `japaneast`       | 既定のデプロイリージョン。Bicep/Actions 双方で参照。                                                              |
 | `AZURE_RESOURCE_GROUP` | `rg-bbs-cicd-aks` | すべての GitHub Actions (特に backup ワークフロー) がこの値を利用。リソースグループを変更した場合は忘れずに更新。 |
-| `IMAGE_NAME` | `guestbook` | コンテナビルド後に ACR へ push するイメージ名。 |
-| `MONGO_VM_NAME` (任意) | `vm-mongo-dev` | `3. Scheduled Mongo Backup` を複数環境で使い分ける場合に設定。未定義時は既定値 `vm-mongo-dev` を利用。 |
+| `IMAGE_NAME`           | `guestbook`       | コンテナビルド後に ACR へ push するイメージ名。                                                                   |
+| `MONGO_VM_NAME` (任意) | `vm-mongo-dev`    | `3. Scheduled Mongo Backup` を複数環境で使い分ける場合に設定。未定義時は既定値 `vm-mongo-dev` を利用。            |
 
 変数は `Settings` → `Secrets and variables` → `Actions` → `Variables` から登録する。
 
