@@ -7,6 +7,12 @@ on:
         types:
             - completed
     workflow_dispatch:
+    push:
+        branches:
+            - main
+        paths:
+            - "infra/**"
+            - ".github/workflows/policy-guardrails.yml"
 
 permissions:
     contents: read
@@ -86,8 +92,7 @@ jobs:
                       '--subscription', $env:AZURE_SUBSCRIPTION_ID,
                       '--display-name', $policySet.properties.displayName,
                       '--description', $policySet.properties.description,
-                      '--definitions', "@$definitionsFile",
-                      '--mode', 'All'
+                      '--definitions', "@$definitionsFile"
                   )
 
                   if ($policySet.properties.version) {
