@@ -90,12 +90,12 @@ jobs:
             local scope="$1"
             local roleName="$2"
 
-            if az role assignment list --assignee "$PRINCIPAL_ID" --role "$roleName" --scope "$scope" --query "[].id" -o tsv | grep -q .; then
+            if az role assignment list --assignee-object-id "$PRINCIPAL_ID" --role "$roleName" --scope "$scope" --query "[].id" -o tsv | grep -q .; then
               echo "Role '$roleName' already present at scope '$scope'."
             else
               echo "Assigning role '$roleName' at scope '$scope'."
               az role assignment create \
-                --assignee "$PRINCIPAL_ID" \
+                --assignee-object-id "$PRINCIPAL_ID" \
                 --assignee-principal-type ServicePrincipal \
                 --role "$roleName" \
                 --scope "$scope"
