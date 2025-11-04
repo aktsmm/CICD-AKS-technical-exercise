@@ -23,7 +23,6 @@ on:
       - main
     paths:
       - ".github/workflows/cleanup.yml" # ← Cleanupのファイル名に合わせる
-      - ".github/workflows/🧹*.yml" # ← 絵文字つきファイル名対策（念のため）
 
 permissions:
   actions: write
