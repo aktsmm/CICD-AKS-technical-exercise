@@ -46,35 +46,35 @@
 | --- | ------------------------------------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
 | 2.1 | ✅ アプリはコンテナ化され、MongoDB を使用                          | ✅ **達成** | Node.js + Express.js<br>MongoDB Client 接続<br>Dockerfile: `app/Dockerfile`                                              | `app/app.js` (L17-28)                                              |
 | 2.2 | ✅ Kubernetes クラスタはプライベートサブネットに配置               | ✅ **達成** | AKS Subnet: `aks-subnet`<br>CIDR: `10.0.1.0/24`<br>Type: Private (Internal VNet)                                         | `infra/modules/vnet.bicep`                                         |
-| 2.3 | ✅ MongoDB への接続情報は環境変数で指定                            | ✅ **達成** | `mongo-credentials` Secret の `uri` を `secretKeyRef` で読み込み、`PORT` はマニフェストで固定                         | `app/k8s/deployment.yaml`、`.github/workflows/app-deploy.yml`      |
+| 2.3 | ✅ MongoDB への接続情報は環境変数で指定                            | ✅ **達成** | `mongo-credentials` Secret の `uri` を `secretKeyRef` で読み込み、`PORT` はマニフェストで固定                            | `app/k8s/deployment.yaml`、`.github/workflows/app-deploy.yml`      |
 | 2.4 | ✅ コンテナ内に wizexercise.txt (氏名を記載) を含める              | ✅ **達成** | ファイル: `/app/wizexercise.txt`<br>氏名: yamapan<br>Dockerfile で `COPY wizexercise.txt /app/`                          | `kubectl exec -- test -f /app/wizexercise.txt` → ✅ exists         |
 | 2.5 | ✅ コンテナにクラスタ管理者権限 (admin role) を付与                | ✅ **達成** | ClusterRoleBinding: `developer-cluster-admin`<br>ServiceAccount: `default` (namespace: default)<br>Role: `cluster-admin` | `kubectl get clusterrolebinding developer-cluster-admin` → ✅ 存在 |
 | 2.6 | ✅ Ingress + LB で公開 (HTTP/HTTPS)                                | ✅ **達成** | NGINX Ingress Controller + Azure Load Balancer。Ingress IP は CI 実行時に取得し `nip.io` ドメインで TLS を構成           | `kubectl get svc -n ingress-nginx`、Actions `Deploy to AKS` ログ   |
-| 2.7 | ✅ kubectl コマンドによる操作をデモ可能にする                      | ✅ **達成** | `az aks command invoke` で制御プレーン経由の `kubectl` を実行し、Pod 操作 (`kubectl logs`, `kubectl get pods`) を確認     | `az aks command invoke` の実行ログ                                  |
+| 2.7 | ✅ kubectl コマンドによる操作をデモ可能にする                      | ✅ **達成** | `az aks command invoke` で制御プレーン経由の `kubectl` を実行し、Pod 操作 (`kubectl logs`, `kubectl get pods`) を確認    | `az aks command invoke` の実行ログ                                 |
 | 2.8 | ✅ Web アプリで入力したデータが MongoDB に保存されていることを証明 | ✅ **達成** | BBS App 動作確認:<br>1. メッセージ投稿<br>2. MongoDB に保存<br>3. リロードで表示確認<br>Collection: `messages`           | ブラウザ + MongoDB 接続で検証可能                                  |
 
 ---
 
 ### ⚙️ 2. Dev(Sec)Ops 要件
 
-| #   | 要件                                                                      | ステータス    | 実装詳細                                                                                                                               | 検証方法                                                                 |
-| --- | ------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| 3.1 | ✅ コードと構成を VCS (GitHub) に保存                                     | ✅ **達成**   | GitHub Repository:<br>[aktsmm/CICD-AKS-technical-exercise](https://github.com/aktsmm/CICD-AKS-technical-exercise)<br>Branch: `main`<br>Commit 履歴: 50+ commits | GitHub リポジトリアクセス                                                   |
-| 3.2 | ✅ IaC による安全なデプロイ (CI/CD パイプライン 1)                        | ✅ **達成**   | GitHub Actions Workflow:<br>`.github/workflows/infra-deploy.yml`<br>Bicep Templates: `infra/main.bicep`                                | Workflow 実行履歴確認                                                    |
-| 3.3 | ✅ コンテナのビルド＆レジストリ登録 → 自動デプロイ (CI/CD パイプライン 2) | ✅ **達成**   | GitHub Actions Workflow:<br>`.github/workflows/app-deploy.yml`<br>ACR Push を実行                                                      | Workflow 実行履歴確認                                                    |
-| 3.4 | ✅ AKS への自動デプロイ                                                   | ✅ **達成**   | 同ワークフローの `Deploy to AKS` ジョブが `az aks command invoke` を用いてマニフェストを適用し、ロールアウトを監視                     | `.github/workflows/app-deploy.yml` の `deploy-aks` ジョブ                |
-| 3.5 | ✅ パイプライン内にセキュリティスキャン (IaC・コンテナ) を実装            | ✅ **達成**   | **IaC Scan**: Checkov + Trivy Config (`infra-deploy.yml`)<br>**Container Scan**: Trivy + CodeQL (`app-deploy.yml`)<br>SARIF を GitHub Security に公開 | `.github/workflows/infra-deploy.yml`、`.github/workflows/app-deploy.yml` |
-| 3.6 | ❌ 攻撃シナリオのログ/スクリプト化 (オプション)                           | ❌ **未実施** | Wiz の検出検証ログや疑似攻撃スクリプトをリポジトリにはまだ追加していない                                                               | `Docs_issue_point/` 等への追記が必要                                     |
+| #   | 要件                                                                      | ステータス    | 実装詳細                                                                                                                                                        | 検証方法                                                                 |
+| --- | ------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| 3.1 | ✅ コードと構成を VCS (GitHub) に保存                                     | ✅ **達成**   | GitHub Repository:<br>[aktsmm/CICD-AKS-technical-exercise](https://github.com/aktsmm/CICD-AKS-technical-exercise)<br>Branch: `main`<br>Commit 履歴: 50+ commits | GitHub リポジトリアクセス                                                |
+| 3.2 | ✅ IaC による安全なデプロイ (CI/CD パイプライン 1)                        | ✅ **達成**   | GitHub Actions Workflow:<br>`.github/workflows/infra-deploy.yml`<br>Bicep Templates: `infra/main.bicep`                                                         | Workflow 実行履歴確認                                                    |
+| 3.3 | ✅ コンテナのビルド＆レジストリ登録 → 自動デプロイ (CI/CD パイプライン 2) | ✅ **達成**   | GitHub Actions Workflow:<br>`.github/workflows/app-deploy.yml`<br>ACR Push を実行                                                                               | Workflow 実行履歴確認                                                    |
+| 3.4 | ✅ AKS への自動デプロイ                                                   | ✅ **達成**   | 同ワークフローの `Deploy to AKS` ジョブが `az aks command invoke` を用いてマニフェストを適用し、ロールアウトを監視                                              | `.github/workflows/app-deploy.yml` の `deploy-aks` ジョブ                |
+| 3.5 | ✅ パイプライン内にセキュリティスキャン (IaC・コンテナ) を実装            | ✅ **達成**   | **IaC Scan**: Checkov + Trivy Config (`infra-deploy.yml`)<br>**Container Scan**: Trivy + CodeQL (`app-deploy.yml`)<br>SARIF を GitHub Security に公開           | `.github/workflows/infra-deploy.yml`、`.github/workflows/app-deploy.yml` |
+| 3.6 | ❌ 攻撃シナリオのログ/スクリプト化 (オプション)                           | ❌ **未実施** | Wiz の検出検証ログや疑似攻撃スクリプトをリポジトリにはまだ追加していない                                                                                        | `Docs_issue_point/` 等への追記が必要                                     |
 
 ---
 
 ### ☁️ 3. クラウドネイティブセキュリティ
 
-| #   | 要件                                    | ステータス    | 実装詳細                                                                                      | 検証方法                                                                      |
-| --- | --------------------------------------- | ------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| 4.1 | ✅ クラウド制御プレーン監査ログを有効化 | ✅ **達成**   | Log Analytics Workspace: `log-dev`<br>Resource Group: `rg-bbs-cicd-aks`<br>AKS 診断設定有効化 | `az resource list --resource-type "Microsoft.OperationalInsights/workspaces"` |
-| 4.2 | ✅ 予防的コントロールを 1 つ以上設定    | ✅ **達成**   | Azure Policy イニシアチブ (MCSB/CIS) を Audit 割当し、意図的な脆弱構成を観測モードで可視化    | `.github/workflows/policy-guardrails.yml`、`infra/policy-guardrails.bicep`    |
-| 4.3 | ✅ 検知的コントロールを 1 つ以上設定    | ✅ **達成**   | Defender for Cloud Standard プランを Bicep で有効化し、アクティビティログを Log Analytics へ送信                         | `az security pricing list`、`az monitor diagnostic-settings list`             |
+| #   | 要件                                    | ステータス  | 実装詳細                                                                                         | 検証方法                                                                      |
+| --- | --------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| 4.1 | ✅ クラウド制御プレーン監査ログを有効化 | ✅ **達成** | Log Analytics Workspace: `log-dev`<br>Resource Group: `rg-bbs-cicd-aks`<br>AKS 診断設定有効化    | `az resource list --resource-type "Microsoft.OperationalInsights/workspaces"` |
+| 4.2 | ✅ 予防的コントロールを 1 つ以上設定    | ✅ **達成** | Azure Policy イニシアチブ (MCSB/CIS) を Audit 割当し、意図的な脆弱構成を観測モードで可視化       | `.github/workflows/policy-guardrails.yml`、`infra/policy-guardrails.bicep`    |
+| 4.3 | ✅ 検知的コントロールを 1 つ以上設定    | ✅ **達成** | Defender for Cloud Standard プランを Bicep で有効化し、アクティビティログを Log Analytics へ送信 | `az security pricing list`、`az monitor diagnostic-settings list`             |
 
 ---
 

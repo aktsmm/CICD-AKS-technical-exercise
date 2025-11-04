@@ -9,11 +9,13 @@
 ## 実施内容
 
 1. **Azure AD アプリ登録の整備**
+
    - アプリ名: `gh-aks-oidc`
    - 既存 Service Principal を継続利用しつつ、フェデレーションクレデンシャルを追加。
    - 付与ロール: サブスクリプション `/subscriptions/832c4080-181c-476b-9db0-b3ce9596d40a` に対して `Contributor`。今後のロール割り当て作成のため `User Access Administrator` 付与を検討中。
 
 2. **フェデレーションクレデンシャル**
+
    - main ブランチ用: `repo:aktsmm/CICD-AKS-technical-exercise:ref:refs/heads/main`
    - 環境 `aks-demo` 用: `repo:aktsmm/CICD-AKS-technical-exercise:environment:aks-demo`
    - 追加方法 (PowerShell 一時ファイル利用):
@@ -29,11 +31,13 @@
    - 参考: [Workload identity federation for GitHub Actions](https://learn.microsoft.com/entra/workload-id/workload-identity-federation#creating-federated-credentials-for-github-actions)
 
 3. **GitHub Secrets / Variables**
+
    - Secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `MONGO_ADMIN_PASSWORD`
    - Variables: `AZURE_RESOURCE_GROUP`, `AZURE_LOCATION`, `IMAGE_NAME`
    - 旧 `AZURE_CREDENTIALS` (Service Principal JSON) は利用停止。
 
 4. **ワークフロー修正**
+
    - 各 `azure/login@v1` ステップで OIDC を利用する設定へ変更 (`permissions: id-token: write` を維持)。
    - `.github/workflows/infra-deploy.yml` に RBAC ロール割り当てステップを追加し、MongoDB VM Managed Identity と AKS Kubelet Identity へ必要ロールを付与。
    - `workflow_run` 依存関係を最新版のワークフロー名 (番号付き) に更新。

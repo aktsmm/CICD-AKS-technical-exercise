@@ -34,7 +34,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPO="${{ github.repository }}"
-          SELF_NAME="🧹 Cleanup Workflow Runs (Keep latest 7 human + 3 dependabot runs)"
+          # GitHub が付与する実行中ワークフロー名を参照し、名称変更時も整合性を保つ
+          SELF_NAME="${GITHUB_WORKFLOW}"
 
           echo "🔍 Getting all Cleanup workflow runs..."
           RUNS=$(gh run list --workflow "$SELF_NAME" --json databaseId,headBranch,status,conclusion,createdAt --limit 1000)

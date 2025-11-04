@@ -1,74 +1,74 @@
 name: 3. Scheduled Mongo Backup
 
 on:
-  schedule:
-    # 毎日 02:00 JST に相当する 17:00 UTC に実行
-    - cron: '0 17 * * *'
-  workflow_dispatch:
+    schedule:
+        # 毎日 02:00 JST に相当する 17:00 UTC に実行
+        - cron: "0 17 * * *"
+    workflow_dispatch:
 
 permissions:
-  contents: read
-  id-token: write
+    contents: read
+    id-token: write
 
 env:
-  RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+    RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
 
 jobs:
-  trigger-backup:
-    name: Run mongodump from Azure Automation Replacement
-    runs-on: ubuntu-latest
-    steps:
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    trigger-backup:
+        name: Run mongodump from Azure Automation Replacement
+        runs-on: ubuntu-latest
+        steps:
+            - name: Azure Login
+              uses: azure/login@v1
+              with:
+                  client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                  tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                  subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Execute MongoDB Backup Script on VM
-        id: runbackup
-        run: |
-          OUTPUT=$(az vm run-command invoke \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name vm-mongo-dev \
-            --command-id RunShellScript \
-            --scripts "/usr/local/bin/mongodb-backup.sh" \
-            --query "value[0].message" -o tsv)
+            - name: Execute MongoDB Backup Script on VM
+              id: runbackup
+              run: |
+                  OUTPUT=$(az vm run-command invoke \
+                    --resource-group ${{ env.RESOURCE_GROUP }} \
+                    --name vm-mongo-dev \
+                    --command-id RunShellScript \
+                    --scripts "/usr/local/bin/mongodb-backup.sh" \
+                    --query "value[0].message" -o tsv)
 
-          echo "$OUTPUT"
+                  echo "$OUTPUT"
 
-          {
-            echo "stdout<<'EOF'"
-            echo "$OUTPUT"
-            echo 'EOF'
-          } >> $GITHUB_OUTPUT
+                  {
+                    echo "stdout<<'EOF'"
+                    echo "$OUTPUT"
+                    echo 'EOF'
+                  } >> $GITHUB_OUTPUT
 
-      - name: Collect Latest Backup Log
-        id: log
-        run: |
-          LOG_OUTPUT=$(az vm run-command invoke \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name vm-mongo-dev \
-            --command-id RunShellScript \
-            --scripts "tail -n 20 /var/log/mongodb-backup.log" \
-            --query "value[0].message" -o tsv)
+            - name: Collect Latest Backup Log
+              id: log
+              run: |
+                  LOG_OUTPUT=$(az vm run-command invoke \
+                    --resource-group ${{ env.RESOURCE_GROUP }} \
+                    --name vm-mongo-dev \
+                    --command-id RunShellScript \
+                    --scripts "tail -n 20 /var/log/mongodb-backup.log" \
+                    --query "value[0].message" -o tsv)
 
-          {
-            echo "log<<'EOF'"
-            echo "$LOG_OUTPUT"
-            echo 'EOF'
-          } >> $GITHUB_OUTPUT
+                  {
+                    echo "log<<'EOF'"
+                    echo "$LOG_OUTPUT"
+                    echo 'EOF'
+                  } >> $GITHUB_OUTPUT
 
-      - name: Publish Backup Summary
-        run: |
-          {
-            echo "### MongoDB Backup Trigger"
-            echo "- VM Command Output:"
-            echo '```'
-            echo "${{ steps.runbackup.outputs.stdout != '' && steps.runbackup.outputs.stdout || 'Executed (no stdout)' }}"
-            echo '```'
-            echo "- Latest Log Snippet:"
-            echo '```'
-            echo "${{ steps.log.outputs.log }}"
-            echo '```'
-          } >> $GITHUB_STEP_SUMMARY
+            - name: Publish Backup Summary
+              run: |
+                  {
+                    echo "### MongoDB Backup Trigger"
+                    echo "- VM Command Output:"
+                    echo '```'
+                    echo "${{ steps.runbackup.outputs.stdout != '' && steps.runbackup.outputs.stdout || 'Executed (no stdout)' }}"
+                    echo '```'
+                    echo "- Latest Log Snippet:"
+                    echo '```'
+                    echo "${{ steps.log.outputs.log }}"
+                    echo '```'
+                  } >> $GITHUB_STEP_SUMMARY

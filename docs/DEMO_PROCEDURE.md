@@ -1,6 +1,7 @@
 # Wiz Technical Exercise - デモンストレーション手順書
 
 <!-- markdownlint-disable MD001 MD022 MD024 MD031 MD032 MD034 MD040 -->
+
 ### 3.1 AKS 接続
 
 ```powershell
@@ -59,6 +60,7 @@ az aks command invoke `
 ```
 
 **説明**: Node.js アプリがコンテナ化され、MongoDB 接続成功 ✅
+
 - Azure Kubernetes Service (AKS) - 2 nodes
 - MongoDB VM (Ubuntu 20.04)
 - Azure Blob Storage (バックアップ用)
