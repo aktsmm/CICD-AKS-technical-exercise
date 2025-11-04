@@ -455,10 +455,16 @@ jobs:
           SUMMARY_IP: ${{ steps.tls.outputs.ip }}
           INGRESS_IP_JSON: ${{ steps.tls.outputs.raw_result }}
         run: |
+          set -euo pipefail
           RG='${{ env.RESOURCE_GROUP }}'
           CLUSTER='${{ steps.infra.outputs.aks_name }}'
 
-          PODS=$(az aks command invoke --resource-group "$RG" --name "$CLUSTER" --command "kubectl get pods -n default -l app=guestbook -o wide" --query "logs" -o tsv)
+          PODS='⚠️ kubectl からの取得に失敗しました'
+          if POD_OUTPUT=$(az aks command invoke --resource-group "$RG" --name "$CLUSTER" --command "kubectl get pods -n default -l app=guestbook -o wide" --query "logs" -o tsv 2>&1); then
+            PODS="$POD_OUTPUT"
+          else
+            echo "⚠️ az aks command invoke で Pod 情報取得に失敗: $POD_OUTPUT"
+          fi
 
           DOMAIN_LINE="${SUMMARY_DOMAIN}"
           if [ -z "$DOMAIN_LINE" ]; then
@@ -476,9 +482,9 @@ jobs:
           else
             RAW=$(echo "$INGRESS_IP_JSON" | awk -F'[\[\]]' '{print $2}' | awk -F"'" '{print $2}')
             if [ -z "$RAW" ]; then
-              RAW=$(az aks command invoke --resource-group "$RG" --name "$CLUSTER" \
-                --command "kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
-                --query "logs" -o tsv)
+              # ARM API から Public IP を取得してフォールバック表示
+              NODE_RG=$(az aks show --resource-group "$RG" --name "$CLUSTER" --query nodeResourceGroup -o tsv)
+              RAW=$(az network public-ip list --resource-group "$NODE_RG" --query "[?ipAddress!='' ].ipAddress | [0]" -o tsv || true)
             fi
             if [ -n "$RAW" ]; then
               HTTP_URL="http://$RAW"
