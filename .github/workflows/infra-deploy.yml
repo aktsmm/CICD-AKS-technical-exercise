@@ -86,7 +86,7 @@ jobs:
               resourceGroupName=${{ env.RESOURCE_GROUP }} \
               location=${{ env.LOCATION }} \
               mongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }} \
-            --result-format summary
+            --result-format ResourceIdOnly
 
       - name: Deploy Bicep
         uses: azure/arm-deploy@v1
