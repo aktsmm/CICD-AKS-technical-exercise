@@ -7,21 +7,25 @@
 ## 1. GitHub Secrets (機密情報)
 
 - **`AZURE_CLIENT_ID`**
+
   - 用途: Azure AD アプリ (Service Principal) のクライアント ID。
   - 取得: `az ad app show --id gh-aks-oidc --query appId -o tsv`
   - 補足: アプリ名を変更している場合は対象アプリの Object ID または App ID を指定して取得する。
 
 - **`AZURE_TENANT_ID`**
+
   - 用途: 認証に利用するテナント ID。
   - 取得: `az account show --query tenantId -o tsv`
   - 補足: `az login` 済みのアカウントが対象テナントに紐づいていることを確認する。
 
 - **`AZURE_SUBSCRIPTION_ID`**
+
   - 用途: デプロイ先サブスクリプションの識別子。
   - 取得: `az account show --query id -o tsv`
   - 補足: `az account set --subscription <name-or-id>` で対象サブスクリプションを選択後に実行する。
 
 - **`AZURE_CREDENTIALS`**
+
   - 用途: Policy Guardrails ワークフローなど、一部処理でまだ Service Principal 認証 JSON を利用する場合に保持。
   - 再発行: 以下コマンドで JSON を生成し、その内容を Secret に保存する。
 
