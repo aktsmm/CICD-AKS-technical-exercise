@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
   # Infrastructure完了後に自動実行
   workflow_run:
-    workflows: ["Deploy Infrastructure"]
+    workflows: ["1. Deploy Infrastructure"]
     types:
       - completed
     branches:

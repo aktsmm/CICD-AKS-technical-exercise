@@ -3,7 +3,7 @@ name: 2-2. Deploy Policy Guardrails
 on:
     workflow_run:
         workflows:
-            - Deploy Infrastructure
+            - "1. Deploy Infrastructure"
         types:
             - completed
     workflow_dispatch:
