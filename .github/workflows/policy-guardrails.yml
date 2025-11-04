@@ -64,10 +64,55 @@ jobs:
               shell: pwsh
               run: |
                   $definitionPath = Join-Path $PWD 'infra/policies/mcsb-v2-pruned.json'
-                  az policy set-definition create --name Custom-MCSB-Core --subscription $env:AZURE_SUBSCRIPTION_ID --display-name "Custom MCSB (Core Controls)" --description "Microsoft cloud security benchmark trimmed to exclude MobileNetwork dependencies." --definitions @$definitionPath --mode All
+                  $policySet = Get-Content -Path $definitionPath -Raw | ConvertFrom-Json -Depth 100
+
+                  $tempDir = Join-Path $env:RUNNER_TEMP ([guid]::NewGuid().ToString())
+                  New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+
+                  function Export-JsonSection {
+                      param(
+                          [Parameter(Mandatory = $true)][object]$Data,
+                          [Parameter(Mandatory = $true)][string]$FileName
+                      )
+
+                      $targetPath = Join-Path $tempDir $FileName
+                      $Data | ConvertTo-Json -Depth 100 | Set-Content -Path $targetPath -Encoding utf8
+                      return $targetPath
+                  }
+
+                  $definitionsFile = Export-JsonSection -Data $policySet.properties.policyDefinitions -FileName 'definitions.json'
+                  $cliArgs = @(
+                      '--name', 'Custom-MCSB-Core',
+                      '--subscription', $env:AZURE_SUBSCRIPTION_ID,
+                      '--display-name', $policySet.properties.displayName,
+                      '--description', $policySet.properties.description,
+                      '--definitions', "@$definitionsFile",
+                      '--mode', 'All'
+                  )
+
+                  if ($policySet.properties.version) {
+                      $cliArgs += @('--version', $policySet.properties.version)
+                  }
+
+                  if ($policySet.properties.parameters) {
+                      $parametersFile = Export-JsonSection -Data $policySet.properties.parameters -FileName 'parameters.json'
+                      $cliArgs += @('--params', "@$parametersFile")
+                  }
+
+                  if ($policySet.properties.metadata) {
+                      $metadataFile = Export-JsonSection -Data $policySet.properties.metadata -FileName 'metadata.json'
+                      $cliArgs += @('--metadata', "@$metadataFile")
+                  }
+
+                  if ($policySet.properties.policyDefinitionGroups) {
+                      $groupsFile = Export-JsonSection -Data $policySet.properties.policyDefinitionGroups -FileName 'definition-groups.json'
+                      $cliArgs += @('--definition-groups', "@$groupsFile")
+                  }
+
+                  $createResult = az policy set-definition create @cliArgs
                   if ($LASTEXITCODE -ne 0) {
                       Write-Host 'Create failed; attempting to update existing definition.'
-                      az policy set-definition update --name Custom-MCSB-Core --subscription $env:AZURE_SUBSCRIPTION_ID --display-name "Custom MCSB (Core Controls)" --description "Microsoft cloud security benchmark trimmed to exclude MobileNetwork dependencies." --definitions @$definitionPath --mode All
+                      $updateResult = az policy set-definition update @cliArgs
                       if ($LASTEXITCODE -ne 0) {
                           throw 'Failed to publish custom MCSB policy set.'
                       }

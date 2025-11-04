@@ -10,7 +10,10 @@ on:
 
   # ✅ 他ワークフローが「失敗」したときに実行
   workflow_run:
-    workflows: ["Deploy Infrastructure", "Build and Deploy Application"]
+    workflows:
+      - "Deploy Infrastructure"
+      - "Build and Deploy Application"
+      - "Deploy Policy Guardrails"
     types:
       - completed
 
@@ -24,7 +27,11 @@ jobs:
     if: |
       github.ref == 'refs/heads/main' &&
       github.workflow != '🧹 Cleanup Workflow Runs (Keep latest 7 human + 3 dependabot runs)' &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure')
+      (
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure')
+      )
 
     runs-on: ubuntu-latest
 
