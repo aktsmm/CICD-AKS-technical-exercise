@@ -58,7 +58,7 @@ jobs:
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
-                    --scripts "bash /usr/local/bin/mongodb-backup.sh" \
+                    --scripts "bash -c '/usr/local/bin/mongodb-backup.sh'" \
                     -o json)
 
                   MESSAGE=$(echo "$RUN_RESULT" | jq -r '.value[0].message')
