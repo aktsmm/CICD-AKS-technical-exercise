@@ -453,6 +453,7 @@ jobs:
         env:
           SUMMARY_DOMAIN: ${{ steps.tls.outputs.domain }}
           SUMMARY_IP: ${{ steps.tls.outputs.ip }}
+          INGRESS_IP_JSON: ${{ steps.tls.outputs.raw_result }}
         run: |
           RG='${{ env.RESOURCE_GROUP }}'
           CLUSTER='${{ steps.infra.outputs.aks_name }}'
@@ -472,6 +473,16 @@ jobs:
           HTTP_URL='Pending IP allocation'
           if [ -n "$SUMMARY_IP" ]; then
             HTTP_URL="http://$SUMMARY_IP"
+          else
+            RAW=$(echo "$INGRESS_IP_JSON" | awk -F'[\[\]]' '{print $2}' | awk -F"'" '{print $2}')
+            if [ -z "$RAW" ]; then
+              RAW=$(az aks command invoke --resource-group "$RG" --name "$CLUSTER" \
+                --command "kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+                --query "logs" -o tsv)
+            fi
+            if [ -n "$RAW" ]; then
+              HTTP_URL="http://$RAW"
+            fi
           fi
 
           {
