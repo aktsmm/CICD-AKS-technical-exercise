@@ -18,6 +18,7 @@
 2. `infra/policy-guardrails.bicep` の MCSB 割り当てで `policyOverrides` を指定し、問題のポリシー参照を無効化。
    - `selectors.kind = policyDefinitionReferenceId` で `SimGroupCMKsEncryptDataRest` を指定。
    - `value = 'Disabled'` を設定して該当ポリシーのみ無効化。
+   - 2025-11-04 時点では Sim/MobileNetwork 系の参照 ID がこの 1 件のみであることをコメントで明示し、次回イニシアチブ更新時の差分確認ポイントを残した。
 3. 2025-11-04 時点で main ブランチへ反映済み（`git log` で履歴確認可能）。
 
 ## 再発防止・確認ポイント
