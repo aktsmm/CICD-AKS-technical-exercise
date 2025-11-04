@@ -54,13 +54,22 @@ jobs:
                     exit 0
                   fi
 
-                  # 修正: インラインでスクリプトを直接渡す
+                  TMP_SCRIPT=$(mktemp)
+                  cat <<'EOF' >"$TMP_SCRIPT"
+                  cd /usr/local/bin
+                  sudo ./mongodb-backup.sh
+                  EOF
+
+                  echo "::debug::Generated Run Command script at $TMP_SCRIPT" >&2
+
                   RUN_RESULT=$(az vm run-command invoke \
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
-                    --scripts 'cd /usr/local/bin && sudo ./mongodb-backup.sh' \
+                    --scripts @"$TMP_SCRIPT" \
                     -o json)
+
+                  rm -f "$TMP_SCRIPT"
 
                   MESSAGE=$(echo "$RUN_RESULT" | jq -r '.value[0].message')
                   EXIT_CODE=$(echo "$RUN_RESULT" | jq -r '.value[0].instanceView.exitCode // 0')
