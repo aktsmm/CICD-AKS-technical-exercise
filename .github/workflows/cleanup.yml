@@ -25,7 +25,13 @@ jobs:
   cleanup:
     # 🔒 mainブランチかつ Cleanup 自身のワークフロー以外で実行時
     if: |
-      github.ref == 'refs/heads/main' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.head_branch == 'main'
+        )
+      ) &&
       github.workflow != '🧹 Cleanup Workflow Runs (Keep latest 7 human + 3 dependabot runs)' &&
       (
         github.event_name == 'schedule' ||
