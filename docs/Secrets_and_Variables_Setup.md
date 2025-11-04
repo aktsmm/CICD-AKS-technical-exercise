@@ -48,14 +48,20 @@
 
 ## 2. GitHub Variables (非機密設定)
 
-| 名前                   | 推奨値            | 用途/補足                                                                                                         |
-| ---------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `AZURE_LOCATION`       | `japaneast`       | 既定のデプロイリージョン。Bicep/Actions 双方で参照。                                                              |
-| `AZURE_RESOURCE_GROUP` | `rg-bbs-cicd-aks` | すべての GitHub Actions (特に backup ワークフロー) がこの値を利用。リソースグループを変更した場合は忘れずに更新。 |
-| `IMAGE_NAME`           | `guestbook`       | コンテナビルド後に ACR へ push するイメージ名。                                                                   |
-| `MONGO_VM_NAME` (任意) | `vm-mongo-dev`    | `3. Scheduled Mongo Backup` を複数環境で使い分ける場合に設定。未定義時は既定値 `vm-mongo-dev` を利用。            |
+| 名前                              | 推奨値                                 | 用途/補足                                                                                                         |
+| --------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `AZURE_LOCATION`                  | `japaneast`                            | 既定のデプロイリージョン。Bicep/Actions 双方で参照。                                                              |
+| `AZURE_RESOURCE_GROUP`            | `rg-bbs-cicd-aks`                      | すべての GitHub Actions (特に backup ワークフロー) がこの値を利用。リソースグループを変更した場合は忘れずに更新。 |
+| `AZURE_GITHUB_PRINCIPAL_ID`       | `60603759-feba-41e2-9b02-9dc78248bdf3` | GitHub Actions (OIDC) サービスプリンシパルの Object ID。RBAC ブートストラップ モジュールで使用。                  |
+| `AZURE_GRANT_GITHUB_OWNER` (任意) | `false`                                | `true` の場合、Owner を付与。通常は最小権限維持のため `false`。                                                   |
+| `IMAGE_NAME`                      | `guestbook`                            | コンテナビルド後に ACR へ push するイメージ名。                                                                   |
+| `MONGO_VM_NAME` (任意)            | `vm-mongo-dev`                         | `3. Scheduled Mongo Backup` を複数環境で使い分ける場合に設定。未定義時は既定値 `vm-mongo-dev` を利用。            |
 
 変数は `Settings` → `Secrets and variables` → `Actions` → `Variables` から登録する。
+
+> RBAC ブートストラップ: `infra/parameters/main-dev.parameters.json` で `automationPrincipalObjectId` を GitHub Actions のサービス プリンシパル Object ID に合わせて更新し、新規リソースグループにも自動で User Access Administrator を付与できるようにしている。必要に応じて `grantAutomationPrincipalOwner` を `true` にして Owner を付与するが、最小権限維持の観点から通常は `false` のままにする。
+
+> 参考メモ: Secrets と Variables の使い分けは `docs/GitHub_Actions_Secrets_vs_Variables.md` にまとめてあるので、値の置き場所に迷ったら参照する。
 
 ## 3. ローカル秘匿ファイルと .gitignore
 
@@ -81,6 +87,7 @@ mongo_password.txt
 1. **更新タイミング**: Service Principal の資格情報を再発行した場合、`AZURE_CREDENTIALS` と `AZURE_CLIENT_ID` の整合性を必ず確認する。
 2. **検証**: Secrets/Variables 更新後は対象ワークフロー (`infra-deploy`, `app-deploy`, `cleanup`, `backup-schedule`) を `workflow_dispatch` で一度手動実行し、OIDC ログインや VM コマンド実行が成功することを確認する。
 3. **アクセス最小化**: GitHub 上で Secrets の閲覧・更新権限を必要最小限のメンバーに限定する。
+4. **RBAC ブートストラップ確認**: 新しいリソースグループ名に切り替える前に `automationPrincipalObjectId` が最新の Object ID になっているかを確認し、必要に応じて Owner 付与有無をレビューする。
 
 ## 5. 参考ドキュメント
 

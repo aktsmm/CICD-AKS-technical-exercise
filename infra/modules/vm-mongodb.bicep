@@ -8,6 +8,9 @@ param environment string
 @secure()
 param adminPassword string
 
+@description('VM 管理者ユーザー名 (デモでは既定を固定し脆弱性を残す)')
+param adminUsername string = 'azureuser'
+
 @description('サブネットID')
 param subnetId string
 
@@ -118,7 +121,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-07-01' = {
     }
     osProfile: {
       computerName: vmName
-      adminUsername: 'azureuser'  // Hardcoded for demo vulnerability purposes!
+      adminUsername: adminUsername  // Default keeps intentional vulnerability visible
       adminPassword: adminPassword
     }
     storageProfile: {

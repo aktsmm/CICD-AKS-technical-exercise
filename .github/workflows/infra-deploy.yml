@@ -68,6 +68,52 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Azure Login (bootstrap RBAC)
+        if: ${{ vars.AZURE_GITHUB_PRINCIPAL_ID != '' }}
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Ensure RBAC for GitHub Actions Principal
+        if: ${{ vars.AZURE_GITHUB_PRINCIPAL_ID != '' }}
+        env:
+          PRINCIPAL_ID: ${{ vars.AZURE_GITHUB_PRINCIPAL_ID }}
+          SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
+          GRANT_OWNER: ${{ vars.AZURE_GRANT_GITHUB_OWNER || 'false' }}
+        run: |
+          set -euo pipefail
+
+          az account set --subscription "$SUBSCRIPTION_ID"
+
+          ensure_assignment() {
+            local scope="$1"
+            local roleName="$2"
+
+            if az role assignment list --assignee "$PRINCIPAL_ID" --role "$roleName" --scope "$scope" --query "[].id" -o tsv | grep -q .; then
+              echo "Role '$roleName' already present at scope '$scope'."
+            else
+              echo "Assigning role '$roleName' at scope '$scope'."
+              az role assignment create \
+                --assignee "$PRINCIPAL_ID" \
+                --assignee-principal-type ServicePrincipal \
+                --role "$roleName" \
+                --scope "$scope"
+            fi
+          }
+
+          RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}"
+
+          ensure_assignment "$RG_SCOPE" "User Access Administrator"
+
+          if [ "$GRANT_OWNER" = "true" ]; then
+            ensure_assignment "/subscriptions/${SUBSCRIPTION_ID}" "Owner"
+          fi
+
+      - name: Azure Logout (bootstrap context)
+        if: ${{ vars.AZURE_GITHUB_PRINCIPAL_ID != '' }}
+        run: az account clear
+
       - name: Azure Login
         uses: azure/login@v1
         with:
@@ -86,6 +132,8 @@ jobs:
               resourceGroupName=${{ env.RESOURCE_GROUP }} \
               location=${{ env.LOCATION }} \
               mongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }} \
+              automationPrincipalObjectId=${{ vars.AZURE_GITHUB_PRINCIPAL_ID }} \
+              grantAutomationPrincipalOwner=${{ vars.AZURE_GRANT_GITHUB_OWNER || 'false' }} \
             --result-format ResourceIdOnly
 
       - name: Deploy Bicep
@@ -100,6 +148,8 @@ jobs:
             resourceGroupName=${{ env.RESOURCE_GROUP }}
             location=${{ env.LOCATION }}
             mongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }}
+            automationPrincipalObjectId=${{ vars.AZURE_GITHUB_PRINCIPAL_ID }}
+            grantAutomationPrincipalOwner=${{ vars.AZURE_GRANT_GITHUB_OWNER || 'false' }}
           deploymentName: infra-deployment-${{ github.run_number }}
           failOnStdErr: false
 

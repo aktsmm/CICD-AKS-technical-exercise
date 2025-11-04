@@ -18,12 +18,19 @@
 
 ## GitHub Variables
 
-| 名前                 | 推奨値          | 用途                                           |
-| -------------------- | --------------- | ---------------------------------------------- |
-| AZURE_LOCATION       | japaneast       | デプロイ既定のリージョン                       |
-| AZURE_RESOURCE_GROUP | rg-bbs-cicd-aks | すべてのワークフローで参照するリソースグループ |
-| IMAGE_NAME           | guestbook       | ACR に push するコンテナイメージ名             |
-| MONGO_VM_NAME (任意) | vm-mongo-dev    | バックアップ用 Azure VM の論理名               |
+| 名前                      | 推奨値                               | 用途                                           |
+| ------------------------- | ------------------------------------ | ---------------------------------------------- |
+| AZURE_LOCATION            | japaneast                            | デプロイ既定のリージョン                       |
+| AZURE_RESOURCE_GROUP      | rg-bbs-cicd-aks                      | すべてのワークフローで参照するリソースグループ |
+| AZURE_GITHUB_PRINCIPAL_ID | 60603759-feba-41e2-9b02-9dc78248bdf3 | GitHub Actions サービスプリンシパル Object ID  |
+| AZURE_GRANT_GITHUB_OWNER  | false                                | Owner を付与したい場合のみ true                |
+| IMAGE_NAME                | guestbook                            | ACR に push するコンテナイメージ名             |
+| MONGO_VM_NAME (任意)      | vm-mongo-dev                         | バックアップ用 Azure VM の論理名               |
+
+## Bicep Parameters
+
+- `automationPrincipalObjectId`: GitHub Actions のサービスプリンシパル Object ID。新しいリソースグループでもロール割り当てが自動化されるよう `infra/parameters/main-dev.parameters.json` で管理。
+- `grantAutomationPrincipalOwner`: Owner 付与が必要な場合のみ `true` に変更（既定 `false`）。
 
 ## ローカル秘匿ファイル
 

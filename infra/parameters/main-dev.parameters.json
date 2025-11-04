@@ -10,6 +10,12 @@
     },
     "environment": {
       "value": "dev"
+    },
+    "automationPrincipalObjectId": {
+      "value": "60603759-feba-41e2-9b02-9dc78248bdf3"
+    },
+    "grantAutomationPrincipalOwner": {
+      "value": false
     }
   }
 }

@@ -13,6 +13,12 @@ param environment string = 'dev'
 @secure()
 param mongoAdminPassword string
 
+@description('Object ID for the GitHub Actions service principal that runs infrastructure deployments.')
+param automationPrincipalObjectId string = ''
+
+@description('Grant the automation principal Owner at subscription scope. Use sparingly to keep least privilege.')
+param grantAutomationPrincipalOwner bool = false
+
 @description('デプロイタイムスタンプ!! (ユニークなデプロイ名生成)')
 param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
 
@@ -30,6 +36,21 @@ var defenderPlanNames = [
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: resourceGroupName
   location: location
+}
+
+module automationRbac 'modules/rbac-bootstrap.bicep' = if (automationPrincipalObjectId != '') {
+  scope: rg
+  name: 'rbac-rg-${deploymentTimestamp}'
+  params: {
+    principalObjectId: automationPrincipalObjectId
+  }
+}
+
+module automationOwner 'modules/rbac-bootstrap-owner.bicep' = if (grantAutomationPrincipalOwner && automationPrincipalObjectId != '') {
+  name: 'rbac-owner-${deploymentTimestamp}'
+  params: {
+    principalObjectId: automationPrincipalObjectId
+  }
 }
 
 // ネットワーキング
