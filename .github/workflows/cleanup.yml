@@ -4,12 +4,12 @@ on:
   schedule:
     - cron: "0 */12 * * *" # 12時間ごと
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - "1. Deploy Infrastructure"
-      - "2-1. Build and Deploy Application"
-      - "2-2. Deploy Policy Guardrails"
-    types: [completed]
+  # workflow_run:
+  #   workflows:
+  #     - "1. Deploy Infrastructure"
+  #     - "2-1. Build and Deploy Application"
+  #     - "2-2. Deploy Policy Guardrails"
+  #   types: [completed]
   push:
     branches: [main]
     paths:
