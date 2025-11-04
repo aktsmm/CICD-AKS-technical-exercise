@@ -2,17 +2,17 @@
 
 ## 事象概要
 
-- GitHub Actions ワークフロー `Deploy Policy Guardrails` の実行が、MCSB v2 イニシアチブ割り当て時に `InvalidPolicyParameters` エラーで失敗した。
+- GitHub Actions ワークフロー `Deploy Policy Guardrails` の実行が、MCSB v2 イニシアチブ割り当て時に `InvalidRequestContent` エラーで失敗した。
 - エラーログでは、`overrides[*].value` が文字列でシリアライズされており、Azure Policy の仕様と一致しないと報告された。
 
 ## 原因
 
-- `infra/policy-guardrails.bicep` で `policyOverrides` の `value` を `'Disabled'` のような単一文字列で指定していた。
-- Azure Policy の override スキーマでは、`value` に効果 (`effect`) を含むオブジェクトを渡す必要があるため、文字列形式は検証で弾かれる。
+- `infra/policy-guardrails.bicep` で `policyOverrides` の `value` を `{ effect: 'Disabled' }` のようなオブジェクトで指定していた。
+- Azure Policy の override スキーマでは、`value` に効果名を示す文字列を渡す必要があるため、オブジェクト形式は検証で弾かれる。
 
 ## 対応内容
 
-1. `infra/policy-guardrails.bicep` の override 設定を修正し、`value: { effect: 'Disabled' }` を渡すように変更。
+1. `infra/policy-guardrails.bicep` の override 設定を修正し、`value: 'Disabled'` を渡すように変更。
    - これにより、`SimGroupCMKsEncryptDataRest` のポリシーだけを安全に無効化でき、モバイルネットワークプロバイダー不要でデプロイが成功する。
 2. 既存のドキュメント `Phase25_MCSB_MobileNetwork回避_2025-11-04.md` を更新し、最新の override 記述 (`value.effect = 'Disabled'`) に合わせて記載を調整。
 3. 修正後、`pwsh` から `az deployment sub what-if --location japaneast --template-file infra/policy-guardrails.bicep` を実行し、override の差分が意図通りか事前確認する運用手順を追記。
