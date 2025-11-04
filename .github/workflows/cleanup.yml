@@ -5,10 +5,10 @@ on:
   schedule:
     - cron: "*/30 * * * *"
 
-  # ✅ 手動実行（必要に応じて）
+  # ✅ 手動実行
   workflow_dispatch:
 
-  # ✅ 他ワークフローが完了したときに実行（成功・失敗どちらでも）
+  # ✅ 他ワークフローが完了したとき（成功・失敗どちらでも）
   workflow_run:
     workflows:
       - "Deploy Infrastructure"
@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   cleanup:
-    # 🔒 mainブランチ上で実行かつ Cleanup 自身ではない場合のみ
+    # ✅ mainブランチでのみ実行
     if: |
       (
         github.ref == 'refs/heads/main' ||
@@ -32,7 +32,6 @@ jobs:
           github.event.workflow_run.head_branch == 'main'
         )
       ) &&
-      github.workflow != '🧹 Cleanup Workflow Runs (Keep latest 7 human + 3 dependabot runs)' &&
       (
         github.event_name == 'schedule' ||
         github.event_name == 'workflow_dispatch' ||
@@ -48,7 +47,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Delete failed, old, and all Cleanup runs (keep latest 7 human + 3 dependabot)
+      - name: 🪶 Debug trigger info
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Workflow Run Conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "Head Branch: ${{ github.event.workflow_run.head_branch }}"
+
+      - name: 🧹 Cleanup old workflow runs (keep latest 7 human + 3 dependabot + current cleanup)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -62,55 +67,6 @@ jobs:
 
           echo "🧩 Selecting deletion targets..."
 
-          # ✅ 人間実行: 最新7件のみ保持
-          KEEP_HUMAN=$(echo "$RUNS" | jq -c '[.[] | select(.actor != "dependabot[bot]" and .conclusion == "success")][:7] | map(.id)')
-
-          # 🤖 Dependabot実行: 最新3件のみ保持
-          KEEP_DEPENDABOT=$(echo "$RUNS" | jq -c '[.[] | select(.actor == "dependabot[bot]" and .conclusion == "success")][:3] | map(.id)')
-
-          # 🧩 保持対象を統合
-          KEEP_ALL=$(jq -n --argjson a "$KEEP_HUMAN" --argjson b "$KEEP_DEPENDABOT" '$a + $b')
-
-          # 🎯 削除対象選定（Cleanup自身も必ず含む）
-          TARGETS=$(echo "$RUNS" | jq -c --arg self "$SELF_NAME" --argjson keepIds "$KEEP_ALL" '
-            [ .[]
-              | select(
-                  (.name == $self)                           # ✅ Cleanup自体は常に削除
-                  or (.conclusion != "success")              # ❌ 失敗/キャンセルRun削除
-                  or (.id as $id | ($keepIds | index($id)) | not)  # ❌ 保持リスト外を削除
-                )
-            ]')
-
-          COUNT=$(echo "$TARGETS" | jq 'length')
-          echo "🧹 Found $COUNT runs to delete."
-
-          if (( COUNT == 0 )); then
-            echo "✅ No runs to delete. Exiting."
-            exit 0
-          fi
-
-          echo "$TARGETS" | jq -c '.[]' | while read -r run; do
-            ID=$(echo "$run" | jq -r '.id')
-            NAME=$(echo "$run" | jq -r '.name')
-            ACTOR=$(echo "$run" | jq -r '.actor')
-            STATUS=$(echo "$run" | jq -r '.status')
-            CONCLUSION=$(echo "$run" | jq -r '.conclusion')
-            CREATED_AT=$(echo "$run" | jq -r '.created_at')
-
-            echo "🧹 Deleting run ID: $ID [$NAME] by $ACTOR ($STATUS/$CONCLUSION, created $CREATED_AT)"
-            gh api repos/$REPO/actions/runs/$ID -X DELETE || echo "⚠️ Failed to delete run $ID"
-          done
-
-          # 🧨 Cleanup完了後、自分自身も削除（履歴を残さない）
-          echo "🧨 Attempting to delete current Cleanup run..."
-          CURRENT_RUN_ID=$(gh run list --workflow "$SELF_NAME" --json databaseId,status,conclusion \
-            | jq -r '.[] | select(.status=="completed") | .databaseId' | head -n 1)
-
-          if [ -n "$CURRENT_RUN_ID" ]; then
-            echo "🧨 Deleting current Cleanup run (ID: $CURRENT_RUN_ID)..."
-            gh api repos/$REPO/actions/runs/$CURRENT_RUN_ID -X DELETE || echo "⚠️ Failed to delete current run."
-          else
-            echo "ℹ️ Current run not yet completed or ID not found."
-          fi
-
-          echo "🎉 Cleanup complete (7 human + 3 dependabot runs retained, including self-deletion)."
+          # ✅ 最新のCleanup Run（＝今回分）を取得して保持
+          CURRENT_RUN_ID=$(gh run list --workflow "$SELF_NAME" --json databaseId,status \
+            | jq -r '.[] | s
