@@ -243,39 +243,6 @@ jobs:
           echo "KUBELET_IDENTITY=${{ steps.outputs.outputs.kubelet_identity }}" >> outputs/infra-outputs.txt
           echo "STORAGE_ACCOUNT_NAME=${{ steps.outputs.outputs.storage_name }}" >> outputs/infra-outputs.txt
 
-      - name: Assign RBAC Role Bindings
-        run: |
-          set -euo pipefail
-
-          assign_role() {
-            local principal="$1"
-            local roleName="$2"
-            local scope="$3"
-
-            if az role assignment list --assignee-object-id "$principal" --role "$roleName" --scope "$scope" --query "[].id" -o tsv | grep -q . ; then
-              echo "Role '$roleName' already exists for principal '$principal' at scope '$scope'."
-            else
-              echo "Assigning role '$roleName' to principal '$principal' at scope '$scope'."
-              az role assignment create --assignee-object-id "$principal" --role "$roleName" --scope "$scope"
-            fi
-          }
-
-          SUBSCRIPTION_ID="${{ env.AZURE_SUBSCRIPTION_ID }}"
-          RESOURCE_GROUP="${{ env.RESOURCE_GROUP }}"
-          VM_IDENTITY="${{ steps.outputs.outputs.mongo_vm_identity }}"
-          KUBELET_IDENTITY="${{ steps.outputs.outputs.kubelet_identity }}"
-          STORAGE_NAME="${{ steps.outputs.outputs.storage_name }}"
-          ACR_NAME="${{ steps.outputs.outputs.acr_name }}"
-
-          STORAGE_SCOPE=$(az storage account show --name "$STORAGE_NAME" --resource-group "$RESOURCE_GROUP" --query id -o tsv)
-          ACR_SCOPE=$(az acr show --name "$ACR_NAME" --resource-group "$RESOURCE_GROUP" --query id -o tsv)
-          RESOURCE_GROUP_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}"
-
-          assign_role "$VM_IDENTITY" "Contributor" "$RESOURCE_GROUP_SCOPE"
-          assign_role "$VM_IDENTITY" "Storage Blob Data Contributor" "$STORAGE_SCOPE"
-          assign_role "$VM_IDENTITY" "Virtual Machine Contributor" "$RESOURCE_GROUP_SCOPE"
-          assign_role "$KUBELET_IDENTITY" "AcrPull" "$ACR_SCOPE"
-
       - name: Upload Outputs
         uses: actions/upload-artifact@v4
         with:
