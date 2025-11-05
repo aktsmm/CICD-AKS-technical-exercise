@@ -79,6 +79,17 @@ module monitoring 'modules/monitoring.bicep' = {
   }
 }
 
+// Security Workbook (監査ログ/Defenderアラート可視化)
+module securityWorkbook 'modules/workbook-security.bicep' = {
+  scope: rg
+  name: 'workbook-${deploymentTimestamp}'
+  params: {
+    location: location
+    environment: environment
+    workspaceId: monitoring.outputs.workspaceId
+  }
+}
+
 resource subscriptionActivityDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'activitylog-to-law-${environment}'
   scope: subscription()
@@ -221,3 +232,5 @@ output acrName string = acr.outputs.acrName
 output acrLoginServer string = acr.outputs.acrLoginServer
 output kubeletIdentityPrincipalId string = aks.outputs.kubeletIdentity
 output mongoVMIdentityPrincipalId string = mongoVM.outputs.vmIdentityPrincipalId
+output logAnalyticsWorkspaceId string = monitoring.outputs.workspaceId
+output securityWorkbookId string = securityWorkbook.outputs.workbookId

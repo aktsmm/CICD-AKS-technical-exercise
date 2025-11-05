@@ -286,12 +286,24 @@ jobs:
             --query properties.outputs.kubeletIdentityPrincipalId.value \
             -o tsv)
 
+          WORKBOOK_ID=$(az deployment sub show \
+            --name $DEPLOYMENT_NAME \
+            --query properties.outputs.securityWorkbookId.value \
+            -o tsv)
+
+          WORKSPACE_ID=$(az deployment sub show \
+            --name $DEPLOYMENT_NAME \
+            --query properties.outputs.logAnalyticsWorkspaceId.value \
+            -o tsv)
+
           echo "aks_name=$AKS_NAME" >> $GITHUB_OUTPUT
           echo "mongo_ip=$MONGO_IP" >> $GITHUB_OUTPUT
           echo "mongo_vm_identity=$VM_IDENTITY" >> $GITHUB_OUTPUT
           echo "storage_name=$STORAGE_NAME" >> $GITHUB_OUTPUT
           echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
           echo "kubelet_identity=$KUBELET_IDENTITY" >> $GITHUB_OUTPUT
+          echo "workbook_id=$WORKBOOK_ID" >> $GITHUB_OUTPUT
+          echo "workspace_id=$WORKSPACE_ID" >> $GITHUB_OUTPUT
 
       - name: Save Outputs as Artifacts
         run: |
@@ -302,9 +314,52 @@ jobs:
           echo "MONGO_VM_IDENTITY=${{ steps.outputs.outputs.mongo_vm_identity }}" >> outputs/infra-outputs.txt
           echo "KUBELET_IDENTITY=${{ steps.outputs.outputs.kubelet_identity }}" >> outputs/infra-outputs.txt
           echo "STORAGE_ACCOUNT_NAME=${{ steps.outputs.outputs.storage_name }}" >> outputs/infra-outputs.txt
+          echo "WORKBOOK_ID=${{ steps.outputs.outputs.workbook_id }}" >> outputs/infra-outputs.txt
+          echo "LOG_ANALYTICS_WORKSPACE_ID=${{ steps.outputs.outputs.workspace_id }}" >> outputs/infra-outputs.txt
+          
+          # Generate Workbook URL for easy access
+          WORKBOOK_ID_ONLY=$(echo "${{ steps.outputs.outputs.workbook_id }}" | sed 's|.*/||')
+          WORKSPACE_RG="${{ env.RESOURCE_GROUP }}"
+          WORKBOOK_URL="https://portal.azure.com/#blade/AppInsightsExtension/UsageNotebookBlade/ComponentId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}/ConfigurationId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}"
+          
+          echo "WORKBOOK_URL=${WORKBOOK_URL}" >> outputs/infra-outputs.txt
+          echo "" >> outputs/infra-outputs.txt
+          echo "🔗 Security Dashboard: ${WORKBOOK_URL}" >> outputs/infra-outputs.txt
 
       - name: Upload Outputs
         uses: actions/upload-artifact@v5
         with:
           name: infra-outputs
           path: outputs/infra-outputs.txt
+
+      - name: Display Security Dashboard Link
+        run: |
+          WORKBOOK_ID_ONLY=$(echo "${{ steps.outputs.outputs.workbook_id }}" | sed 's|.*/||')
+          WORKSPACE_RG="${{ env.RESOURCE_GROUP }}"
+          WORKBOOK_URL="https://portal.azure.com/#blade/AppInsightsExtension/UsageNotebookBlade/ComponentId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}/ConfigurationId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}"
+          
+          echo "## 🎯 Infrastructure Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Security Monitoring Dashboard" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "セキュリティダッシュボードがデプロイされました。以下のリンクから監査ログとDefenderアラートを確認できます:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **[Security Dashboard にアクセス](${WORKBOOK_URL})**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 デプロイされたリソース" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| リソース | 値 |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| AKS Cluster | \`${{ steps.outputs.outputs.aks_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| MongoDB VM IP | \`${{ steps.outputs.outputs.mongo_ip }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| ACR Name | \`${{ steps.outputs.outputs.acr_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Storage Account | \`${{ steps.outputs.outputs.storage_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Log Analytics Workspace | \`${{ steps.outputs.outputs.workspace_id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📈 ダッシュボード機能" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ 過去24時間の監査ログ (Administrative & Security)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ 過去7日間の Defender アラート" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Azure Policy イベント" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ アクティビティタイムライン" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ セキュリティ推奨事項 (重要度別)" >> $GITHUB_STEP_SUMMARY
