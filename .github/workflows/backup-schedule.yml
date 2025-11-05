@@ -71,9 +71,16 @@ jobs:
                   }
 
                   ensure_script=$(mktemp)
-                  trap 'rm -f "$ensure_script"' EXIT
+                  sanitized_script=$(mktemp)
+                  trap 'rm -f "$ensure_script" "$sanitized_script"' EXIT
 
                   RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/infra/scripts/setup-backup.sh"
+
+                  # Fail fast when the raw script URL is unreachable (e.g., typo or private repo).
+                  if ! curl -fsSI "$RAW_URL" >/dev/null; then
+                    echo "::error::Failed to reach $RAW_URL"
+                    exit 1
+                  fi
 
                   USER_ESCAPED=$(printf '%q' "$MONGO_ADMIN_USER")
                   PASSWORD_ESCAPED=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
@@ -110,6 +117,22 @@ jobs:
                     printf '%s\n' 'echo DEPLOYED'
                   } > "$ensure_script"
 
+                  cp "$ensure_script" "$sanitized_script"
+                  if [ -n "${MONGO_ADMIN_PASSWORD:-}" ]; then
+                    python3 - "$sanitized_script" "${MONGO_ADMIN_PASSWORD}" <<'PY'
+                    import pathlib, sys
+                    path = pathlib.Path(sys.argv[1])
+                    secret = sys.argv[2]
+                    text = path.read_text()
+                    text = text.replace(secret, "***MASKED***")
+                    path.write_text(text)
+                    PY
+                  fi
+
+                  echo '::group::Ensure script payload'
+                  cat "$sanitized_script"
+                  echo '::endgroup::'
+
                   ensure_result=$(az vm run-command invoke \
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
@@ -128,49 +151,6 @@ jobs:
                     echo "$ensure_result"
                     exit 1
                   fi
-
-            - name: Diagnose Backup Script on VM
-              run: |
-                  set -euo pipefail
-
-                  if ! command -v jq >/dev/null 2>&1; then
-                    echo "::error::jq is required but not available on PATH"
-                    exit 1
-                  fi
-
-                  RG="${{ env.RESOURCE_GROUP }}"
-                  VM_NAME="${{ env.MONGO_VM_NAME }}"
-
-                  invoke_vm_command() {
-                    local script_body="$1"
-                    local tmp
-                    tmp=$(mktemp)
-                    {
-                      echo '#!/bin/bash'
-                      echo 'set -euo pipefail'
-                      printf '%s\n' "$script_body"
-                    } > "$tmp"
-                    local result
-                    if ! result=$(az vm run-command invoke \
-                      --resource-group "$RG" \
-                      --name "$VM_NAME" \
-                      --command-id RunShellScript \
-                      --scripts @"$tmp" \
-                      -o json); then
-                      rm -f "$tmp"
-                      return 1
-                    fi
-                    rm -f "$tmp"
-                    echo "$result" | jq -r '.value[0].message'
-                  }
-
-                  echo "::group::Check script existence and permissions"
-                  invoke_vm_command "ls -lh /usr/local/bin/mongodb-backup.sh"
-                  echo "::endgroup::"
-
-                  echo "::group::Show script content (first 30 lines)"
-                  invoke_vm_command "head -n 30 /usr/local/bin/mongodb-backup.sh"
-                  echo "::endgroup::"
 
             - name: Execute MongoDB Backup Script on VM
               id: runbackup
