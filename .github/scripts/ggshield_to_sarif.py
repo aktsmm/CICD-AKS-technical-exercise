@@ -105,8 +105,8 @@ def build_sarif(data: Dict) -> Dict:
     results: List[Dict] = []
     rules: Dict[str, Dict] = {}
     repo_root = Path.cwd().resolve()
-    # GitHub Actions mounts repositories at /github/workspace, so use a fixed SRCROOT URI
-    repo_uri = "file:///github/workspace/"
+    # Use %SRCROOT% placeholder for GitHub Code Scanning
+    repo_uri = "file:///%SRCROOT%/"
 
     for policy_break in iter_policy_breaks(data):
         matches = policy_break.get("matches") or []
@@ -199,6 +199,8 @@ def build_sarif(data: Dict) -> Dict:
                 "tool": {
                     "driver": {
                         "name": "GitGuardian ggshield",
+                        "version": "1.0.0",
+                        "semanticVersion": "1.0.0",
                         "informationUri": "https://docs.gitguardian.com/ggshield/reference/commands/secret_scan",
                         "rules": list(rules.values()),
                     }
