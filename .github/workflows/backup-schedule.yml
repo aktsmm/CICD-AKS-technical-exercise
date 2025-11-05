@@ -42,7 +42,7 @@ jobs:
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
-                    --scripts 'ls -lh /usr/local/bin/mongodb-backup.sh' \
+                    --scripts "ls -lh /usr/local/bin/mongodb-backup.sh" \
                     --query "value[0].message" -o tsv
                   echo "::endgroup::"
 
@@ -51,7 +51,7 @@ jobs:
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
-                    --scripts 'head -n 30 /usr/local/bin/mongodb-backup.sh' \
+                    --scripts "head -n 30 /usr/local/bin/mongodb-backup.sh" \
                     --query "value[0].message" -o tsv
                   echo "::endgroup::"
 
@@ -79,10 +79,7 @@ jobs:
                     exit 0
                   fi
 
-                  SCRIPT_CONTENT=$(cat <<'EOF'
-                  /usr/local/bin/mongodb-backup.sh
-                  EOF
-                  )
+                  SCRIPT_CONTENT='/usr/local/bin/mongodb-backup.sh'
 
                   RUN_RESULT=$(az vm run-command invoke \
                     --resource-group "$RG" \
