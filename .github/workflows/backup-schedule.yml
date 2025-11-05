@@ -71,7 +71,10 @@ jobs:
                     --scripts 'echo "RunCommand operational ✅"' \
                     -o table
 
-            - name: Validate MongoDB backup script exists
+            - name: Ensure MongoDB backup script exists
+              env:
+                  MONGO_ADMIN_USER: ${{ vars.MONGO_ADMIN_USER != '' && vars.MONGO_ADMIN_USER || 'mongoadmin' }}
+                  MONGO_ADMIN_PASSWORD: ${{ secrets.MONGO_ADMIN_PASSWORD }}
               run: |
                   set -euo pipefail
 
@@ -80,7 +83,7 @@ jobs:
 
                   echo "::notice::Checking if backup script exists on $VM_NAME"
 
-                  # Quick validation: check if /usr/local/bin/mongodb-backup.sh exists and is executable
+                  # Check if /usr/local/bin/mongodb-backup.sh exists and is executable
                   check_result=$(az vm run-command invoke \
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
@@ -97,10 +100,95 @@ jobs:
                   status=$(echo "$check_result" | jq -r '.value[0].message' | awk '/\[stdout\]/{getline; gsub(/\r/,"",$0); if(NF){print; exit}}')
 
                   if [ "$status" = "READY" ]; then
-                    echo "::notice::✅ Backup script already deployed (presumably by Bicep)"
+                    echo "::notice::✅ Backup script already deployed"
+                    exit 0
+                  fi
+
+                  # Script not found - deploy it now
+                  echo "::warning::Backup script not found, deploying from GitHub..."
+
+                  CONTAINER_NAME="backups"
+                  STORAGE_ACCOUNT=$(az storage account list --resource-group "$RG" --query "[0].name" -o tsv)
+
+                  if [ -z "$STORAGE_ACCOUNT" ] || [ "$STORAGE_ACCOUNT" = "None" ]; then
+                    echo "::error::Failed to detect a storage account in resource group '$RG'"
+                    exit 1
+                  fi
+
+                  if [ -z "${MONGO_ADMIN_PASSWORD:-}" ]; then
+                    echo "::error::MONGO_ADMIN_PASSWORD secret is not configured"
+                    exit 1
+                  fi
+
+                  RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/infra/scripts/setup-backup.sh"
+
+                  if ! curl -fsSI "$RAW_URL" >/dev/null; then
+                    echo "::error::Failed to reach $RAW_URL"
+                    exit 1
+                  fi
+
+                  USER_ESCAPED=$(printf '%q' "$MONGO_ADMIN_USER")
+                  PASSWORD_ESCAPED=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
+                  STORAGE_ESCAPED=$(printf '%q' "$STORAGE_ACCOUNT")
+                  CONTAINER_ESCAPED=$(printf '%q' "$CONTAINER_NAME")
+
+                  setup_script=$(mktemp)
+                  trap 'rm -f "$setup_script"' EXIT
+
+                  cat > "$setup_script" <<'SETUP_EOF'
+                  #!/bin/bash
+                  set -euo pipefail
+                  RAW_URL="${1}"
+                  MONGO_USER="${2}"
+                  MONGO_PASS="${3}"
+                  STORAGE="${4}"
+                  CONTAINER="${5}"
+
+                  tmp_dir=$(mktemp -d)
+                  trap 'rm -rf "$tmp_dir"' EXIT
+
+                  if ! command -v curl >/dev/null 2>&1; then
+                    echo "Installing curl..."
+                    sudo apt-get update && sudo apt-get install -y curl
+                  fi
+
+                  echo "Downloading setup-backup.sh..."
+                  if ! curl -fsSL "$RAW_URL" -o "$tmp_dir/setup-backup.sh"; then
+                    echo "ERROR: Failed to download setup-backup.sh"
+                    exit 1
+                  fi
+
+                  chmod +x "$tmp_dir/setup-backup.sh"
+
+                  export MONGO_ADMIN_USER="$MONGO_USER"
+                  export MONGO_ADMIN_PASSWORD="$MONGO_PASS"
+
+                  echo "Executing setup-backup.sh..."
+                  "$tmp_dir/setup-backup.sh" "$STORAGE" "$CONTAINER"
+
+                  echo "DEPLOYED"
+                  SETUP_EOF
+
+                  deploy_result=$(az vm run-command invoke \
+                    --resource-group "$RG" \
+                    --name "$VM_NAME" \
+                    --command-id RunShellScript \
+                    --scripts @"$setup_script" \
+                    --parameters \
+                      "$RAW_URL" \
+                      "$USER_ESCAPED" \
+                      "$PASSWORD_ESCAPED" \
+                      "$STORAGE_ESCAPED" \
+                      "$CONTAINER_ESCAPED" \
+                    -o json)
+
+                  deploy_status=$(echo "$deploy_result" | jq -r '.value[0].message' | awk '/\[stdout\]/{getline; gsub(/\r/,"",$0); if(NF){print; exit}}')
+
+                  if [ "$deploy_status" = "DEPLOYED" ]; then
+                    echo "::notice::✅ Backup script deployed successfully"
                   else
-                    echo "::error::❌ Backup script not found at /usr/local/bin/mongodb-backup.sh"
-                    echo "::error::Please ensure Bicep deployment ran setup-backup.sh during VM provisioning"
+                    echo "::error::Failed to deploy backup script"
+                    echo "$deploy_result"
                     exit 1
                   fi
 
