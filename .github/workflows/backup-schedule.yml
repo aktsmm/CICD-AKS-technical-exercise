@@ -69,18 +69,25 @@ jobs:
                     awk '/\[stdout\]/{getline; gsub(/\r/,"",$0); if(NF){print; exit}}' <<<"$1"
                   }
 
-                  # スクリプト確認用の簡易チェック
+                  ensure_script=$(mktemp)
+                  deploy_script=$(mktemp)
+                  trap 'rm -f "$ensure_script" "$deploy_script"' EXIT
+
+                  {
+                    printf '%s\n' '#!/bin/bash'
+                    printf '%s\n' 'set -euo pipefail'
+                    printf '%s\n' 'if [ -x /usr/local/bin/mongodb-backup.sh ] && ! grep -q "__STORAGE_ACCOUNT__" /usr/local/bin/mongodb-backup.sh; then'
+                    printf '%s\n' '  echo READY'
+                    printf '%s\n' '  exit 0'
+                    printf '%s\n' 'fi'
+                    printf '%s\n' 'echo NEED_DEPLOY'
+                  } > "$ensure_script"
+
                   check_result=$(az vm run-command invoke \
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
-                    --scripts \
-                      '#!/bin/bash' \
-                      'if [ -x /usr/local/bin/mongodb-backup.sh ] && ! grep -q "__STORAGE_ACCOUNT__" /usr/local/bin/mongodb-backup.sh; then' \
-                      '  echo "READY"' \
-                      '  exit 0' \
-                      'fi' \
-                      'echo "NEED_DEPLOY"' \
+                    --scripts @"$ensure_script" \
                     -o json)
 
                   check_status=$(extract_status "$(echo "$check_result" | jq -r '.value[0].message')")
@@ -89,21 +96,35 @@ jobs:
                     echo "::notice::Backup script already provisioned on $VM_NAME"
                   elif [ "$check_status" = "NEED_DEPLOY" ]; then
                     echo "::notice::Deploying backup script to $VM_NAME..."
-                    
-                    # setup-backup.shを環境変数付きで実行
-                    az vm run-command invoke \
+
+                    cp infra/scripts/setup-backup.sh "$deploy_script"
+                    sed -i 's/\r$//' "$deploy_script"
+
+                    escape_sed() {
+                      printf '%s' "$1" | sed -e 's/[\\/&]/\\&/g'
+                    }
+
+                    sed -i "s/__STORAGE_ACCOUNT__/$(escape_sed "$STORAGE_ACCOUNT")/g" "$deploy_script"
+                    sed -i "s/__CONTAINER_NAME__/$(escape_sed "$CONTAINER_NAME")/g" "$deploy_script"
+                    sed -i "s/__MONGO_USER__/$(escape_sed "$MONGO_ADMIN_USER")/g" "$deploy_script"
+                    sed -i "s/__MONGO_PASSWORD__/$(escape_sed "$MONGO_ADMIN_PASSWORD")/g" "$deploy_script"
+
+                    deploy_result=$(az vm run-command invoke \
                       --resource-group "$RG" \
                       --name "$VM_NAME" \
                       --command-id RunShellScript \
-                      --scripts @infra/scripts/setup-backup.sh \
-                      --parameters \
-                        "MONGO_ADMIN_USER=$MONGO_ADMIN_USER" \
-                        "MONGO_ADMIN_PASSWORD=$MONGO_ADMIN_PASSWORD" \
-                        "arg1=$STORAGE_ACCOUNT" \
-                        "arg2=$CONTAINER_NAME" \
-                      -o json
+                      --scripts @"$deploy_script" \
+                      -o json)
 
-                    echo "::notice::Backup script deployed on $VM_NAME (storage: $STORAGE_ACCOUNT)"
+                    deploy_status=$(extract_status "$(echo "$deploy_result" | jq -r '.value[0].message')")
+
+                    if [ "$deploy_status" = "READY" ] || [ "$deploy_status" = "DEPLOYED" ]; then
+                      echo "::notice::Backup script deployed on $VM_NAME (storage: $STORAGE_ACCOUNT)"
+                    else
+                      echo "::error::Unexpected status while deploying backup script: ${deploy_status:-<empty>}"
+                      echo "$deploy_result"
+                      exit 1
+                    fi
                   else
                     echo "::error::Unexpected status while checking backup script: ${check_status:-<empty>}"
                     echo "$check_result"
