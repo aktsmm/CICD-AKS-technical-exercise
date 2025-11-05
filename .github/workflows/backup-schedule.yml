@@ -33,6 +33,49 @@ jobs:
                   tenant-id: ${{ secrets.AZURE_TENANT_ID }}
                   subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+            - name: Repair RunCommand Extension
+              run: |
+                  set -euo pipefail
+                  
+                  RG="${{ env.RESOURCE_GROUP }}"
+                  VM_NAME="${{ env.MONGO_VM_NAME }}"
+                  
+                  echo "::notice::Checking RunCommand extension health on $VM_NAME"
+                  
+                  # Check if RunCommandLinux extension exists and remove it to prevent stale cache
+                  if az vm extension show \
+                    --resource-group "$RG" \
+                    --vm-name "$VM_NAME" \
+                    --name RunCommandLinux >/dev/null 2>&1; then
+                    echo "::warning::Removing existing RunCommand extension to clear stale cache"
+                    az vm extension delete \
+                      --resource-group "$RG" \
+                      --vm-name "$VM_NAME" \
+                      --name RunCommandLinux \
+                      --no-wait || true
+                    
+                    # Wait for deletion to complete
+                    echo "::notice::Waiting for extension deletion..."
+                    sleep 15
+                  fi
+                  
+                  # Reinstall RunCommand extension with clean state
+                  echo "::notice::Installing fresh RunCommand extension"
+                  az vm extension set \
+                    --publisher Microsoft.CPlat.Core \
+                    --name RunCommandLinux \
+                    --resource-group "$RG" \
+                    --vm-name "$VM_NAME"
+                  
+                  # Clear any remaining cache on VM
+                  echo "::notice::Clearing Run Command cache on $VM_NAME"
+                  az vm run-command invoke \
+                    --resource-group "$RG" \
+                    --name "$VM_NAME" \
+                    --command-id RunShellScript \
+                    --scripts 'sudo rm -rf /var/lib/waagent/run-command/download/* || true' \
+                    -o none
+
             - name: Ensure Mongo backup script is provisioned on VM
               env:
                   MONGO_ADMIN_USER: ${{ vars.MONGO_ADMIN_USER != '' && vars.MONGO_ADMIN_USER || 'mongoadmin' }}
@@ -49,19 +92,6 @@ jobs:
                   RG="${{ env.RESOURCE_GROUP }}"
                   VM_NAME="${{ env.MONGO_VM_NAME }}"
                   CONTAINER_NAME="backups"
-
-                  # Clear Azure Run Command cache to prevent stale script execution
-                  echo "::notice::Clearing Run Command cache on $VM_NAME"
-                  az vm run-command invoke \
-                    --resource-group "$RG" \
-                    --name "$VM_NAME" \
-                    --command-id RunShellScript \
-                    --scripts 'sudo rm -rf /var/lib/waagent/run-command/download/* && sudo systemctl restart walinuxagent' \
-                    -o none
-                  
-                  # Wait for walinuxagent to stabilize after restart
-                  echo "::notice::Waiting for walinuxagent to stabilize..."
-                  sleep 10
 
                   STORAGE_ACCOUNT=$(az storage account list --resource-group "$RG" --query "[0].name" -o tsv)
                   if [ -z "$STORAGE_ACCOUNT" ] || [ "$STORAGE_ACCOUNT" = "" ] || [ "$STORAGE_ACCOUNT" = "None" ]; then
