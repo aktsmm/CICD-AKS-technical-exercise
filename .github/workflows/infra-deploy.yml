@@ -159,6 +159,62 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Resolve Existing Mongo Role Assignments
+        id: resolve_roles
+        env:
+          RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
+          SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+
+          RG="$RESOURCE_GROUP"
+          SUBSCRIPTION_ID="$SUBSCRIPTION_ID"
+
+          environment=$(jq -r '.parameters.environment.value // "dev"' infra/parameters/main-dev.parameters.json)
+          vm_name="vm-mongo-${environment}"
+
+          vm_identity=$(az vm show \
+            --resource-group "$RG" \
+            --name "$vm_name" \
+            --query identity.principalId \
+            -o tsv 2>/dev/null || echo '')
+
+          storage_name=$(az storage account list \
+            --resource-group "$RG" \
+            --query '[0].name' \
+            -o tsv 2>/dev/null || echo '')
+
+          storage_assignment=""
+          vm_contributor_assignment=""
+
+          if [[ -n "$vm_identity" ]]; then
+            if [[ -n "$storage_name" ]]; then
+              storage_scope=$(az storage account show \
+                --name "$storage_name" \
+                --resource-group "$RG" \
+                --query id \
+                -o tsv)
+
+              storage_assignment=$(az role assignment list \
+                --assignee-object-id "$vm_identity" \
+                --role "Storage Blob Data Contributor" \
+                --scope "$storage_scope" \
+                --query '[0].name' \
+                -o tsv 2>/dev/null || echo '')
+            fi
+
+            rg_scope="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG}"
+            vm_contributor_assignment=$(az role assignment list \
+              --assignee-object-id "$vm_identity" \
+              --role "Virtual Machine Contributor" \
+              --scope "$rg_scope" \
+              --query '[0].name' \
+              -o tsv 2>/dev/null || echo '')
+          fi
+
+          echo "EXISTING_STORAGE_ROLE_ASSIGNMENT=$storage_assignment" >> "$GITHUB_ENV"
+          echo "EXISTING_VM_ROLE_ASSIGNMENT=$vm_contributor_assignment" >> "$GITHUB_ENV"
+
       - name: Preview Changes with What-If
         run: |
           az deployment sub what-if \
@@ -172,6 +228,8 @@ jobs:
               mongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }} \
               automationPrincipalObjectId=${{ vars.AZURE_GITHUB_PRINCIPAL_ID }} \
               grantAutomationPrincipalOwner=${{ env.GRANT_OWNER_PARAMETER }} \
+              existingStorageRoleAssignmentName=${{ env.EXISTING_STORAGE_ROLE_ASSIGNMENT }} \
+              existingVmContributorRoleAssignmentName=${{ env.EXISTING_VM_ROLE_ASSIGNMENT }} \
             --result-format ResourceIdOnly
 
       - name: Deploy Bicep
@@ -188,6 +246,8 @@ jobs:
             mongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }}
             automationPrincipalObjectId=${{ vars.AZURE_GITHUB_PRINCIPAL_ID }}
             grantAutomationPrincipalOwner=${{ env.GRANT_OWNER_PARAMETER }}
+            existingStorageRoleAssignmentName=${{ env.EXISTING_STORAGE_ROLE_ASSIGNMENT }}
+            existingVmContributorRoleAssignmentName=${{ env.EXISTING_VM_ROLE_ASSIGNMENT }}
           deploymentName: infra-deployment-${{ github.run_number }}
           failOnStdErr: false
 

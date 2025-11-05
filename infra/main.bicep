@@ -19,6 +19,12 @@ param automationPrincipalObjectId string = ''
 @description('Grant the automation principal Owner at subscription scope. Use sparingly to keep least privilege.')
 param grantAutomationPrincipalOwner bool = false
 
+@description('既存 Storage Blob Data Contributor ロール割り当て名 (GUID)。既存がある場合は入力。')
+param existingStorageRoleAssignmentName string = ''
+
+@description('既存 Virtual Machine Contributor ロール割り当て名 (GUID)。既存がある場合は入力。')
+param existingVmContributorRoleAssignmentName string = ''
+
 @description('デプロイタイムスタンプ!! (ユニークなデプロイ名生成)')
 param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
 
@@ -167,6 +173,8 @@ module vmStorageRole 'modules/vm-storage-role.bicep' = {
   params: {
     vmPrincipalId: mongoVM.outputs.vmIdentityPrincipalId
     storageAccountName: storage.outputs.storageAccountName
+    existingStorageAssignmentName: existingStorageRoleAssignmentName
+    existingVmContributorAssignmentName: existingVmContributorRoleAssignmentName
   }
 }
 
