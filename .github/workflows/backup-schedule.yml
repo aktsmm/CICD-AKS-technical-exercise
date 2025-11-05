@@ -34,25 +34,43 @@ jobs:
               run: |
                   set -euo pipefail
 
+                  if ! command -v jq >/dev/null 2>&1; then
+                    echo "::error::jq is required but not available on PATH"
+                    exit 1
+                  fi
+
                   RG="${{ env.RESOURCE_GROUP }}"
                   VM_NAME="${{ env.MONGO_VM_NAME }}"
 
+                  invoke_vm_command() {
+                    local script_body="$1"
+                    local tmp
+                    tmp=$(mktemp)
+                    {
+                      echo '#!/bin/bash'
+                      echo 'set -euo pipefail'
+                      printf '%s\n' "$script_body"
+                    } > "$tmp"
+                    local result
+                    if ! result=$(az vm run-command invoke \
+                      --resource-group "$RG" \
+                      --name "$VM_NAME" \
+                      --command-id RunShellScript \
+                      --scripts @"$tmp" \
+                      -o json); then
+                      rm -f "$tmp"
+                      return 1
+                    fi
+                    rm -f "$tmp"
+                    echo "$result" | jq -r '.value[0].message'
+                  }
+
                   echo "::group::Check script existence and permissions"
-                  az vm run-command invoke \
-                    --resource-group "$RG" \
-                    --name "$VM_NAME" \
-                    --command-id RunShellScript \
-                    --scripts "ls -lh /usr/local/bin/mongodb-backup.sh" \
-                    --query "value[0].message" -o tsv
+                  invoke_vm_command "ls -lh /usr/local/bin/mongodb-backup.sh"
                   echo "::endgroup::"
 
                   echo "::group::Show script content (first 30 lines)"
-                  az vm run-command invoke \
-                    --resource-group "$RG" \
-                    --name "$VM_NAME" \
-                    --command-id RunShellScript \
-                    --scripts "head -n 30 /usr/local/bin/mongodb-backup.sh" \
-                    --query "value[0].message" -o tsv
+                  invoke_vm_command "head -n 30 /usr/local/bin/mongodb-backup.sh"
                   echo "::endgroup::"
 
             - name: Execute MongoDB Backup Script on VM
@@ -79,14 +97,30 @@ jobs:
                     exit 0
                   fi
 
-                  SCRIPT_CONTENT='/usr/local/bin/mongodb-backup.sh'
+                  invoke_vm_command_json() {
+                    local script_body="$1"
+                    local tmp
+                    tmp=$(mktemp)
+                    {
+                      echo '#!/bin/bash'
+                      echo 'set -euo pipefail'
+                      printf '%s\n' "$script_body"
+                    } > "$tmp"
+                    local result
+                    if ! result=$(az vm run-command invoke \
+                      --resource-group "$RG" \
+                      --name "$VM_NAME" \
+                      --command-id RunShellScript \
+                      --scripts @"$tmp" \
+                      -o json); then
+                      rm -f "$tmp"
+                      return 1
+                    fi
+                    rm -f "$tmp"
+                    printf '%s\n' "$result"
+                  }
 
-                  RUN_RESULT=$(az vm run-command invoke \
-                    --resource-group "$RG" \
-                    --name "$VM_NAME" \
-                    --command-id RunShellScript \
-                    --scripts "$SCRIPT_CONTENT" \
-                    -o json)
+                  RUN_RESULT=$(invoke_vm_command_json '/usr/local/bin/mongodb-backup.sh')
 
 
                   MESSAGE=$(echo "$RUN_RESULT" | jq -r '.value[0].message')
@@ -137,12 +171,30 @@ jobs:
                   RG="${{ env.RESOURCE_GROUP }}"
                   VM_NAME="${{ env.MONGO_VM_NAME }}"
 
-                  LOG_OUTPUT=$(az vm run-command invoke \
-                    --resource-group "$RG" \
-                    --name "$VM_NAME" \
-                    --command-id RunShellScript \
-                    --scripts "tail -n 20 /var/log/mongodb-backup.log" \
-                    --query "value[0].message" -o tsv)
+                  invoke_vm_command_message() {
+                    local script_body="$1"
+                    local tmp
+                    tmp=$(mktemp)
+                    {
+                      echo '#!/bin/bash'
+                      echo 'set -euo pipefail'
+                      printf '%s\n' "$script_body"
+                    } > "$tmp"
+                    local result
+                    if ! result=$(az vm run-command invoke \
+                      --resource-group "$RG" \
+                      --name "$VM_NAME" \
+                      --command-id RunShellScript \
+                      --scripts @"$tmp" \
+                      -o json); then
+                      rm -f "$tmp"
+                      return 1
+                    fi
+                    rm -f "$tmp"
+                    echo "$result" | jq -r '.value[0].message'
+                  }
+
+                  LOG_OUTPUT=$(invoke_vm_command_message 'tail -n 20 /var/log/mongodb-backup.log')
 
                   {
                     echo "log<<EOF"
@@ -159,21 +211,41 @@ jobs:
                   RG="${{ env.RESOURCE_GROUP }}"
                   VM_NAME="${{ env.MONGO_VM_NAME }}"
 
-                  list_payload() {
-                    local script="$1"
-                    local raw
-                    if ! raw=$(az vm run-command invoke \
+                  invoke_vm_command_json() {
+                    local script_body="$1"
+                    local tmp
+                    tmp=$(mktemp)
+                    {
+                      echo '#!/bin/bash'
+                      echo 'set -euo pipefail'
+                      printf '%s\n' "$script_body"
+                    } > "$tmp"
+                    local output
+                    if ! output=$(az vm run-command invoke \
                       --only-show-errors \
                       --resource-group "$RG" \
                       --name "$VM_NAME" \
                       --command-id RunShellScript \
-                      --scripts "$script" \
-                      --query "value[0].message" -o tsv 2>&1); then
-                      echo "$raw" >&2
+                      --scripts @"$tmp" \
+                      -o json 2>&1); then
+                      local status=$?
+                      rm -f "$tmp"
+                      echo "$output" >&2
+                      return $status
+                    fi
+                    rm -f "$tmp"
+                    printf '%s\n' "$output"
+                  }
+
+                  list_payload() {
+                    local script="$1"
+                    local raw
+                    if ! raw=$(invoke_vm_command_json "$script"); then
                       return 1
                     fi
 
                     echo "$raw" |
+                      jq -r '.value[0].message' |
                       awk '/\[stdout\]/{flag=1;next}/\[stderr\]/{flag=0}flag' |
                       sed 's/\r$//' |
                       grep -v '^[[:space:]]*Optional parameters:' |
