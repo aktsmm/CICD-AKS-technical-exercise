@@ -56,8 +56,12 @@ jobs:
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
-                    --scripts 'sudo rm -rf /var/lib/waagent/run-command/download/* || true' \
+                    --scripts 'sudo rm -rf /var/lib/waagent/run-command/download/* && sudo systemctl restart walinuxagent' \
                     -o none
+                  
+                  # Wait for walinuxagent to stabilize after restart
+                  echo "::notice::Waiting for walinuxagent to stabilize..."
+                  sleep 10
 
                   STORAGE_ACCOUNT=$(az storage account list --resource-group "$RG" --query "[0].name" -o tsv)
                   if [ -z "$STORAGE_ACCOUNT" ] || [ "$STORAGE_ACCOUNT" = "" ] || [ "$STORAGE_ACCOUNT" = "None" ]; then
