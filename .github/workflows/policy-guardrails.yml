@@ -70,13 +70,13 @@ jobs:
               run: |
                   echo "Checking if Service Principal has 'Resource Policy Contributor' role..."
                   SP_OBJECT_ID=$(az ad sp list --filter "appId eq '$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientId)'" --query '[0].id' -o tsv)
-                  
+
                   ROLE_ASSIGNED=$(az role assignment list \
                     --assignee-object-id "$SP_OBJECT_ID" \
                     --role "Resource Policy Contributor" \
                     --scope "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}" \
                     --query '[].roleDefinitionName' -o tsv)
-                  
+
                   if [ -z "$ROLE_ASSIGNED" ]; then
                     echo "❌ WARNING: Service Principal lacks 'Resource Policy Contributor' role!"
                     echo "Run this command locally to fix:"

@@ -20,7 +20,6 @@ on:
 permissions:
   contents: read
   security-events: write
-  id-token: write
 
 env:
   IMAGE_NAME: ${{ vars.IMAGE_NAME }}
@@ -128,12 +127,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Azure Login
+      - name: Azure Login (Service Principal)
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Get ACR Name
         id: get_acr
@@ -224,12 +221,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Azure Login
+      - name: Azure Login (Service Principal)
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Get Infrastructure Details
         id: infra
