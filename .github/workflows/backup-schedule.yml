@@ -106,12 +106,21 @@ jobs:
                     printf '%s\n' 'tmp_dir=$(mktemp -d)'
                     printf '%s\n' 'trap '\''rm -rf "$tmp_dir"'\'' EXIT'
                     printf '%s\n' 'if ! command -v curl >/dev/null 2>&1; then'
+                    printf '%s\n' '  echo "Installing curl..."'
                     printf '%s\n' '  sudo apt-get update && sudo apt-get install -y curl'
                     printf '%s\n' 'fi'
-                    printf '%s\n' 'curl -fsSL "$RAW_URL" -o "$tmp_dir/setup-backup.sh"'
+                    printf '%s\n' 'echo "Downloading setup script from: $RAW_URL"'
+                    printf '%s\n' 'if ! curl -fsSL "$RAW_URL" -o "$tmp_dir/setup-backup.sh"; then'
+                    printf '%s\n' '  echo "ERROR: Failed to download setup-backup.sh from $RAW_URL"'
+                    printf '%s\n' '  exit 1'
+                    printf '%s\n' 'fi'
+                    printf '%s\n' 'echo "Downloaded $(wc -l < "$tmp_dir/setup-backup.sh") lines"'
+                    printf '%s\n' 'echo "First 5 lines of downloaded script:"'
+                    printf '%s\n' 'head -n 5 "$tmp_dir/setup-backup.sh"'
                     printf '%s\n' 'chmod +x "$tmp_dir/setup-backup.sh"'
                     printf '%s\n' "export MONGO_ADMIN_USER=$USER_ESCAPED"
                     printf '%s\n' "export MONGO_ADMIN_PASSWORD=$PASSWORD_ESCAPED"
+                    printf '%s\n' 'echo "Executing setup script..."'
                     printf '%s %s %s\n' '"$tmp_dir/setup-backup.sh"' "$STORAGE_ESCAPED" "$CONTAINER_ESCAPED"
                     printf '%s\n' 'rm -f "$tmp_dir/setup-backup.sh"'
                     printf '%s\n' 'echo DEPLOYED'
