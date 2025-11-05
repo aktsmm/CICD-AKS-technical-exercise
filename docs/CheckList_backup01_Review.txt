@@ -1,0 +1,36 @@
+# CheckList_backup01 Review (2025-11-06)
+
+## 1. Webアプリ (Kubernetes)
+- [完了] コンテナ化アプリ構築: `app/Dockerfile` で Node.js ゲストブックをビルドし、`app-deploy.yml` が ACR へ push まで自動化済み。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/app/Dockerfile https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/app-deploy.yml
+- [完了] MongoDB接続とデータ保存: `app/app.js` で `MONGO_URI` を使用し Mongoose で CRUD を実装、シークレットはパイプラインで `mongo-secret.yaml` にレンダリング。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/app/app.js https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/app-deploy.yml#L146-L200
+- [完了] 外部公開 (Ingress + LB): `app/k8s/ingress.yaml` と Workflow の `ingress-nginx-controller` / TLS 設定で LB 公開を実現。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/app/k8s/ingress.yaml https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/app-deploy.yml#L214-L308
+- [完了] wizexercise.txt 挿入: Docker build 時にファイル配置、アプリで `/wizexercise.txt` ルートを公開。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/app/Dockerfile https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/app/app.js#L55-L78
+- [完了] 管理者権限付与: `rbac-vulnerable.yaml` で `default` ServiceAccount に `cluster-admin` をバインド。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/app/k8s/rbac-vulnerable.yaml
+- [要実演] kubectlデモ: `Docs/Architecture _07_デモ・検証スクリプト.md` に手順整理済みだが、面接用の live 実演リハーサルと結果キャプチャが未反映。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/Docs/Architecture%20_07_%E3%83%87%E3%83%A2%E3%83%BB%E6%A4%9C%E8%A8%BC%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%97%E3%83%88.md
+
+## 2. DBサーバ (VM 上の MongoDB)
+- [完了] 古い OS/DB: `vm-mongodb.bicep` で Ubuntu 20.04 と MongoDB 4.4 をデプロイ。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/modules/vm-mongodb.bicep https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/scripts/install-mongodb.sh
+- [完了] 公開 SSH 設定: NSG でポート 22 を全公開 (課題要件) に設定。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/modules/vm-mongodb.bicep#L33-L71
+- [完了] 過剰なクラウド権限: VM の Managed Identity に `Virtual Machine Contributor` を付与。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/modules/vm-storage-role.bicep
+- [完了] 認証 + ネットワーク制限: `setup-mongodb-auth.sh` で auth 有効化、NSG 27017 を VNet 内限定。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/scripts/setup-mongodb-auth.sh https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/modules/vm-mongodb.bicep#L72-L106
+- [完了] バックアップ自動化: `setup-backup.sh` と `setup-cron-backup.sh` で cron/Managed Identity 経由の Blob アップロードを構成。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/scripts/setup-backup.sh https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/scripts/setup-cron-backup.sh
+- [完了] 公開閲覧設定: ストレージは `allowBlobPublicAccess=true` かつコンテナ `publicAccess=Blob`。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/modules/storage.bicep
+
+## 3. Dev(Sec)Ops
+- [完了] VCS 管理: リポジトリで IaC/アプリ/Docs を GitHub 上で管理。https://github.com/aktsmm/CICD-AKS-technical-exercise
+- [完了] IaC パイプライン: `infra-deploy.yml` が Bicep what-if → deploy → output 保存まで自動化。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/infra-deploy.yml
+- [完了] コンテナ自動ビルド: `app-deploy.yml` で Docker build → ACR push。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/app-deploy.yml
+- [完了] AKS 自動デプロイ: 同 Workflow が `az aks command invoke` で `kubectl apply` と `rollout status` を実行。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/app-deploy.yml#L202-L308
+- [完了] セキュリティスキャン統合: Checkov/Trivy/CodeQL を IaC とアプリに組込み。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/infra-deploy.yml#L23-L68 https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/app-deploy.yml#L35-L123
+- [強化余地] 攻撃検証: `Docs_issue_point/Phase33_...` に計画メモがあるが、自動テスト化や記録の更新は未完了。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/Docs_issue_point/Phase33_MongoDB%E3%83%90%E3%83%83%E3%82%AF%E3%82%A2%E3%83%83%E3%83%97%E3%83%AF%E3%83%BC%E3%82%AF%E3%83%95%E3%83%AD%E3%83%BC%E5%AE%9F%E8%A3%85_2025-11-05.md
+
+## 4. Cloud Native Security
+- [完了] 監査ログ有効化: `main.bicep` の `subscriptionActivityDiagnostics` で Log Analytics へ転送。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/main.bicep#L43-L82
+- [完了] 予防的コントロール: `policy-guardrails.bicep` と対応 Workflow で Azure Policy イニシアチブを適用。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/policy-guardrails.bicep https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/policy-guardrails.yml
+- [完了] 検知的コントロール: Defender for Cloud プランを `main.bicep` で Standard 有効化。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/main.bicep#L84-L109
+- [完了] CI/CD セキュリティ: `app-deploy.yml` の CodeQL + Trivy SARIF 連携でパイプライン検知を実装。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/app-deploy.yml#L58-L123
+
+## Next Actions (優先度付き)
+1. [P1] kubectl デモをリハーサルし、`Docs/Architecture _07_...` の手順に従って Pod/Ingress/RBAC 証跡キャプチャをスライドへ反映する。面接でのライブ操作をスムーズにするため。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/Docs/Architecture%20_07_%E3%83%87%E3%83%A2%E3%83%BB%E6%A4%9C%E8%A8%BC%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%97%E3%83%88.md
+2. [P1] MongoDB バックアップからのリストア検証 (`mongorestore`) を実行し、成功ログと公開 Blob URL を証跡化。バックアップ要件の信頼性をデモで示すため。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/scripts/setup-backup.sh https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/docs/SECURITY_ADVISORIES_GUIDE.md
+3. [P2] Defender for Cloud / Azure Policy のダッシュボード画面を最新化し、意図的な脆弱性が検知されているスクリーンショットを取得してプレゼン資料へ追加する。https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/infra/policy-guardrails.bicep https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/Docs/Architecture%20_06_%E3%82%BB%E3%82%AD%E3%83%A5%E3%83%AA%E3%83%86%E3%82%A3%E3%82%B3%E3%83%B3%E3%83%88%E3%83%AD%E3%83%BC%E3%83%AB%E5%AE%9F%E8%A3%85.md
