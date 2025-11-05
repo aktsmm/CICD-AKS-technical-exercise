@@ -1,14 +1,14 @@
-name: 3. Mongo Backup
+name: 3. Mongo Backup (DISABLED - Using VM cron instead)
 
 on:
-    push:
-        branches: [main]
-        paths:
-            - ".github/workflows/backup-schedule.yml"
-    schedule:
-        # 毎日 02:00 JST に相当する 17:00 UTC に実行
-        - cron: "0 17 * * *"
-    workflow_dispatch:
+    # push:
+    #     branches: [main]
+    #     paths:
+    #         - ".github/workflows/backup-schedule.yml"
+    # schedule:
+    #     # 毎日 02:00 JST に相当する 17:00 UTC に実行
+    #     - cron: "0 17 * * *"
+    workflow_dispatch: # Manual trigger only for testing
 
 permissions:
     contents: read
