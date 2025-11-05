@@ -2,21 +2,48 @@
 
 ## 📋 概要
 
-MongoDB VM 上で **1日3回自動バックアップ** を実行する cron ベースのバックアップシステムです。
+MongoDB VM 上で **1 日 3 回自動バックアップ** を実行する cron ベースのバックアップシステムです。
 
 ### バックアップスケジュール
 
-| 時刻 (JST) | 時刻 (UTC) | 説明 |
-|-----------|-----------|------|
-| 02:00 | 17:00 (前日) | 深夜バックアップ |
-| 10:00 | 01:00 | 午前バックアップ |
-| 18:00 | 09:00 | 夕方バックアップ |
+| 時刻 (JST) | 時刻 (UTC)   | 説明             |
+| ---------- | ------------ | ---------------- |
+| 02:00      | 17:00 (前日) | 深夜バックアップ |
+| 10:00      | 01:00        | 午前バックアップ |
+| 18:00      | 09:00        | 夕方バックアップ |
 
 ---
 
 ## 🚀 初回セットアップ
 
 ### 1. バックアップスクリプトのインストール
+
+**PowerShell (推奨):**
+
+```powershell
+# Azure にログイン
+az login
+
+# 環境変数設定
+$RG = "rg-bbs-cicd-aks200"
+$VM_NAME = "vm-mongo-dev"
+$STORAGE_ACCOUNT = "stwizdevrwocrqcivjsx4"  # 実際の値に置き換え
+$MONGO_ADMIN_USER = "mongoadmin"
+$MONGO_ADMIN_PASSWORD = "your-password"
+
+# setup-backup.sh をダウンロードして実行
+az vm run-command invoke `
+  --resource-group $RG `
+  --name $VM_NAME `
+  --command-id RunShellScript `
+  --scripts @"
+export MONGO_ADMIN_USER='$MONGO_ADMIN_USER'
+export MONGO_ADMIN_PASSWORD='$MONGO_ADMIN_PASSWORD'
+curl -fsSL https://raw.githubusercontent.com/aktsmm/CICD-AKS-technical-exercise/main/infra/scripts/setup-backup.sh | bash -s -- '$STORAGE_ACCOUNT' 'backups'
+"@
+```
+
+**Bash (Linux/macOS):**
 
 ```bash
 # Azure にログイン
@@ -25,19 +52,42 @@ az login
 # 環境変数設定
 export RG="rg-bbs-cicd-aks200"
 export VM_NAME="vm-mongo-dev"
-export STORAGE_ACCOUNT="stwizdevrwocrqcivjsx4"  # 実際の値に置き換え
+export STORAGE_ACCOUNT="stwizdevrwocrqcivjsx4"
 export MONGO_ADMIN_USER="mongoadmin"
 export MONGO_ADMIN_PASSWORD="your-password"
 
-# setup-backup.sh を実行
-curl -fsSL https://raw.githubusercontent.com/aktsmm/CICD-AKS-technical-exercise/main/infra/scripts/setup-backup.sh | \
-  bash -s -- "$STORAGE_ACCOUNT" "backups"
+# setup-backup.sh をダウンロードして実行
+az vm run-command invoke \
+  --resource-group "$RG" \
+  --name "$VM_NAME" \
+  --command-id RunShellScript \
+  --scripts "
+export MONGO_ADMIN_USER='$MONGO_ADMIN_USER'
+export MONGO_ADMIN_PASSWORD='$MONGO_ADMIN_PASSWORD'
+curl -fsSL https://raw.githubusercontent.com/aktsmm/CICD-AKS-technical-exercise/main/infra/scripts/setup-backup.sh | bash -s -- '$STORAGE_ACCOUNT' 'backups'
+"
 ```
 
 ### 2. cron ジョブの設定
 
+**PowerShell (推奨):**
+
+```powershell
+# スクリプトをダウンロードして一時ファイルに保存
+$cronScript = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/aktsmm/CICD-AKS-technical-exercise/main/infra/scripts/setup-cron-backup.sh" -UseBasicParsing | Select-Object -ExpandProperty Content
+
+# VM で実行
+az vm run-command invoke `
+  --resource-group $RG `
+  --name $VM_NAME `
+  --command-id RunShellScript `
+  --scripts $cronScript
+```
+
+**Bash (Linux/macOS):**
+
 ```bash
-# VM に SSH 接続
+# VM で setup-cron-backup.sh を実行
 az vm run-command invoke \
   --resource-group "$RG" \
   --name "$VM_NAME" \
@@ -45,7 +95,7 @@ az vm run-command invoke \
   --scripts "$(curl -fsSL https://raw.githubusercontent.com/aktsmm/CICD-AKS-technical-exercise/main/infra/scripts/setup-cron-backup.sh)"
 ```
 
-または VM 内で直接実行:
+**VM 内で直接実行:**
 
 ```bash
 sudo curl -fsSL https://raw.githubusercontent.com/aktsmm/CICD-AKS-technical-exercise/main/infra/scripts/setup-cron-backup.sh -o /tmp/setup-cron.sh
@@ -67,7 +117,19 @@ sudo /usr/local/bin/run-backup-now.sh
 sudo /usr/local/bin/mongodb-backup.sh
 ```
 
-### Azure CLI 経由で実行 (ローカルから)
+### Azure CLI 経由で実行
+
+**PowerShell (推奨):**
+
+```powershell
+az vm run-command invoke `
+  --resource-group "rg-bbs-cicd-aks200" `
+  --name "vm-mongo-dev" `
+  --command-id RunShellScript `
+  --scripts '/usr/local/bin/mongodb-backup.sh'
+```
+
+**Bash (Linux/macOS):**
 
 ```bash
 az vm run-command invoke \
@@ -99,9 +161,32 @@ sudo tail -n 20 /var/log/mongodb-backup.log
 
 ### バックアップファイル確認
 
+**PowerShell (推奨):**
+
+```powershell
+# ローカルバックアップ一覧
+az vm run-command invoke `
+  --resource-group $RG `
+  --name $VM_NAME `
+  --command-id RunShellScript `
+  --scripts 'ls -lh /var/backups/mongodb/'
+
+# Azure Storage 内のバックアップ確認
+az storage blob list `
+  --account-name $STORAGE_ACCOUNT `
+  --container-name "backups" `
+  --output table
+```
+
+**Bash (Linux/macOS):**
+
 ```bash
 # ローカルバックアップ一覧
-ls -lh /var/backups/mongodb/
+az vm run-command invoke \
+  --resource-group "$RG" \
+  --name "$VM_NAME" \
+  --command-id RunShellScript \
+  --scripts 'ls -lh /var/backups/mongodb/'
 
 # Azure Storage 内のバックアップ確認
 az storage blob list \
@@ -166,13 +251,13 @@ Azure Storage:
 
 ## 📚 関連ファイル
 
-| ファイル | 説明 |
-|---------|------|
-| `setup-backup.sh` | バックアップスクリプトインストール |
-| `setup-cron-backup.sh` | cron ジョブ設定 |
-| `run-backup-now.sh` | オンデマンドバックアップ実行 |
-| `/usr/local/bin/mongodb-backup.sh` | 実際のバックアップスクリプト |
-| `/var/log/mongodb-backup.log` | バックアップログ |
+| ファイル                           | 説明                               |
+| ---------------------------------- | ---------------------------------- |
+| `setup-backup.sh`                  | バックアップスクリプトインストール |
+| `setup-cron-backup.sh`             | cron ジョブ設定                    |
+| `run-backup-now.sh`                | オンデマンドバックアップ実行       |
+| `/usr/local/bin/mongodb-backup.sh` | 実際のバックアップスクリプト       |
+| `/var/log/mongodb-backup.log`      | バックアップログ                   |
 
 ---
 
