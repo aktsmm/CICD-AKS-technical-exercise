@@ -143,8 +143,6 @@ def build_sarif(data: Dict) -> Dict:
     results: List[Dict] = []
     rules: Dict[str, Dict] = {}
     repo_root = Path.cwd().resolve()
-    # Use %SRCROOT% placeholder for GitHub Code Scanning
-    repo_uri = "file:///%SRCROOT%/"
 
     for policy_break in iter_policy_breaks(data):
         matches = policy_break.get("matches") or []
@@ -203,8 +201,7 @@ def build_sarif(data: Dict) -> Dict:
                         {
                             "physicalLocation": {
                                 "artifactLocation": {
-                                    "uri": relative_path,
-                                    "uriBaseId": "SRCROOT"
+                                    "uri": relative_path
                                 },
                                 "region": {
                                     "startLine": int(line),
@@ -233,14 +230,6 @@ def build_sarif(data: Dict) -> Dict:
                 },
                 "results": results,
                 "columnKind": "utf16CodeUnits",
-                "originalUriBaseIds": {
-                    "SRCROOT": {
-                        "uri": repo_uri,
-                        "description": {
-                            "text": "Repository root"
-                        }
-                    }
-                },
             }
         ],
     }
