@@ -75,7 +75,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' = {
           protocol: 'Tcp'
           sourcePortRange: '*'
           destinationPortRange: '27017'
-          sourceAddressPrefix: '10.0.0.0/16'  // 修正: VNet内(Kubernetesネットワーク)からのみ許可
+          sourceAddressPrefix: '10.0.1.0/24'  // AKS サブネット経由のアクセスに限定
           destinationAddressPrefix: '*'
         }
       }
