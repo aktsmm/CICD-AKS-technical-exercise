@@ -5,11 +5,14 @@ BACKUP_DIR="/var/backups/mongodb"
 BACKUP_FILE="mongodb_backup_${TIMESTAMP}.tar.gz"
 STORAGE_ACCOUNT="__STORAGE_ACCOUNT__"
 CONTAINER_NAME="__CONTAINER_NAME__"
+MONGO_USER="__MONGO_USER__"
+MONGO_PASSWORD="__MONGO_PASSWORD__"
 LOG_FILE="/var/log/mongodb-backup.log"
 
 log_line() {
   echo "[$(date)] $*" | tee -a "$LOG_FILE"
 }
+
 
 mkdir -p "$BACKUP_DIR"
 log_line "Starting backup..."
@@ -19,7 +22,7 @@ if ! az login --identity 2>&1 | tee -a "$LOG_FILE"; then
   log_line "WARNING: Managed Identity login failed"
 fi
 
-if ! mongodump --out ${BACKUP_DIR}/dump_${TIMESTAMP} 2>&1 | tee -a "$LOG_FILE"; then
+if ! mongodump -u "$MONGO_USER" -p "$MONGO_PASSWORD" --authenticationDatabase admin --out ${BACKUP_DIR}/dump_${TIMESTAMP} 2>&1 | tee -a "$LOG_FILE"; then
   log_line "ERROR: mongodump failed"
   exit 1
 fi
