@@ -11,22 +11,26 @@
 **ファイル名:** `mongo_password.txt`
 
 **内容:**
+
 ```bash
 MONGO_USER="mongoadmin"
 MONGO_PASSWORD="<GitHub Secrets に保存済み>"
 ```
 
 **用途:**
+
 - ローカルでの MongoDB バックアップスクリプトテスト
 - VM 接続時の手動バックアップ検証
 - 開発環境でのデータベース操作
 
 **GitHub Actions での管理:**
+
 - **Variables:** `MONGO_ADMIN_USER` (値: `mongoadmin`)
 - **Secrets:** `MONGO_ADMIN_PASSWORD` (機密情報のため非表示)
 - **利用ワークフロー:** `backup-schedule.yml` (Scheduled Mongo Backup)
 
 **利用方法:**
+
 ```bash
 # シェルに読み込む
 source mongo_password.txt
@@ -37,6 +41,7 @@ echo "User: $MONGO_USER"
 ```
 
 **セキュリティ対策:**
+
 ```bash
 # ファイル権限を所有者のみ読み書き可能に制限
 chmod 600 mongo_password.txt
@@ -52,6 +57,7 @@ rm mongo_password.txt
 **ファイル名:** `azure-credentials.json`
 
 **内容例:**
+
 ```json
 {
   "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
@@ -68,10 +74,12 @@ rm mongo_password.txt
 ```
 
 **用途:**
+
 - GitHub Actions Secret `AZURE_CREDENTIALS` の再発行時の元ファイル
 - ローカルでの Azure CLI 認証テスト
 
 **生成コマンド:**
+
 ```bash
 az ad sp create-for-rbac \
   --name gh-aks-oidc \
@@ -81,10 +89,12 @@ az ad sp create-for-rbac \
 ```
 
 **GitHub Actions での管理:**
+
 - **Secrets:** `AZURE_CREDENTIALS` (JSON 全体)
 - **利用ワークフロー:** `policy-deploy.yml` (Deploy Policy Guardrails)
 
 **取り扱い注意:**
+
 - Secret 更新後は**即座に削除**するか、暗号化して安全な場所に保管
 - 絶対に Git リポジトリにコミットしない
 
@@ -95,6 +105,7 @@ az ad sp create-for-rbac \
 **ファイルパターン:** `.env`, `*.env`, `.env.local`
 
 **内容例:**
+
 ```bash
 # Azure 環境情報
 AZURE_SUBSCRIPTION_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -120,11 +131,13 @@ IMAGE_TAG="latest"
 ```
 
 **用途:**
+
 - ローカル開発環境での環境変数設定
 - テストスクリプト実行時の設定読み込み
 - CI/CD パイプラインのローカル再現
 
 **利用方法:**
+
 ```bash
 # 環境変数として読み込み
 export $(cat .env | xargs)
@@ -134,6 +147,7 @@ direnv allow .
 ```
 
 **GitHub Actions での管理:**
+
 - 各値は個別に Secrets または Variables として管理
 - 詳細は `docs/Secrets_and_Variables_Setup.md` を参照
 
@@ -144,11 +158,13 @@ direnv allow .
 **ファイルパターン:** `*.secret`, `*.credentials`, `*.key`, `*.pem`
 
 **用途:**
+
 - SSH 秘密鍵 (`id_rsa`, `vm_key.pem`)
 - API キー保存ファイル (`api-key.secret`)
 - 証明書ファイル (`*.pfx`, `*.p12`)
 
 **セキュリティ対策:**
+
 ```bash
 # SSH 鍵の権限設定
 chmod 600 ~/.ssh/id_rsa
@@ -203,22 +219,22 @@ Thumbs.db
 
 ### 3.1 Secrets (機密情報)
 
-| Secret 名                | 内容                                    | 対応ローカルファイル          |
-| ------------------------ | --------------------------------------- | ----------------------------- |
-| `AZURE_CREDENTIALS`      | Service Principal 認証 JSON             | `azure-credentials.json`      |
-| `AZURE_CLIENT_ID`        | Azure AD アプリのクライアント ID        | `.env` 内の対応値             |
-| `AZURE_TENANT_ID`        | Azure テナント ID                       | `.env` 内の対応値             |
-| `AZURE_SUBSCRIPTION_ID`  | Azure サブスクリプション ID             | `.env` 内の対応値             |
-| `MONGO_ADMIN_PASSWORD`   | MongoDB 管理者パスワード                | `mongo_password.txt` 内の値   |
+| Secret 名               | 内容                             | 対応ローカルファイル        |
+| ----------------------- | -------------------------------- | --------------------------- |
+| `AZURE_CREDENTIALS`     | Service Principal 認証 JSON      | `azure-credentials.json`    |
+| `AZURE_CLIENT_ID`       | Azure AD アプリのクライアント ID | `.env` 内の対応値           |
+| `AZURE_TENANT_ID`       | Azure テナント ID                | `.env` 内の対応値           |
+| `AZURE_SUBSCRIPTION_ID` | Azure サブスクリプション ID      | `.env` 内の対応値           |
+| `MONGO_ADMIN_PASSWORD`  | MongoDB 管理者パスワード         | `mongo_password.txt` 内の値 |
 
 ### 3.2 Variables (非機密設定)
 
-| Variable 名              | 内容                                    | 対応ローカルファイル          |
-| ------------------------ | --------------------------------------- | ----------------------------- |
-| `AZURE_LOCATION`         | デプロイ先リージョン (`japaneast`)      | `.env` 内の対応値             |
-| `AZURE_RESOURCE_GROUP`   | リソースグループ名                      | `.env` 内の対応値             |
-| `MONGO_ADMIN_USER`       | MongoDB 管理者ユーザー名 (`mongoadmin`) | `mongo_password.txt` 内の値   |
-| `IMAGE_NAME`             | コンテナイメージ名 (`guestbook`)        | `.env` 内の対応値             |
+| Variable 名            | 内容                                    | 対応ローカルファイル        |
+| ---------------------- | --------------------------------------- | --------------------------- |
+| `AZURE_LOCATION`       | デプロイ先リージョン (`japaneast`)      | `.env` 内の対応値           |
+| `AZURE_RESOURCE_GROUP` | リソースグループ名                      | `.env` 内の対応値           |
+| `MONGO_ADMIN_USER`     | MongoDB 管理者ユーザー名 (`mongoadmin`) | `mongo_password.txt` 内の値 |
+| `IMAGE_NAME`           | コンテナイメージ名 (`guestbook`)        | `.env` 内の対応値           |
 
 詳細は `docs/Secrets_and_Variables_Setup.md` を参照。
 
@@ -287,6 +303,7 @@ git push origin --force --all
 **原因:** `.gitignore` に追加する前にコミットしてしまった
 
 **解決策:**
+
 ```bash
 # Git の追跡から削除 (ファイル自体は残す)
 git rm --cached mongo_password.txt
@@ -304,6 +321,7 @@ git commit -m "秘匿ファイルを .gitignore に追加"
 **原因:** Secret 名が一致していない、または値が正しく設定されていない
 
 **確認手順:**
+
 1. `Settings` → `Secrets and variables` → `Actions` で Secret 名を確認
 2. ワークフローファイル内の `${{ secrets.SECRET_NAME }}` が正しいか確認
 3. Secret を再設定して再実行
@@ -313,6 +331,7 @@ git commit -m "秘匿ファイルを .gitignore に追加"
 **原因:** `export` せずに変数を定義している
 
 **解決策:**
+
 ```bash
 # ❌ 誤り
 MONGO_PASSWORD="xxx"

@@ -55,7 +55,7 @@
 | `AZURE_GITHUB_PRINCIPAL_ID`       | `60603759-feba-41e2-9b02-9dc78248bdf3` | GitHub Actions (OIDC) サービスプリンシパルの Object ID。RBAC ブートストラップ モジュールで使用。                  |
 | `AZURE_GRANT_GITHUB_OWNER` (任意) | `false`                                | `true` の場合、Owner を付与。通常は最小権限維持のため `false`。                                                   |
 | `IMAGE_NAME`                      | `guestbook`                            | コンテナビルド後に ACR へ push するイメージ名。                                                                   |
-| `MONGO_ADMIN_USER`                | `mongoadmin`                           | MongoDB 管理者ユーザー名。`3. Scheduled Mongo Backup` で利用。ローカルでは `mongo_password.txt` に記載。           |
+| `MONGO_ADMIN_USER`                | `mongoadmin`                           | MongoDB 管理者ユーザー名。`3. Scheduled Mongo Backup` で利用。ローカルでは `mongo_password.txt` に記載。          |
 | `MONGO_VM_NAME` (任意)            | `vm-mongo-dev`                         | `3. Scheduled Mongo Backup` を複数環境で使い分ける場合に設定。未定義時は既定値 `vm-mongo-dev` を利用。            |
 
 変数は `Settings` → `Secrets and variables` → `Actions` → `Variables` から登録する。
