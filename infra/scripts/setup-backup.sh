@@ -1,5 +1,9 @@
 #!/bin/bash
-set -ex  # 詳細ログ出力を有効化
+set -euo pipefail
+
+if [ "${BACKUP_SETUP_DEBUG:-0}" != "0" ]; then
+  set -x
+fi
 
 echo "=== Starting Backup Configuration ==="
 

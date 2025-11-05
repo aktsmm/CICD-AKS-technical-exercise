@@ -23,12 +23,97 @@ jobs:
         name: Run mongo dump from Azure VM
         runs-on: ubuntu-latest
         steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
             - name: Azure Login
               uses: azure/login@v1
               with:
                   client-id: ${{ secrets.AZURE_CLIENT_ID }}
                   tenant-id: ${{ secrets.AZURE_TENANT_ID }}
                   subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+            - name: Ensure Mongo backup script is provisioned on VM
+              env:
+                  MONGO_ADMIN_USER: ${{ vars.MONGO_ADMIN_USER != '' && vars.MONGO_ADMIN_USER || 'mongoadmin' }}
+                  MONGO_ADMIN_PASSWORD: ${{ secrets.MONGO_ADMIN_PASSWORD }}
+              run: |
+                  set -euo pipefail
+
+                  if ! command -v jq >/dev/null 2>&1; then
+                    echo "::error::jq is required but not available on PATH"
+                    exit 1
+                  fi
+
+                  RG="${{ env.RESOURCE_GROUP }}"
+                  VM_NAME="${{ env.MONGO_VM_NAME }}"
+                  CONTAINER_NAME="backups"
+
+                  STORAGE_ACCOUNT=$(az storage account list --resource-group "$RG" --query "[0].name" -o tsv)
+                  if [ -z "$STORAGE_ACCOUNT" ] || [ "$STORAGE_ACCOUNT" = "" ] || [ "$STORAGE_ACCOUNT" = "None" ]; then
+                    echo "::error::Failed to detect a storage account in resource group '$RG'"
+                    exit 1
+                  fi
+
+                  if [ -z "${MONGO_ADMIN_PASSWORD:-}" ]; then
+                    echo "::error::MONGO_ADMIN_PASSWORD secret is not configured"
+                    exit 1
+                  fi
+
+                  if [ -z "${MONGO_ADMIN_USER:-}" ]; then
+                    echo "::error::MONGO_ADMIN_USER variable is not configured"
+                    exit 1
+                  fi
+
+                  extract_status() {
+                    awk '/\[stdout\]/{getline; gsub(/\r/,"",$0); if(NF){print; exit}}' <<<"$1"
+                  }
+
+                  ensure_script=$(mktemp)
+                  trap 'rm -f "$ensure_script"' EXIT
+
+                  USER_ESCAPED=$(printf '%q' "$MONGO_ADMIN_USER")
+                  PASSWORD_ESCAPED=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
+
+                  {
+                    echo "#!/bin/bash"
+                    echo "set -euo pipefail"
+                    echo
+                    echo "if [ -x /usr/local/bin/mongodb-backup.sh ] && ! grep -q '__STORAGE_ACCOUNT__' /usr/local/bin/mongodb-backup.sh; then"
+                    echo "  echo READY"
+                    echo "  exit 0"
+                    echo "fi"
+                    echo
+                    echo "mkdir -p /tmp"
+                    echo "cat <<'SCRIPT_CONTENT' >/tmp/setup-backup.sh"
+                    cat infra/scripts/setup-backup.sh
+                    echo "SCRIPT_CONTENT"
+                    echo "chmod +x /tmp/setup-backup.sh"
+                    echo "export MONGO_ADMIN_USER=$USER_ESCAPED"
+                    echo "export MONGO_ADMIN_PASSWORD=$PASSWORD_ESCAPED"
+                    echo "/tmp/setup-backup.sh '$STORAGE_ACCOUNT' '$CONTAINER_NAME'"
+                    echo "rm -f /tmp/setup-backup.sh"
+                    echo "echo DEPLOYED"
+                  } > "$ensure_script"
+
+                  ensure_result=$(az vm run-command invoke \
+                    --resource-group "$RG" \
+                    --name "$VM_NAME" \
+                    --command-id RunShellScript \
+                    --scripts @"$ensure_script" \
+                    -o json)
+
+                  status=$(extract_status "$(echo "$ensure_result" | jq -r '.value[0].message')")
+
+                  if [ "$status" = "READY" ]; then
+                    echo "::notice::Backup script already provisioned on $VM_NAME"
+                  elif [ "$status" = "DEPLOYED" ]; then
+                    echo "::notice::Backup script deployed on $VM_NAME (storage: $STORAGE_ACCOUNT)"
+                  else
+                    echo "::error::Unexpected status while provisioning backup script: ${status:-<empty>}"
+                    echo "$ensure_result"
+                    exit 1
+                  fi
 
             - name: Diagnose Backup Script on VM
               run: |
