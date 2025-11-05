@@ -37,6 +37,7 @@ jobs:
               env:
                   MONGO_ADMIN_USER: ${{ vars.MONGO_ADMIN_USER != '' && vars.MONGO_ADMIN_USER || 'mongoadmin' }}
                   MONGO_ADMIN_PASSWORD: ${{ secrets.MONGO_ADMIN_PASSWORD }}
+                  FORCE_REDEPLOY: ${{ vars.BACKUP_FORCE_REDEPLOY != '' && vars.BACKUP_FORCE_REDEPLOY || 'true' }}
               run: |
                   set -euo pipefail
 
@@ -72,18 +73,24 @@ jobs:
                   ensure_script=$(mktemp)
                   trap 'rm -f "$ensure_script"' EXIT
 
-                  RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/infra/scripts/setup-backup.sh"
+                  RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/infra/scripts/setup-backup.sh"
 
                   USER_ESCAPED=$(printf '%q' "$MONGO_ADMIN_USER")
                   PASSWORD_ESCAPED=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
                   STORAGE_ESCAPED=$(printf '%q' "$STORAGE_ACCOUNT")
                   CONTAINER_ESCAPED=$(printf '%q' "$CONTAINER_NAME")
+                  FORCE_REDEPLOY_ESCAPED=$(printf '%q' "${FORCE_REDEPLOY:-false}")
 
                   {
                     printf '%s\n' '#!/bin/bash'
                     printf '%s\n' 'set -euo pipefail'
                     printf '%s\n' 'TARGET=/usr/local/bin/mongodb-backup.sh'
-                    printf '%s\n' 'if [ -x "$TARGET" ] && ! grep -q "__STORAGE_ACCOUNT__" "$TARGET"; then'
+                    printf '%s\n' "FORCE_REDEPLOY=$FORCE_REDEPLOY_ESCAPED"
+                    printf '%s\n' 'if [ "$FORCE_REDEPLOY" = "true" ]; then'
+                    printf '%s\n' '  echo "Forcing redeploy of backup script..."'
+                    printf '%s\n' '  rm -f "$TARGET"'
+                    printf '%s\n' 'fi'
+                    printf '%s\n' 'if [ -x "$TARGET" ] && grep -q "#!/bin/bash" "$TARGET" && grep -q "mongodb-backup" "$TARGET"; then'
                     printf '%s\n' '  echo READY'
                     printf '%s\n' '  exit 0'
                     printf '%s\n' 'fi'
