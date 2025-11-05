@@ -74,6 +74,7 @@ jobs:
 
                   USER_ESCAPED=$(printf '%q' "$MONGO_ADMIN_USER")
                   PASSWORD_ESCAPED=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
+                  SETUP_BASE64=$(base64 -w0 infra/scripts/setup-backup.sh)
 
                   {
                     echo "#!/bin/bash"
@@ -85,9 +86,7 @@ jobs:
                     echo "fi"
                     echo
                     echo "mkdir -p /tmp"
-                    echo "cat <<'SCRIPT_CONTENT' >/tmp/setup-backup.sh"
-                    cat infra/scripts/setup-backup.sh
-                    echo "SCRIPT_CONTENT"
+                    echo "echo '$SETUP_BASE64' | base64 -d > /tmp/setup-backup.sh"
                     echo "chmod +x /tmp/setup-backup.sh"
                     echo "export MONGO_ADMIN_USER=$USER_ESCAPED"
                     echo "export MONGO_ADMIN_PASSWORD=$PASSWORD_ESCAPED"
