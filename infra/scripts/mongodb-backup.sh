@@ -22,7 +22,13 @@ if ! az login --identity 2>&1 | tee -a "$LOG_FILE"; then
   log_line "WARNING: Managed Identity login failed"
 fi
 
-if ! mongodump -u "$MONGO_USER" -p "$MONGO_PASSWORD" --authenticationDatabase admin --out ${BACKUP_DIR}/dump_${TIMESTAMP} 2>&1 | tee -a "$LOG_FILE"; then
+if ! mongodump \
+  --host localhost \
+  --port 27017 \
+  --username "$MONGO_USER" \
+  --password "$MONGO_PASSWORD" \
+  --authenticationDatabase admin \
+  --out ${BACKUP_DIR}/dump_${TIMESTAMP} 2>&1 | tee -a "$LOG_FILE"; then
   log_line "ERROR: mongodump failed"
   exit 1
 fi
