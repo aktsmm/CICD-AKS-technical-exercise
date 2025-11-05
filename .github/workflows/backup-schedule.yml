@@ -70,11 +70,14 @@ jobs:
                   }
 
                   ensure_script=$(mktemp)
-                  trap 'rm -f "$ensure_script"' EXIT
+                  setup_base64_file=$(mktemp)
+                  trap 'rm -f "$ensure_script" "$setup_base64_file"' EXIT
 
                   USER_ESCAPED=$(printf '%q' "$MONGO_ADMIN_USER")
                   PASSWORD_ESCAPED=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
-                  SETUP_BASE64=$(base64 -w0 infra/scripts/setup-backup.sh)
+                  
+                  # Base64エンコードして一時ファイルに保存（長い文字列をechoで扱わない）
+                  base64 -w0 infra/scripts/setup-backup.sh > "$setup_base64_file"
 
                   {
                     echo "#!/bin/bash"
@@ -86,12 +89,16 @@ jobs:
                     echo "fi"
                     echo
                     echo "mkdir -p /tmp"
-                    echo "echo '$SETUP_BASE64' | base64 -d > /tmp/setup-backup.sh"
+                    echo "# Base64デコードしてsetup-backup.shを生成"
+                    echo "cat > /tmp/setup-backup.b64 << 'BASE64_EOF'"
+                    cat "$setup_base64_file"
+                    echo "BASE64_EOF"
+                    echo "base64 -d /tmp/setup-backup.b64 > /tmp/setup-backup.sh"
                     echo "chmod +x /tmp/setup-backup.sh"
                     echo "export MONGO_ADMIN_USER=$USER_ESCAPED"
                     echo "export MONGO_ADMIN_PASSWORD=$PASSWORD_ESCAPED"
                     echo "/tmp/setup-backup.sh '$STORAGE_ACCOUNT' '$CONTAINER_NAME'"
-                    echo "rm -f /tmp/setup-backup.sh"
+                    echo "rm -f /tmp/setup-backup.sh /tmp/setup-backup.b64"
                     echo "echo DEPLOYED"
                   } > "$ensure_script"
 
