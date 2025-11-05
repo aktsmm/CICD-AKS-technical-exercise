@@ -105,7 +105,8 @@ def build_sarif(data: Dict) -> Dict:
     results: List[Dict] = []
     rules: Dict[str, Dict] = {}
     repo_root = Path.cwd().resolve()
-    repo_uri = repo_root.as_uri().rstrip('/') + '/'
+    # GitHub Actions mounts repositories at /github/workspace, so use a fixed SRCROOT URI
+    repo_uri = "file:///github/workspace/"
 
     for policy_break in iter_policy_breaks(data):
         matches = policy_break.get("matches") or []
@@ -203,6 +204,7 @@ def build_sarif(data: Dict) -> Dict:
                     }
                 },
                 "results": results,
+                "columnKind": "utf16CodeUnits",
                 "originalUriBaseIds": {
                     "SRCROOT": {
                         "uri": repo_uri,
