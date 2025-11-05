@@ -80,7 +80,7 @@ jobs:
                   fi
 
                   SCRIPT_CONTENT=$(cat <<'EOF'
-                  sudo /usr/local/bin/mongodb-backup.sh
+                  /usr/local/bin/mongodb-backup.sh
                   EOF
                   )
 
