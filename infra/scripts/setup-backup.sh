@@ -84,7 +84,7 @@ SUMMARY=$(cat <<SUMMARY_EOF
 File: ${BACKUP_FILE}
 Size: ${FILE_SIZE}
 URL: ${PUBLIC_URL}
-cURL: curl -O "${PUBLIC_URL}"
+cURL: curl -O ${PUBLIC_URL}
 SUMMARY_EOF
 )
 
