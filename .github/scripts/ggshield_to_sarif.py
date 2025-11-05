@@ -99,7 +99,27 @@ def build_sarif(data: Dict) -> Dict:
 
     for policy_break in iter_policy_breaks(data):
         matches = policy_break.get("matches") or []
-        raw_rule = policy_break.get("rule") or {}
+
+        # ggshield v1.40+ uses "occurrences" instead of "matches"
+        if not matches and isinstance(policy_break.get("occurrences"), list):
+            for occurrence in policy_break["occurrences"]:
+                matches.append(
+                    {
+                        "filename": occurrence.get("filename")
+                        or occurrence.get("file")
+                        or occurrence.get("path"),
+                        "line_start": occurrence.get("line_start")
+                        or occurrence.get("line")
+                        or occurrence.get("line_begin"),
+                        "index_start": occurrence.get("index_start"),
+                        "index_end": occurrence.get("index_end"),
+                        "match": occurrence.get("match") or occurrence.get("secret_hash"),
+                    }
+                )
+
+        raw_rule = policy_break.get("rule") or policy_break.get("policy")
+        if not isinstance(raw_rule, dict):
+            raw_rule = {"name": str(policy_break.get("break_type") or "policy_break")}
         rule_id = normalize_rule_id(raw_rule)
         sarif_level = normalize_severity(raw_rule)
         description = extract_description(raw_rule)
