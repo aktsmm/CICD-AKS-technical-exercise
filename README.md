@@ -1,881 +1,1139 @@
-# 🧙‍♂️ CICD-AKS-Technical Exercise
+# Azure Kubernetes Service CI/CD 技術演習プロジェクト
 
-クラウド環境を構築し、セキュリティリスクをデモンストレーションするプロジェクト
+> ⚠️ **重要な注意事項**
+>
+> このプロジェクトは**学習・デモ目的**で意図的に脆弱性を含む環境をデプロイします。
+>
+> - 本番環境では絶対に使用しないでください
+> - デプロイ後は必ずリソースを削除してください
+> - Azure の課金が発生します（推定: 数百円〜数千円/日）
+> - セキュリティグループが緩いため、悪意ある攻撃のリスクがあります
 
-## 📋 プロジェクト概要
+## 📋 目次
 
-### 構成要素
+1. [プロジェクト概要](#-プロジェクト概要)
+2. [技術スタック](#-技術スタック)
+3. [システムアーキテクチャ](#-システムアーキテクチャ)
+4. [ネットワーク構成](#-ネットワーク構成)
+5. [セキュリティ設計](#-セキュリティ設計)
+6. [処理フロー](#-処理フロー)
+7. [通信フロー](#-通信フロー)
+8. [前提条件](#-前提条件)
+9. [初期セットアップ](#-初期セットアップ)
+10. [デプロイ手順](#-デプロイ手順)
+11. [動作確認](#-動作確認)
+12. [トラブルシューティング](#-トラブルシューティング)
+13. [クリーンアップ](#-クリーンアップ)
 
-- **AKS (Azure Kubernetes Service)** - コンテナ化された BBS App + NGINX Ingress Controller
-- **VM (MongoDB)** - Ubuntu 20.04 + MongoDB 4.4 データベース
-- **ACR (Azure Container Registry)** - Docker イメージレジストリ
-- **Storage Account** - バックアップ用 Blob Storage
-- **Azure Monitor** - 監査ログ収集
-- **Azure Load Balancer** - L4 ロードバランシング（Ingress Controller 用）
+---
 
-### 意図的な脆弱性
+## 🎯 プロジェクト概要
 
-1. **AKS**: Cluster Admin 権限の不適切な付与
-2. **VM**: SSH Port 22 のインターネット公開、古い OS (Ubuntu 20.04)、過剰なクラウド権限 (VM 作成可能)
-3. **MongoDB**: 古いバージョン (4.4)、認証あり (ただし弱い設定)
-4. **Network**: MongoDB へのアクセス制限が不十分 (AKS subnet のみ許可だが、NSG ルールが広範)
-5. **Storage**: Public Blob Access 有効 (バックアップが公開閲覧可能)
+### 目的
 
-## 🏗️ アーキテクチャ
+本プロジェクトは、**Azure Kubernetes Service (AKS)** 上で動作する掲示板アプリケーションを題材に、以下を学習・実証するための技術演習です：
 
-### システム構成図
+- **Infrastructure as Code (IaC)**: Azure Bicep によるインフラ自動構築
+- **CI/CD パイプライン**: GitHub Actions による継続的インテグレーション・デプロイ
+- **セキュリティ**: 意図的に脆弱性を含む環境をデプロイし、検出 → 修復のプロセスを学ぶ（Azure Policy、Defender for Cloud、認証設定など）
+- **コンテナオーケストレーション**: Kubernetes マニフェストによるアプリケーション管理
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                           Azure Subscription                         │
-│                                                                       │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │              Resource Group: <YOUR_RG_NAME>                  │   │
-│  │                                                               │   │
-│  │  ┌──────────────────────────────────────────────────────┐   │   │
-│  │  │  VNet: vnetdev (10.0.0.0/16)                    │   │   │
-│  │  │                                                        │   │   │
-│  │  │  ┌──────────────────────────────────────┐            │   │   │
-│  │  │  │ Subnet: aks-subnet (10.0.1.0/24)    │            │   │   │
-│  │  │  │                                       │            │   │   │
-│  │  │  │  ┌─────────────────────────────┐    │            │   │   │
-│  │  │  │  │  AKS: aks-dev               │    │            │   │   │
-│  │  │  │  │  ├─ Node Pool: 2 nodes      │    │            │   │   │
-│  │  │  │  │  │  Standard_DS2_v2          │    │            │   │   │
-│  │  │  │  │  ├─ Ingress Controller      │◄───┼─── Azure LB (External IP)
-│  │  │  │  │  │  (NGINX, L7 Routing)     │    │            │   │   │
-│  │  │  │  │  ├─ Pod: guestbook-app (×2) │    │            │   │   │
-│  │  │  │  │  └─ Service: ClusterIP      │    │            │   │   │
-│  │  │  │  └─────────────────────────────┘    │            │   │   │
-│  │  │  └──────────────────────────────────────┘            │   │   │
-│  │  │                                                        │   │   │
-│  │  │  ┌──────────────────────────────────────┐            │   │   │
-│  │  │  │ Subnet: mongo-subnet (10.0.2.0/24)  │            │   │   │
-│  │  │  │                                       │            │   │   │
-│  │  │  │  ┌─────────────────────────────┐    │            │   │   │
-│  │  │  │  │  VM: <MONGODB_VM_NAME>           │    │            │   │   │
-│  │  │  │  │  ├─ Ubuntu 20.04 LTS (古い)  │    │            │   │   │
-│  │  │  │  │  ├─ MongoDB 4.4 (古いバージョン) │◄───┼─── AKS Pods (NSG制限あり)
-│  │  │  │  │  ├─ Port 27017 (認証あり)   │    │            │   │   │
-│  │  │  │  │  ├─ Port 22 (SSH公開) ⚠️    │◄───┼─── Internet
-│  │  │  │  │  └─ 過剰なVM権限 ⚠️         │    │            │   │   │
-│  │  │  │  └─────────────────────────────┘    │            │   │   │
-│  │  │  └──────────────────────────────────────┘            │   │   │
-│  │  └──────────────────────────────────────────────────────┘   │   │
-│  │                                                               │   │
-│  │  ┌──────────────────────────────────────────────────────┐   │   │
-│  │  │  ACR: <ACR_NAME>[hash] (Premium/Basic)                │   │   │
-│  │  │  └─ guestbook:latest                                 │   │   │
-│  │  └──────────────────────────────────────────────────────┘   │   │
-│  │             ▲                                                │   │
-│  │             │ AcrPull Role                                  │   │
-│  │             │                                                │   │
-│  │  ┌──────────────────────────────────────────────────────┐   │   │
-│  │  │  Storage: <STORAGE_ACCOUNT_NAME>[hash]                             │   │   │
-│  │  │  ├─ Container: backups                               │   │   │
-│  │  │  └─ Public Blob Access: Enabled ⚠️                   │   │   │
-│  │  └──────────────────────────────────────────────────────┘   │   │
-│  │             ▲                                                │   │
-│  │             │ Daily Backup (cron 2:00 AM JST)               │   │
-│  │             │                                                │   │
-│  │  ┌──────────────────────────────────────────────────────┐   │   │
-│  │  │  Log Analytics: <LOG_ANALYTICS_NAME>                          │   │   │
-│  │  │  └─ AKS Audit Logs                                   │   │   │
-│  │  └──────────────────────────────────────────────────────┘   │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
+> **重要**: このプロジェクトは**学習・デモ目的**で、最初に脆弱性のある環境をデプロイします。本番環境では絶対に使用しないでください。
+
+### 背景
+
+クラウドネイティブな開発では、インフラとアプリケーションを一体として管理し、自動化されたパイプラインで品質とセキュリティを担保することが重要です。本プロジェクトでは、**脆弱性を含む初期環境を自動デプロイ**し、それらを検出・修復する一連のプロセスを体験することで、セキュアな運用への理解を深めます。
+
+### 学習フロー
+
+```text
+[Phase 1] 脆弱な環境のデプロイ (自動)
+   ↓
+[Phase 2] 脆弱性の検出と確認 (手動 / デモ)
+   ↓
+[Phase 3] セキュリティ修正の適用 (手動 / 別途提供)
+   ↓
+[Phase 4] 修正後の検証 (手動)
 ```
 
-### CI/CD フロー図
+### アプリケーション概要
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                        GitHub Repository                            │
-│                     (aktsmm/CICD-AKS-technical-exercise)           │
-└────────────────────────────────────────────────────────────────────┘
-                                  │
-                    git push (infra/** or app/**)
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                         GitHub Actions                              │
-│                                                                      │
-│  ┌───────────────────────────────────────────────────────────┐    │
-│  │  Workflow 1: Deploy Infrastructure                        │    │
-│  │  Trigger: infra/** changes                                │    │
-│  │  ┌─────────────────────────────────────────────────────┐  │    │
-│  │  │  1. Checkov Scan (IaC Security)                     │  │    │
-│  │  │     └─ Check Bicep templates                        │  │    │
-│  │  └─────────────────────────────────────────────────────┘  │    │
-│  │  ┌─────────────────────────────────────────────────────┐  │    │
-│  │  │  2. Deploy Azure Resources (Bicep)                  │  │    │
-│  │  │     ├─ VNet + Subnets                               │  │    │
-│  │  │     ├─ AKS Cluster                                  │  │    │
-│  │  │     ├─ ACR (with unique suffix)                     │  │    │
-│  │  │     ├─ MongoDB VM + Managed Identity                │  │    │
-│  │  │     ├─ Storage Account                              │  │    │
-│  │  │     ├─ Log Analytics                                │  │    │
-│  │  │     ├─ NSG (SSH + MongoDB public) ⚠️                │  │    │
-│  │  │     └─ RBAC (Vulnerable ClusterAdmin) ⚠️            │  │    │
-│  │  └─────────────────────────────────────────────────────┘  │    │
-│  │  ┌─────────────────────────────────────────────────────┐  │    │
-│  │  │  3. Wait for AKS Provisioning                       │  │    │
-│  │  │     └─ Poll every 30s (max 15min)                   │  │    │
-│  │  └─────────────────────────────────────────────────────┘  │    │
-│  │  ┌─────────────────────────────────────────────────────┐  │    │
-│  │  │  4. Save Outputs as Artifacts                       │  │    │
-│  │  │     ├─ AKS_CLUSTER_NAME                             │  │    │
-│  │  │     ├─ ACR_NAME                                     │  │    │
-│  │  │     └─ MONGO_VM_IP                                  │  │    │
-│  │  └─────────────────────────────────────────────────────┘  │    │
-│  └───────────────────────────────────────────────────────┘    │
-│                                  │                               │
-│                   workflow_run trigger (on success)             │
-│                                  ▼                               │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Workflow 2: Build and Deploy Application                 │  │
-│  │  Trigger: app/** changes OR infra success                 │  │
-│  │  ┌─────────────────────────────────────────────────────┐  │  │
-│  │  │  1. Check Resource Group Existence                  │  │  │
-│  │  │     └─ Fail early if RG not found                   │  │  │
-│  │  └─────────────────────────────────────────────────────┘  │  │
-│  │  ┌─────────────────────────────────────────────────────┐  │  │
-│  │  │  2. Trivy Container Scan                            │  │  │
-│  │  │     └─ Scan for CVEs (CRITICAL/HIGH)                │  │  │
-│  │  └─────────────────────────────────────────────────────┘  │  │
-│  │  ┌─────────────────────────────────────────────────────┐  │  │
-│  │  │  3. Build & Push Docker Image                       │  │  │
-│  │  │     ├─ Build: guestbook:${GITHUB_SHA}               │  │  │
-│  │  │     ├─ Push to ACR                                  │  │  │
-│  │  │     └─ Tag as :latest                               │  │  │
-│  │  └─────────────────────────────────────────────────────┘  │  │
-│  │  ┌─────────────────────────────────────────────────────┐  │  │
-│  │  │  4. Deploy to AKS                                   │  │  │
-│  │  │     ├─ kubectl apply -f k8s/rbac-vulnerable.yaml ⚠️ │  │  │
-│  │  │     ├─ kubectl apply -f k8s/deployment.yaml         │  │  │
-│  │  │     ├─ kubectl apply -f k8s/service.yaml            │  │  │
-│  │  │     └─ Update image: ACR/guestbook:${GITHUB_SHA}    │  │  │
-│  │  └─────────────────────────────────────────────────────┘  │  │
-│  └───────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Deployed Application                             │
-│                                                                      │
-│  Browser → http://<INGRESS-IP>                                     │
-│               ↓                                                      │
-│          Azure Load Balancer (L4)                                   │
-│               ↓                                                      │
-│          Ingress Controller (L7, NGINX)                             │
-│               ↓                                                      │
-│          Service: guestbook-service (ClusterIP)                     │
-│               ↓                                                      │
-│          AKS Pods (guestbook-app ×2)                                │
-│               ↓                                                      │
-│          MongoDB VM (Private IP: 10.0.2.4)                          │
-└─────────────────────────────────────────────────────────────────────┘
-```
+- **掲示板アプリ (BBS - Bulletin Board System)**
+  - Node.js + Express + EJS で構築
+  - MongoDB にメッセージを保存
+  - ユーザーが名前とメッセージを投稿・閲覧可能
+  - ヘルスチェック用エンドポイント (`/health`) を提供
 
-### セキュリティスキャンフロー
+---
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Code Commit → GitHub Actions                                   │
-│                                                                  │
-│  ┌───────────────────┐      ┌───────────────────┐             │
-│  │  Checkov (IaC)    │      │  Trivy (Container)│             │
-│  │  ├─ Bicep Scan    │      │  ├─ Image Scan    │             │
-│  │  └─ Misconfig     │      │  └─ CVE Detection │             │
-│  └───────────────────┘      └───────────────────┘             │
-│           │                           │                         │
-│           └───────────┬───────────────┘                         │
-│                       ▼                                         │
-│              ┌─────────────────┐                                │
-│              │  SARIF Upload   │                                │
-│              │  to GitHub      │                                │
-│              │  Security Tab   │                                │
-│              └─────────────────┘                                │
-└─────────────────────────────────────────────────────────────────┘
+## 🛠 技術スタック
+
+### インフラストラクチャ
+
+| 技術                               | 用途                         | 参考リンク                                                                      |
+| ---------------------------------- | ---------------------------- | ------------------------------------------------------------------------------- |
+| **Azure Kubernetes Service (AKS)** | コンテナオーケストレーション | [AKS ドキュメント](https://learn.microsoft.com/ja-jp/azure/aks/)                |
+| **Azure Container Registry (ACR)** | Docker イメージの保存        | [ACR ドキュメント](https://learn.microsoft.com/ja-jp/azure/container-registry/) |
+| **Azure Virtual Machines**         | MongoDB ホスティング         | [VM ドキュメント](https://learn.microsoft.com/ja-jp/azure/virtual-machines/)    |
+| **Azure Storage Account**          | データバックアップ           | [Storage ドキュメント](https://learn.microsoft.com/ja-jp/azure/storage/)        |
+| **Azure Virtual Network**          | ネットワーク分離             | [VNet ドキュメント](https://learn.microsoft.com/ja-jp/azure/virtual-network/)   |
+| **Azure Monitor / Log Analytics**  | 監査ログ収集                 | [Monitor ドキュメント](https://learn.microsoft.com/ja-jp/azure/azure-monitor/)  |
+
+### CI/CD・開発ツール
+
+| 技術               | 用途                           | 参考リンク                                                                                  |
+| ------------------ | ------------------------------ | ------------------------------------------------------------------------------------------- |
+| **GitHub Actions** | CI/CD パイプライン             | [GitHub Actions ドキュメント](https://docs.github.com/ja/actions)                           |
+| **Azure Bicep**    | Infrastructure as Code         | [Bicep ドキュメント](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/bicep/) |
+| **CodeQL**         | コード品質・脆弱性スキャン     | [CodeQL ドキュメント](https://codeql.github.com/docs/)                                      |
+| **Trivy**          | コンテナイメージ脆弱性スキャン | [Trivy GitHub](https://github.com/aquasecurity/trivy)                                       |
+| **Checkov**        | IaC セキュリティスキャン       | [Checkov ドキュメント](https://www.checkov.io/)                                             |
+
+### アプリケーション
+
+| 技術        | バージョン | 用途                 |
+| ----------- | ---------- | -------------------- |
+| **Node.js** | 20.x       | バックエンド実行環境 |
+| **Express** | 4.x        | Web フレームワーク   |
+| **MongoDB** | 7.x        | NoSQL データベース   |
+| **EJS**     | 3.x        | テンプレートエンジン |
+| **Docker**  | Latest     | コンテナ化           |
+
+---
+
+## 🏗 システムアーキテクチャ
+
+### コンポーネント図
+
+> **注**: このプロジェクトでデプロイされるのは**脆弱性を含む初期構成**です。
+> 各コンポーネントの説明で「初期」と記載されている設定が適用されます。
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│               Azure Subscription                        │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ Resource Group: rg-bbs-cicd-aks                  │  │
+│  │                                                  │  │
+│  │  ┌────────────────────────────────────────────┐ │  │
+│  │  │ AKS Cluster                                │ │  │
+│  │  │  - Node Pool (System & User)               │ │  │
+│  │  │  - Frontend Container (BBS App)            │ │  │
+│  │  │  - Ingress Controller + LoadBalancer       │ │  │
+│  │  │  - RBAC: Cluster Admin 付与 (脆弱!)       │ │  │
+│  │  └────────────────────────────────────────────┘ │  │
+│  │                      ↕ (Port 27017)             │  │
+│  │  ┌────────────────────────────────────────────┐ │  │
+│  │  │ Virtual Machine (MongoDB)                  │ │  │
+│  │  │  - Ubuntu 22.04                            │ │  │
+│  │  │  - MongoDB 7.x                             │ │  │
+│  │  │  - Public IP + SSH Port 22 Open (脆弱!)   │ │  │
+│  │  │  - NSG: 緩い設定 (0.0.0.0/0 許可)         │ │  │
+│  │  │  - MongoDB 認証なし (脆弱!)                │ │  │
+│  │  └────────────────────────────────────────────┘ │  │
+│  │                      ↕ (HTTPS)                  │  │
+│  │  ┌────────────────────────────────────────────┐ │  │
+│  │  │ Storage Account (Blob)                     │ │  │
+│  │  │  - バックアップコンテナ                    │ │  │
+│  │  │  - Public Access 有効 (脆弱!)             │ │  │
+│  │  └────────────────────────────────────────────┘ │  │
+│  │                                                  │  │
+│  │  ┌────────────────────────────────────────────┐ │  │
+│  │  │ Azure Container Registry                   │ │  │
+│  │  │  - Docker Image Repository                 │ │  │
+│  │  └────────────────────────────────────────────┘ │  │
+│  │                                                  │  │
+│  │  ┌────────────────────────────────────────────┐ │  │
+│  │  │ Azure Monitor / Log Analytics Workspace    │ │  │
+│  │  │  - AKS Diagnostics (kube-audit)            │ │  │
+│  │  │  - ACR / Storage / NSG Logs                │ │  │
+│  │  └────────────────────────────────────────────┘ │  │
+│  │                                                  │  │
+│  │  ┌────────────────────────────────────────────┐ │  │
+│  │  │ Azure Policy (Microsoft Cloud Security)    │ │  │
+│  │  │  - カスタム MCSB イニシアチブ適用          │ │  │
+│  │  └────────────────────────────────────────────┘ │  │
+│  └──────────────────────────────────────────────────┘  │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+
+       ↕ Internet (HTTPS Port 443)
+
+┌──────────────────────┐
+│   エンドユーザー      │
+│   (Web Browser)      │
+└──────────────────────┘
 ```
 
-## 認証アーキテクチャ
+### 各サービスの役割
 
-このプロジェクトでは、複数の認証メカニズムを組み合わせてセキュアなデプロイを実現しています。
+| コンポーネント      | 役割               | 詳細                                                                 |
+| ------------------- | ------------------ | -------------------------------------------------------------------- |
+| **AKS Cluster**     | コンテナ実行基盤   | Node.js アプリを Pod として実行。Ingress 経由で外部公開              |
+| **ACR**             | イメージレジストリ | GitHub Actions でビルドしたイメージを保存・AKS からプル              |
+| **MongoDB VM**      | データベース       | 掲示板のメッセージを永続化。**認証なしでデプロイされる(脆弱性)**     |
+| **Storage Account** | バックアップ       | MongoDB のバックアップファイルを保存。**Public Access 有効(脆弱性)** |
+| **Log Analytics**   | 監視・監査         | Kubernetes 監査ログ、リソースの診断ログを集約                        |
+| **Azure Policy**    | ガバナンス         | Microsoft Cloud Security Benchmark のベストプラクティスを自動適用    |
+| **Load Balancer**   | トラフィック分散   | Ingress Controller 経由で外部からのリクエストを AKS に転送           |
 
-### 認証フロー図
+### データフローと依存関係
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    GitHub Actions Runner                             │
-│                                                                       │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  1. Azure Login (Service Principal)                         │   │
-│  │     ├─ Client ID (from AZURE_CREDENTIALS)                   │   │
-│  │     ├─ Client Secret                                        │   │
-│  │     ├─ Tenant ID                                            │   │
-│  │     └─ Subscription ID                                      │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                            ▼                                         │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  2. Deploy Infrastructure (Bicep)                           │   │
-│  │     └─ Create Managed Identities                            │   │
-│  │        ├─ AKS Kubelet Identity (AcrPull権限)               │   │
-│  │        └─ VM System Assigned Identity (Storage権限)        │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                            ▼                                         │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  3. ACR Login & Push                                        │   │
-│  │     └─ az acr login (Service Principal経由)                │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                            ▼                                         │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  4. AKS kubectl Access                                      │   │
-│  │     └─ az aks get-credentials (Service Principal経由)      │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Runtime Authentication                            │
-│                                                                       │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  AKS → ACR (Image Pull)                                     │   │
-│  │  └─ AKS Kubelet Managed Identity + AcrPull Role            │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                       │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  VM → Storage Account (Backup Upload)                      │   │
-│  │  └─ VM System Assigned Managed Identity                    │   │
-│  │     + Storage Blob Data Contributor Role                   │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                       │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  App → MongoDB (Database Access)                            │   │
-│  │  └─ MONGO_URI環境変数 (MongoDB接続文字列)                  │   │
-│  │     mongodb://<username>:<password>@<VM_IP>:27017/guestbook │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
+```text
+[ユーザー]
+   ↓ (1) HTTP/HTTPS Request
+[Load Balancer (Ingress)]
+   ↓ (2) Forward to Pod
+[BBS App Container (AKS Pod)]
+   ↓ (3) MongoDB Query (Port 27017)
+[MongoDB VM]
+   ↓ (4) Backup Script
+[Storage Account Blob]
 ```
 
-### 認証方式の詳細
+1. **HTTP/HTTPS リクエスト**: ユーザーがブラウザから掲示板にアクセス
+2. **Ingress ルーティング**: Kubernetes Ingress が `Service` → `Pod` に転送
+3. **データベースクエリ**: Node.js アプリが MongoDB に接続してメッセージを読み書き
+4. **バックアップ**: 定期的に MongoDB データを Storage Account にアップロード（GitHub Actions スケジュール実行）
 
-#### 1. **Service Principal (GitHub Actions → Azure)**
+---
 
-**用途**: CI/CD パイプラインから Azure リソースをデプロイ・管理
+## 🌐 ネットワーク構成
 
-**権限**: Contributor (サブスクリプションスコープ)
+### サブネット構成
 
-**作成方法**:
+| サブネット         | CIDR         | 用途              | 接続先                      |
+| ------------------ | ------------ | ----------------- | --------------------------- |
+| **aks-subnet**     | 10.1.0.0/20  | AKS ノードプール  | MongoDB VM (Private IP)     |
+| **vm-subnet**      | 10.1.16.0/24 | MongoDB VM        | AKS Subnet、Storage (HTTPS) |
+| **default-subnet** | 10.1.17.0/24 | 汎用 (将来拡張用) | -                           |
 
-```powershell
-az ad sp create-for-rbac \
-  --name "spexercise" \
-  --role contributor \
-  --scopes /subscriptions/<SUBSCRIPTION_ID> \
-  --sdk-auth
-```
+### Network Security Group (NSG) ルール
 
-**GitHub Secrets に設定**:
+#### デプロイされる構成（脆弱性あり）
 
-- `AZURE_CREDENTIALS`: 生成された JSON 全体
+このプロジェクトでデプロイされるのは以下の**脆弱な構成**です：
 
-**セキュリティ考慮事項**:
+| ルール名           | 方向    | プロトコル | ポート | 送信元      | 宛先 | ⚠️ リスク                                 |
+| ------------------ | ------- | ---------- | ------ | ----------- | ---- | ----------------------------------------- |
+| Allow-SSH-Internet | Inbound | TCP        | 22     | `0.0.0.0/0` | VM   | 全インターネットから SSH アクセス可能     |
+| Allow-MongoDB      | Inbound | TCP        | 27017  | `0.0.0.0/0` | VM   | 全インターネットから MongoDB アクセス可能 |
 
-- ✅ 最小権限の原則: Contributor role に制限
-- ✅ スコープ制限: 特定サブスクリプションのみ
-- ⚠️ 改善案: リソースグループスコープに制限可能
+#### 推奨されるセキュア構成（修正例）
 
-#### 2. **AKS Managed Identity (AKS → ACR)**
+以下は修正後の推奨設定です（この README の手順では自動適用されません）：
 
-**用途**: AKS が ACR からコンテナイメージをプル
+| ルール名           | 方向    | プロトコル | ポート | 送信元      | 宛先 | 目的                     |
+| ------------------ | ------- | ---------- | ------ | ----------- | ---- | ------------------------ |
+| Allow-SSH-Internet | Inbound | TCP        | 22     | `0.0.0.0/0` | VM   | SSH アクセス（危険）     |
+| Allow-MongoDB      | Inbound | TCP        | 27017  | `0.0.0.0/0` | VM   | MongoDB アクセス（危険） |
 
-**認証方式**: Kubelet Managed Identity + Azure RBAC
+以下は修正後の推奨設定です（この README の手順では自動適用されません）:
 
-**自動構成**: Bicep デプロイ時に自動設定
+| ルール名             | 方向    | プロトコル | ポート | 送信元          | 宛先 | 説明                      |
+| -------------------- | ------- | ---------- | ------ | --------------- | ---- | ------------------------- |
+| Allow-SSH-Restricted | Inbound | TCP        | 22     | `<管理者IP>/32` | VM   | 特定 IP のみ SSH 許可     |
+| Allow-MongoDB-AKS    | Inbound | TCP        | 27017  | `10.1.0.0/20`   | VM   | AKS Subnet のみアクセス可 |
+| Deny-All-Inbound     | Inbound | All        | All    | `0.0.0.0/0`     | VM   | 明示的な拒否              |
 
-```bicep
-// infra/modules/aks-acr-role.bicep
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(aksPrincipalId, acrId, 'AcrPull')
-  scope: acr
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions',
-                                            '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull
-    principalId: aksPrincipalId
-    principalType: 'ServicePrincipal'
-  }
-}
-```
+### 外部アクセスの制御
 
-**動作確認**:
+#### デプロイされる外部アクセス設定（脆弱性あり）
 
-```powershell
-# AKS Kubelet IdentityのObject ID取得
-$KUBELET_ID = az aks show -g <RG_NAME> -n aks-dev \
-  --query identityProfile.kubeletidentity.objectId -o tsv
+このプロジェクトで自動的にデプロイされる設定:
 
-# ACRへのロール割り当て確認
-az role assignment list --assignee $KUBELET_ID --scope <ACR_RESOURCE_ID>
-```
+- **AKS Ingress Load Balancer**: `0.0.0.0/0` から HTTP/HTTPS アクセス可能（正常）
+- **MongoDB VM**: SSH (22) と MongoDB (27017) が**全インターネットに公開** ⚠️
+- **Storage Account**: Blob コンテナが**Public Access 許可** ⚠️
 
-**利点**:
+#### 推奨される外部アクセス設定（修正例）
 
-- ✅ イメージプルシークレット不要
-- ✅ 認証情報のローテーション不要
-- ✅ Azure RBAC 統合
+以下は学習後に適用すべきセキュアな設定です:
 
-#### 3. **VM Managed Identity (VM → Storage Account)**
+- **AKS Ingress**: HTTPS のみ許可（HTTP → HTTPS リダイレクト）、WAF 追加
+- **MongoDB VM**: 管理者 IP のみ SSH 許可、MongoDB は AKS Subnet からのみ
+- **Storage Account**: Public Access 無効、Private Endpoint 使用
 
-**用途**: MongoDB VM がバックアップを Storage Account にアップロード
+#### サービス間通信
 
-**認証方式**: System Assigned Managed Identity + Azure RBAC
+- **AKS → ACR**: マネージドアイデンティティでイメージプル（認証なし Public Pull も可能だが推奨外）
+- **AKS → MongoDB VM**: Private IP (10.1.16.x) 経由で Port 27017 接続
+- **MongoDB VM → Storage**: HTTPS (443) 経由で Blob API にバックアップアップロード
 
-**自動構成**: Bicep デプロイ時に自動設定
+---
 
-```bicep
-// infra/modules/vm-mongodb.bicep
-resource vm 'Microsoft.Compute/virtualMachines@2023-03-01' = {
-  name: vmName
-  identity: {
-    type: 'SystemAssigned'  // Managed Identity有効化
-  }
-}
+## 🔐 セキュリティ設計
 
-// infra/modules/vm-storage-role.bicep
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: storageAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions',
-                                            'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
-    principalId: vmPrincipalId
-  }
-}
-```
+### 認証・認可の仕組み
 
-**バックアップスクリプトでの使用**:
+#### Azure AD (Entra ID) 統合
 
-```bash
-# /usr/local/bin/mongodb-backup.sh (VM内)
-az login --identity  # Managed Identityでログイン
-az storage blob upload \
-  --account-name $STORAGE_ACCOUNT \
-  --container-name backups \
-  --name "backup-$(date +%Y%m%d-%H%M%S).gz" \
-  --file /tmp/backup.gz \
-  --auth-mode login  # Azure ADトークン使用
-```
+| コンポーネント     | 認証方式                                | 詳細                                                                                                                                                                 |
+| ------------------ | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **GitHub Actions** | OIDC (ワークロード ID フェデレーション) | `azure/login` が `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` / `AZURE_SUBSCRIPTION_ID` を使用。Secrets にシークレットは保持せず、Federated Credential で短命トークンを発行 |
+| **AKS**            | マネージドアイデンティティ              | ACR からイメージをプルする際に使用。Azure RBAC と統合可能                                                                                                            |
+| **Azure Policy**   | システム割り当て MI                     | Policy 修復タスク実行時に必要。Contributor ロールが必要                                                                                                              |
+| **MongoDB**        | なし (脆弱!)                            | **認証なしでデプロイされます**。修正時に `mongoadmin` ユーザーを作成                                                                                                 |
 
-**利点**:
+> **補足**: GitHub Actions の認証について
+>
+> - **現在の実装**: OpenID Connect (OIDC) ベースの Microsoft Entra アプリ (`gh-aks-oidc`)
+> - **ブートストラップが必要なケース**: `AZURE_GITHUB_PRINCIPAL_ID` に値を入れて実行すると、一時的に Service Principal シークレット (`AZURE_CREDENTIALS`) で RBAC 付与を自動化
+> - **参考資料**: [GitHub Actions での Azure への OIDC 認証](https://learn.microsoft.com/ja-jp/azure/developer/github/connect-from-azure-openid-connect) / `Docs_issue_point/Phase30_OIDCAuthMigration_2025-11-05.md`
 
-- ✅ アクセスキー不要
-- ✅ 自動ローテーション
-- ✅ 監査ログ統合
+#### Kubernetes RBAC
 
-#### 4. **MongoDB 認証 (App → MongoDB)**
+**デプロイされる構成（脆弱性あり）**:
 
-**用途**: アプリケーションから MongoDB への接続
+- `ClusterRoleBinding` で `cluster-admin` 権限を不要なサービスアカウントに付与
+- すべての Pod が Kubernetes API に対して管理者権限を持つ状態
 
-**認証方式**: Username/Password 認証
+**推奨される修正後の構成**:
 
-**接続文字列**:
-
-```javascript
-// Kubernetes Deploymentで環境変数として注入
-const MONGO_URI =
-  process.env.MONGO_URI ||
-  "mongodb://<username>:<password>@<VM_IP>:27017/guestbook";
-```
-
-**Kubernetes Secret 管理**:
+最小権限の `Role` と `RoleBinding` を使用。例: `Pod` への `get`, `list` のみ許可
 
 ```yaml
-# app/k8s/deployment.yaml
+# 修正後の例（手動適用が必要）
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-reader
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+```
+
+### 通信の暗号化
+
+| 通信経路               | プロトコル            | 暗号化方式             | 設定箇所                                                        |
+| ---------------------- | --------------------- | ---------------------- | --------------------------------------------------------------- |
+| **ユーザー → Ingress** | HTTPS                 | TLS 1.2+               | Ingress Controller (証明書は Let's Encrypt 推奨)                |
+| **Pod 間通信**         | HTTP                  | (NetworkPolicy で制限) | Kubernetes NetworkPolicy                                        |
+| **AKS → MongoDB**      | MongoDB Wire Protocol | **平文通信 (脆弱!)**   | MongoDB 設定ファイル (`mongod.conf`)。修正時に TLS 有効化を推奨 |
+| **VM → Storage**       | HTTPS                 | TLS 1.2                | Storage Account 設定 (`--https-only true`)                      |
+| **GitHub → Azure**     | HTTPS                 | TLS 1.2                | GitHub Actions Runner (自動)                                    |
+
+### Secrets と環境変数の管理
+
+#### GitHub Secrets
+
+必須の Secret を以下に登録してください（Settings → Secrets and variables → Actions）:
+
+| Secret 名                  | 内容                                       | 取得方法 / 備考                                                             |
+| -------------------------- | ------------------------------------------ | --------------------------------------------------------------------------- |
+| `AZURE_CLIENT_ID`          | Microsoft Entra アプリ (gh-aks-oidc) の ID | `az ad sp show --id <appId> --query appId -o tsv`                           |
+| `AZURE_TENANT_ID`          | テナント ID                                | `az account show --query tenantId -o tsv`                                   |
+| `AZURE_SUBSCRIPTION_ID`    | Azure サブスクリプション ID                | `az account show --query id -o tsv`                                         |
+| `MONGO_ADMIN_PASSWORD`     | MongoDB 管理者パスワード                   | 任意の強力なパスワード (例: `openssl rand -base64 32`)                      |
+| `AZURE_CREDENTIALS` (任意) | ブートストラップ用 SP シークレット JSON    | `az ad sp create-for-rbac --sdk-auth`。RBAC 自動化が不要なら登録しないで OK |
+
+#### GitHub Variables
+
+| Variable 名                 | 内容                                | 例                                             |
+| --------------------------- | ----------------------------------- | ---------------------------------------------- |
+| `AZURE_RESOURCE_GROUP`      | リソースグループ名                  | `rg-bbs-cicd-aks`                              |
+| `AZURE_LOCATION`            | デプロイ先リージョン                | `japaneast`                                    |
+| `IMAGE_NAME`                | Docker イメージ名                   | `bbs-app`                                      |
+| `AZURE_GITHUB_PRINCIPAL_ID` | GitHub Actions SP のオブジェクト ID | `az ad sp show --id <appId> --query id -o tsv` |
+
+#### アプリケーション環境変数
+
+Kubernetes Deployment で以下を設定:
+
+```yaml
 env:
   - name: MONGO_URI
-    value: "mongodb://adminuser:<password>@<MONGO_VM_IP>:27017/guestbook"
-  - name: MONGO_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: mongodb-secret # 推奨: Secret使用
-        key: password
+    value: "mongodb://<MONGODB_VM_PRIVATE_IP>:27017/guestbook"
+  - name: PORT
+    value: "3000"
+  - name: NODE_ENV
+    value: "production"
 ```
 
-**⚠️ セキュリティ上の注意**:
+### セキュリティスキャン
 
-- 現在の実装: 環境変数に平文保存 (デモ用)
-- 本番推奨: Kubernetes Secrets または Azure Key Vault 使用
+| ツール         | スキャン対象            | タイミング                 | 設定ファイル                         |
+| -------------- | ----------------------- | -------------------------- | ------------------------------------ |
+| **Checkov**    | Bicep IaC               | インフラデプロイ前         | `.github/workflows/infra-deploy.yml` |
+| **Trivy**      | Bicep + Docker イメージ | インフラ・アプリデプロイ前 | `.github/workflows/app-deploy.yml`   |
+| **CodeQL**     | JavaScript ソースコード | アプリデプロイ前           | `.github/workflows/app-deploy.yml`   |
+| **Dependabot** | npm 依存パッケージ      | 定期自動実行               | `.github/dependabot.yml`             |
 
-#### 5. **kubectl Access (GitHub Actions → AKS)**
+---
 
-**用途**: CI/CD から Kubernetes マニフェストをデプロイ
+## 🔄 処理フロー
 
-**認証フロー**:
+### ユーザー操作からバックエンド処理までの流れ
 
-```yaml
-# .github/workflows/app-deploy.yml
-- name: Azure Login
-  uses: azure/login@v1
-  with:
-    creds: ${{ secrets.AZURE_CREDENTIALS }} # Service Principal
-
-- name: Set AKS Context
-  run: |
-    az aks get-credentials \
-      --resource-group ${{ env.RESOURCE_GROUP }} \
-      --name aks-dev \
-      --overwrite-existing
-    # ~/.kube/config に認証情報が保存される
+```text
+[1] ユーザーがブラウザで http://<EXTERNAL_IP> にアクセス
+     ↓
+[2] Azure Load Balancer が Ingress Controller にルーティング
+     ↓
+[3] Ingress が Service (guestbook-service) にトラフィック転送
+     ↓
+[4] Service が Pod (bbs-app) の Port 3000 に転送
+     ↓
+[5] Node.js アプリ (Express) がリクエスト受信
+     ↓
+[6] Mongoose で MongoDB (VM) に接続
+     - 操作: db.messages.find() でメッセージ一覧取得
+     ↓
+[7] EJS テンプレートでレンダリング
+     ↓
+[8] HTML レスポンスをユーザーに返す
 ```
 
-**動作原理**:
+### メッセージ投稿フロー
 
-1. Service Principal で Azure にログイン
-2. AKS API 経由で一時的な kubeconfig 取得
-3. kubectl が自動的にトークンリフレッシュ
+```text
+[1] ユーザーがフォームに名前・メッセージを入力して送信 (POST /submit)
+     ↓
+[2] Express が body-parser で POST データを解析
+     ↓
+[3] Mongoose で MongoDB に新規ドキュメント挿入
+     - db.messages.insertOne({ name, message, createdAt })
+     ↓
+[4] リダイレクト (302) で GET / に遷移
+     ↓
+[5] 更新されたメッセージ一覧を表示
+```
 
-### 認証トラブルシューティング
+### バックアップフロー（非同期・イベント駆動）
 
-#### ACR Image Pull エラー
+```text
+[トリガー] GitHub Actions Scheduled Workflow (.github/workflows/backup-schedule.yml)
+     ↓
+[1] Azure VM に SSH 接続（または Run Command API 使用）
+     ↓
+[2] MongoDB で mongodump 実行
+     - 出力: /tmp/mongodb-backup-YYYYMMDD.tar.gz
+     ↓
+[3] Azure CLI で Storage Account にアップロード
+     - az storage blob upload --account-name ... --container-name backups
+     ↓
+[4] ローカルバックアップファイルを削除
+     ↓
+[5] Log Analytics にイベント記録（オプション）
+```
+
+---
+
+## 📡 通信フロー
+
+### API・サービス間の通信経路
+
+#### 1. インターネット → AKS (HTTPS)
+
+- **プロトコル**: HTTPS (TLS 1.2+)
+- **ポート**: 443
+- **経路**: `Internet → Azure Load Balancer → Ingress Controller → Service → Pod`
+- **認証**: なし（Public アクセス）
+
+#### 2. AKS Pod → MongoDB VM (MongoDB Wire Protocol)
+
+- **プロトコル**: MongoDB Wire Protocol over TCP
+- **ポート**: 27017
+- **経路**: `Pod (10.1.0.x) → VNet (10.1.16.x) → MongoDB VM`
+- **認証**: **なし (脆弱!)** - 修正時に SCRAM-SHA-256 (ユーザー名/パスワード) を設定
+- **暗号化**: **平文 (脆弱!)** - 修正時に TLS 有効化を推奨
+
+#### 3. MongoDB VM → Storage Account (HTTPS)
+
+- **プロトコル**: HTTPS (Azure Blob API)
+- **ポート**: 443
+- **経路**: `VM Public IP → Azure Storage Endpoint`
+- **認証**: Storage Account Key または SAS Token
+- **暗号化**: TLS 1.2 必須
+
+#### 4. GitHub Actions → Azure (ARM API)
+
+- **プロトコル**: HTTPS (Azure Resource Manager)
+- **ポート**: 443
+- **認証**: サービスプリンシパル (OAuth 2.0 Bearer Token)
+- **用途**: Bicep デプロイ、kubectl apply、Azure CLI コマンド実行
+
+#### 5. AKS → ACR (Docker Registry API)
+
+- **プロトコル**: HTTPS
+- **ポート**: 443
+- **認証**: マネージドアイデンティティまたは Admin User
+- **用途**: Docker イメージのプル (`imagePullPolicy: Always`)
+
+### 通信ダイアグラム（シーケンス図風）
+
+```text
+User          LoadBalancer   Ingress   Pod(BBS)   MongoDB   Storage
+ |                |            |          |          |         |
+ |--HTTP GET----->|            |          |          |         |
+ |                |--Route---->|          |          |         |
+ |                |            |--Fwd---->|          |         |
+ |                |            |          |--Query-->|         |
+ |                |            |          |<--Data---|         |
+ |                |            |<--HTML---|          |         |
+ |                |<--200 OK---|          |          |         |
+ |<--HTML---------|            |          |          |         |
+ |                                                             |
+(Backup Job)                              |--mongodump-->     |
+                                          |--Upload---------->|
+```
+
+---
+
+## ✅ 前提条件
+
+### 必須ツール
+
+以下をローカル環境にインストールしてください：
+
+| ツール             | バージョン | インストールコマンド (Windows / PowerShell)                  | 確認コマンド               |
+| ------------------ | ---------- | ------------------------------------------------------------ | -------------------------- |
+| **Azure CLI**      | 2.50+      | `winget install Microsoft.AzureCLI`                          | `az --version`             |
+| **kubectl**        | 1.28+      | `az aks install-cli`                                         | `kubectl version --client` |
+| **Docker Desktop** | Latest     | [公式サイト](https://www.docker.com/products/docker-desktop) | `docker --version`         |
+| **Git**            | 2.40+      | `winget install Git.Git`                                     | `git --version`            |
+| **Node.js**        | 20.x       | `winget install OpenJS.NodeJS.LTS`                           | `node --version`           |
+| **PowerShell**     | 7.3+       | `winget install Microsoft.PowerShell`                        | `pwsh --version`           |
+
+### Azure サブスクリプション要件
+
+- **アクティブな Azure サブスクリプション** (無料試用版可)
+- **サブスクリプションの Owner または Contributor ロール**
+- **リソースクォータ**:
+  - VM: Standard_B2s 以上 × 1 台
+  - AKS: Standard_D2s_v3 以上 × 2 ノード
+  - Storage Account: 標準 LRS
+
+### GitHub アカウント
+
+- **GitHub アカウント** (無料プランで可)
+- **GitHub Actions 利用可能** (パブリックリポジトリは無料、プライベートは月 2000 分まで無料)
+
+---
+
+## 🚀 初期セットアップ
+
+### ステップ 1: リポジトリのクローン
+
+PowerShell を開いて以下を実行:
 
 ```powershell
-# エラー: "Failed to pull image: unauthorized"
+# 作業ディレクトリに移動
+Set-Location "C:\Projects"
 
-# 確認1: Kubelet IdentityのAcrPull権限
-$KUBELET_ID = az aks show -g <RG_NAME> -n aks-dev \
-  --query identityProfile.kubeletidentity.objectId -o tsv
-az role assignment list --assignee $KUBELET_ID
+# リポジトリをクローン
+git clone https://github.com/aktsmm/CICD-AKS-technical-exercise.git
 
-# 確認2: ACRリソースID
-$ACR_ID = az acr show -n <ACR_NAME> --query id -o tsv
-
-# 修正: 権限が不足している場合
-az role assignment create \
-  --assignee $KUBELET_ID \
-  --role AcrPull \
-  --scope $ACR_ID
+# ディレクトリに移動
+Set-Location CICD-AKS-technical-exercise
 ```
 
-#### VM Backup Upload エラー
+### ステップ 2: Azure CLI ログイン
 
 ```powershell
-# エラー: "AuthorizationPermissionMismatch"
-
-# VM Managed Identity取得
-$VM_PRINCIPAL_ID = az vm show -g <RG_NAME> -n <MONGODB_VM_NAME> \
-  --query identity.principalId -o tsv
-
-# Storage Account権限確認
-az role assignment list --assignee $VM_PRINCIPAL_ID
-
-# 修正: Storage Blob Data Contributor追加
-az role assignment create \
-  --assignee $VM_PRINCIPAL_ID \
-  --role "Storage Blob Data Contributor" \
-  --scope <STORAGE_ACCOUNT_RESOURCE_ID>
-```
-
-## プレースホルダーと設定箇所
-
-このドキュメントでは、環境非依存にするためプレースホルダーを使用しています。実際の設定箇所は以下の通りです。
-
-### プレースホルダー一覧と設定ファイル
-
-| プレースホルダー         | 説明                         | 設定箇所                                                                                                                           | デフォルト値                       |
-| ------------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `<RESOURCE_GROUP_NAME>`  | リソースグループ名           | `infra/main.bicep` (Line 4)<br>`.github/workflows/infra-deploy.yml` (Line 18)<br>`.github/workflows/app-deploy.yml` (Line 26)      | `rg-bbs-cicd-aks`                  |
-| `<AKS_CLUSTER_NAME>`     | AKS クラスター名             | `infra/modules/aks.bicep` (Line 13)<br>※ `aks${environment}` のパターン                                                            | `aksdev` (environment='dev'の場合) |
-| `<ACR_NAME>`             | Azure Container Registry 名  | `infra/modules/acr.bicep`<br>※ `acr${environment}${uniqueString}` のパターン<br>`.github/workflows/app-deploy.yml` (ACR_NAME 変数) | `acrdev` + ハッシュ                |
-| `<STORAGE_ACCOUNT_NAME>` | Storage Account 名           | `infra/modules/storage.bicep`<br>※ `stwiz${environment}${uniqueString}` のパターン                                                 | `stwizdev` + ハッシュ              |
-| `<MONGODB_VM_NAME>`      | MongoDB 仮想マシン名         | `infra/modules/vm-mongodb.bicep`<br>※ `vm-mongo-${environment}` のパターン                                                         | `vm-mongo-dev`                     |
-| `<LOG_ANALYTICS_NAME>`   | Log Analytics Workspace 名   | `infra/modules/log-analytics.bicep`<br>※ `log-${environment}` のパターン                                                           | `log-dev`                          |
-| `<SUBNET_AKS_NAME>`      | AKS 用サブネット名           | `infra/modules/vnet.bicep`                                                                                                         | `snet-aks`                         |
-| `<SUBNET_VM_NAME>`       | VM 用サブネット名            | `infra/modules/vnet.bicep`                                                                                                         | `snet-vm` または `snet-mongo`      |
-| `<VM_NSG_NAME>`          | VM Network Security Group 名 | `infra/modules/vm-mongodb.bicep`                                                                                                   | `vm-mongo-dev-nsg`                 |
-| `<VM_PIP_NAME>`          | VM Public IP 名              | `infra/modules/vm-mongodb.bicep`                                                                                                   | `vm-mongo-dev-pip`                 |
-| `<VM_NIC_NAME>`          | VM Network Interface 名      | `infra/modules/vm-mongodb.bicep`                                                                                                   | `vm-mongo-dev-nic`                 |
-| `<VM_OSDISK_NAME>`       | VM OS Disk 名                | `infra/modules/vm-mongodb.bicep`                                                                                                   | `vm-mongo-dev_OsDisk`              |
-
-### 主要設定ファイルの編集箇所
-
-#### 1. `infra/main.bicep` (リソースグループと Environment)
-
-```bicep
-// Line 4: リソースグループ名
-param resourceGroupName string = 'rg-bbs-cicd-aks'
-
-// Line 10: 環境名 (dev, prod, staging等)
-param environment string = 'dev'
-```
-
-#### 2. `.github/workflows/infra-deploy.yml` (CI/CD 設定)
-
-```yaml
-# Line 18: リソースグループ名
-env:
-  RESOURCE_GROUP: rg-bbs-cicd-aks
-```
-
-#### 3. `.github/workflows/app-deploy.yml` (アプリデプロイ設定)
-
-```yaml
-# Line 26: リソースグループ名
-env:
-  RESOURCE_GROUP: rg-bbs-cicd-aks
-  ACR_NAME: acrdev # Line 27: ACR名
-```
-
-#### 4. `infra/modules/aks.bicep` (AKS クラスター名)
-
-```bicep
-// Line 13: 動的に生成されるクラスター名
-var clusterName = 'aks${environment}'
-```
-
-#### 5. `pipelines/azure-pipelines.yml` (Azure Pipelines 使用時)
-
-```yaml
-# Line 6: リソースグループ名
-variables:
-  resourceGroup: "rg-bbs-cicd-aks"
-```
-
-### 命名規則の説明
-
-このプロジェクトでは以下の命名規則を採用しています:
-
-- **環境別サフィックス**: `${environment}` パラメータで dev/prod/staging を切り替え
-- **一意性確保**: Storage/ACR は `uniqueString(resourceGroup().id)` でハッシュを追加
-- **リソースタイププレフィックス**: Azure 推奨の命名規則に従う
-  - `aks-`: AKS Cluster
-  - `acr`: Container Registry
-  - `st`: Storage Account
-  - `vm-`: Virtual Machine
-  - `log-`: Log Analytics
-  - `snet-`: Subnet
-
-### カスタマイズ方法
-
-1. **リソースグループ名を変更する場合**:
-
-   - `infra/main.bicep` の `resourceGroupName` パラメータを編集
-   - `.github/workflows/*.yml` の `RESOURCE_GROUP` 環境変数を同じ値に更新
-
-2. **環境を切り替える場合** (dev → prod):
-
-   - `infra/main.bicep` の `environment` パラメータを変更
-   - すべてのリソース名が自動的に `*prod*` になります
-
-3. **個別リソース名をカスタマイズする場合**:
-   - 各モジュールの Bicep ファイル (`infra/modules/*.bicep`) を編集
-   - 変数セクション (`var xxxx = '...'`) を変更
-
-## 🚀 クイックスタート
-
-### 前提条件
-
-- **Azure CLI** インストール済み ([インストールガイド](https://docs.microsoft.com/ja-jp/cli/azure/install-azure-cli))
-- **Azure サブスクリプション** (無料試用版可)
-- **GitHub アカウント**
-- **Git** インストール済み
-
-### 1️⃣ リポジトリのフォーク
-
-このリポジトリを自分の GitHub アカウントにフォークします。
-
-### 2️⃣ Azure 認証
-
-```powershell
+# Azure にログイン
 az login
-az account set --subscription "<YOUR_SUBSCRIPTION_ID>"
+
+# サブスクリプション一覧を確認
+az account list --output table
+
+# 使用するサブスクリプションを設定
+az account set --subscription "<SUBSCRIPTION_ID>"
+
+# 確認
+az account show --output table
+
+# 後続のロール付与で利用するため ID を保持
+$subscriptionId = (az account show --query id -o tsv)
 ```
 
-### 3️⃣ サービスプリンシパル作成
+### ステップ 3: OIDC 用 Microsoft Entra アプリの作成
+
+現在のワークフローは OIDC で Azure に接続するため、**クライアント シークレットは不要**です。Microsoft Entra アプリを登録し、GitHub Actions から発行される ID トークンを信頼させます。
 
 ```powershell
-az ad sp create-for-rbac `
-  --name "spexercise" `
-  --role contributor `
-  --scopes /subscriptions/<YOUR_SUBSCRIPTION_ID> `
-  --sdk-auth > azure-credentials.json
+# リポジトリ識別子とアプリ名を設定
+$repository = "aktsmm/CICD-AKS-technical-exercise"
+$appName = "gh-aks-oidc"
+
+# OIDC 用のアプリ登録を作成
+$app = az ad app create --display-name $appName | ConvertFrom-Json
+$appId = $app.appId
+$tenantId = (az account show --query tenantId -o tsv) # Secrets へ登録するテナント ID
+
+# Azure リソースと紐付けるサービスプリンシパルを作成
+az ad sp create --id $appId | Out-Null
+
+# GitHub Actions が操作するサブスクリプションへロールを付与
+az role assignment create `
+  --assignee $appId `
+  --role Contributor `
+  --scope "/subscriptions/$subscriptionId"
+
+# メインブランチのみを許可する Federated Credential を作成
+az ad app federated-credential create `
+  --id $appId `
+  --parameters @"
+{
+  "name": "github-main",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:$repository:ref:refs/heads/main",
+  "audiences": ["api://AzureADTokenExchange"]
+}
+"@
+
+# 取得した ID を確認 (Secrets 登録で使用)
+az ad sp show --id $appId --query '{appId:appId, tenantId:appOwnerTenantId}' -o jsonc
 ```
 
-生成された `azure-credentials.json` の内容をコピーします。
+> 💡 `workflow_dispatch` など他のトリガーを許可したい場合は、`subject` を `repo:<OWNER>/<REPO>:environment:prod` などに追加してブランチ単位で制御してください。詳細は [GitHub Actions での Azure への OIDC 認証](https://learn.microsoft.com/ja-jp/azure/developer/github/connect-from-azure-openid-connect) を参照してください。
 
-### 4️⃣ GitHub シークレット設定
+Secrets 登録時は以下の対応関係になります：
 
-フォークしたリポジトリで: **Settings** > **Secrets and variables** > **Actions** > **New repository secret**
+- `AZURE_CLIENT_ID`: `$appId`
+- `AZURE_TENANT_ID`: `$tenantId`
+- `AZURE_SUBSCRIPTION_ID`: `$subscriptionId`
 
-| Secret 名               | 値                                      |
-| ----------------------- | --------------------------------------- |
-| `AZURE_CREDENTIALS`     | azure-credentials.json の内容全体       |
-| `AZURE_SUBSCRIPTION_ID` | Azure サブスクリプション ID             |
-| `MONGO_ADMIN_PASSWORD`  | MongoDB 管理者パスワード (任意の文字列) |
+### ステップ 4: GitHub Secrets の登録
 
-### 5️⃣ ワークフロー実行
+1. **GitHub リポジトリにアクセス**: `https://github.com/<YOUR_USERNAME>/CICD-AKS-technical-exercise`
+2. **Settings → Secrets and variables → Actions** を開き、以下の Secrets を登録:
 
-**Actions** タブ > **Deploy Infrastructure** > **Run workflow** をクリック
+| Name                    | Value                                             | 説明                                                                |
+| ----------------------- | ------------------------------------------------- | ------------------------------------------------------------------- |
+| `AZURE_CLIENT_ID`       | `$appId`                                          | OIDC でログインする Microsoft Entra アプリのクライアント ID         |
+| `AZURE_TENANT_ID`       | `$tenantId`                                       | テナント ID。`az account show --query tenantId -o tsv` で再取得可能 |
+| `AZURE_SUBSCRIPTION_ID` | `$subscriptionId`                                 | デプロイ対象サブスクリプション ID                                   |
+| `MONGO_ADMIN_PASSWORD`  | 強力なパスワード（例: `openssl rand -base64 32`） | MongoDB をハードニングする際に使用                                  |
 
-または、コードを変更して push:
+> ℹ️ 既存リソースの RBAC ブートストラップを自動化したい場合のみ、従来の `AZURE_CREDENTIALS` シークレットを追加してください (`az ad sp create-for-rbac --sdk-auth`)。値が設定されていると、`infra-deploy` ワークフローが一度だけシークレット認証でロール付与を行います。
+
+### ステップ 5: GitHub Variables の登録
+
+同じページで **Variables** タブを開き、以下を登録:
+
+| Name                   | Value             | 説明               |
+| ---------------------- | ----------------- | ------------------ |
+| `AZURE_RESOURCE_GROUP` | `rg-bbs-cicd-aks` | リソースグループ名 |
+| `AZURE_LOCATION`       | `japaneast`       | リージョン         |
+| `IMAGE_NAME`           | `bbs-app`         | Docker イメージ名  |
+
+**オプション**（ブートストラップ用。初回は不要）:
+
+| Name                        | Value                                        | 説明                                                                                            |
+| --------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `AZURE_GITHUB_PRINCIPAL_ID` | サービスプリンシパルのオブジェクト ID (任意) | RBAC ブートストラップを自動化したい場合のみ設定。`az ad sp show --id <appId> --query id -o tsv` |
+
+### ステップ 6: ローカル環境での動作確認（オプション）
+
+アプリケーションをローカルで起動してテストします。
 
 ```powershell
-git clone https://github.com/<YOUR_USERNAME>/CICD-AKS-technical-exercise.git
-cd CICD-AKS-technical-exercise
+# app ディレクトリに移動
+Set-Location app
 
-# 任意の変更を加える
-git add .
-git commit -m "Trigger deployment"
-git push
+# 依存パッケージをインストール
+npm install
+
+# ローカル MongoDB を起動（Docker を使用）
+docker run -d -p 27017:27017 --name mongo-local mongo:7
+
+# 環境変数を設定してアプリ起動
+$env:MONGO_URI = "mongodb://localhost:27017/guestbook"
+$env:PORT = "3000"
+npm start
 ```
 
-GitHub Actions が自動的に:
+ブラウザで `http://localhost:3000` を開いて動作確認。
 
-1. **インフラデプロイ** (AKS, ACR, MongoDB VM, Storage など)
-2. **アプリケーションデプロイ** (Docker build & push, kubectl apply)
-
-を実行します。デプロイには約**15-20 分**かかります。
-
-### 6️⃣ アプリケーションへアクセス
+**停止方法**:
 
 ```powershell
-# AKSクラスター認証情報を取得
-az aks get-credentials --resource-group <YOUR_RG_NAME> --name aks-dev --overwrite-existing
-
-# Ingress Controller の External IP を確認
-kubectl get svc -n ingress-nginx ingress-nginx-controller
+# Ctrl+C でアプリ停止
+docker stop mongo-local
+docker rm mongo-local
 ```
 
-ブラウザで `http://<INGRESS-EXTERNAL-IP>` を開きます。
+---
 
-**アクセスフロー**:
+## 📦 デプロイ手順
 
-```
-User → Azure Load Balancer → Ingress Controller (NGINX) → Service (ClusterIP) → Pod
-```
+### フェーズ 1: インフラストラクチャのデプロイ
 
-## 📂 ディレクトリ構造
+#### 1-1. GitHub Actions ワークフローを手動実行
 
-```
-wiz-technical-exercise/
-├── app/                          # Node.jsアプリケーション
-│   ├── app.js                   # Express.jsサーバー
-│   ├── Dockerfile               # コンテナイメージ定義
-│   ├── package.json             # 依存関係
-│   ├── wizexercise.txt          # デモ用ファイル
-│   ├── views/                   # EJSテンプレート
-│   │   └── index.ejs           # 掲示板UI
-│   └── k8s/                     # Kubernetesマニフェスト
-│       ├── deployment.yaml      # アプリデプロイ
-│       ├── service.yaml         # ClusterIP Service
-│       ├── ingress.yaml         # Ingress Resource
-│       ├── ingress-nginx-controller.yaml  # NGINX Ingress Controller
-│       └── rbac-vulnerable.yaml # 脆弱なRBAC設定
-├── infra/                       # Infrastructure as Code (Bicep)
-│   ├── main.bicep              # メインテンプレート
-│   ├── parameters.json         # パラメータ（未使用）
-│   ├── scripts/                # VMカスタマイズスクリプト
-│   │   └── install-mongodb.sh  # MongoDB 4.4インストール
-│   └── modules/                # Bicepモジュール
-│       ├── aks.bicep           # AKSクラスター
-│       ├── acr.bicep           # Azure Container Registry
-│       ├── aks-acr-role.bicep  # AKS-ACR認証設定
-│       ├── vm-mongodb.bicep    # MongoDB VM
-│       ├── vm-role-assignment.bicep  # VM Managed Identity
-│       ├── vm-storage-role.bicep     # VMストレージ権限
-│       ├── storage.bicep       # Storage Account
-│       ├── networking.bicep    # VNet/Subnet
-│       └── monitoring.bicep    # Log Analytics
-├── .github/
-│   └── workflows/              # GitHub Actions
-│       ├── infra-deploy.yml   # インフラデプロイ
-│       ├── app-deploy.yml     # アプリデプロイ
-│       └── cleanup.yml        # ワークフロー履歴クリーンアップ
-├── pipelines/                  # Azure Pipelines（代替CI/CD）
-│   ├── azure-pipelines-infra.yml
-│   └── azure-pipelines-app.yml
-├── docs/                       # ドキュメント
-│   ├── ENVIRONMENT_INFO.md    # 環境情報
-│   ├── AZURE_SETUP_INFO.md    # Azureセットアップ手順
-│   └── MICROSOFT_DOCS_VALIDATION.md
-├── Docs_issue_point/          # トラブルシューティング履歴
-│   ├── Phase02_アプリデプロイ問題と解決_2025-10-29.md
-│   ├── Phase03_kubectl環境設定_2025-10-29.md
-│   ├── Phase04_MongoDBバックアップ実装_2025-10-29.md
-│   ├── Phase06_ワークフロー依存関係実装_2025-10-29.md
-│   ├── Phase07_AKS-ACR認証エラー解決_2025-10-29.md
-│   ├── Phase08_AKSプロビジョニング待機実装_2025-10-29.md
-│   ├── Phase09_MongoDB4.4インストール修正_2025-10-29.md
-│   ├── Phase10_ACR名前衝突解決_2025-10-29.md
-│   └── Phase11_外部アクセス設定_2025-10-30.md
-└── Docs_work_history/         # 作業履歴
+1. GitHub リポジトリの **Actions** タブを開く
+2. **"1. Deploy Infrastructure"** ワークフローを選択
+3. **Run workflow** → **Branch: main** → **Run workflow** をクリック
 
+#### 1-2. デプロイの進行状況を確認
+
+- **scan-iac** ジョブ: Checkov と Trivy で IaC をスキャン
+- **deploy-infra** ジョブ: Bicep で Azure リソースを作成
+  - リソースグループ
+  - AKS クラスター
+  - ACR
+  - MongoDB VM（Ubuntu + MongoDB インストール）
+  - Storage Account
+  - Log Analytics Workspace
+  - Network Security Groups
+
+完了まで **約 15〜20 分**かかります。
+
+#### 1-3. 出力情報の取得
+
+ワークフロー完了後、**Artifacts** から `infra-outputs` をダウンロードし、以下の情報を確認:
+
+```json
+{
+  "aksClusterName": "aks-bbs-dev-xxxxx",
+  "acrName": "acrbbs xxxxx",
+  "mongoVmPrivateIp": "10.1.16.4",
+  "storageAccountName": "stbbsxxxxx"
+}
 ```
 
-## 🔐 セキュリティ検証
+### フェーズ 2: アプリケーションのデプロイ
 
-### Wiz 技術課題要件チェックリスト
+#### 2-1. AKS への kubectl 接続設定
 
-#### Kubernetes 上の Web アプリケーション
-
-| 要件                                           | 実装状況 | 確認方法                                                     |
-| ---------------------------------------------- | -------- | ------------------------------------------------------------ |
-| ✅ アプリはコンテナ化、MongoDB 使用            | **完了** | `kubectl get pods -l app=guestbook`                          |
-| ✅ Kubernetes クラスタはプライベートサブネット | **完了** | AKS subnet: 10.0.1.0/24                                      |
-| ✅ MongoDB 接続情報は環境変数で指定            | **完了** | `kubectl get deploy guestbook-app -o yaml \| grep MONGO_URI` |
-| ✅ wizexercise.txt がコンテナ内に存在          | **完了** | `kubectl exec <POD> -- cat /app/wizexercise.txt`             |
-| ✅ クラスタ管理者権限を付与                    | **完了** | `kubectl get clusterrolebindings developer-cluster-admin`    |
-| ✅ Ingress + LoadBalancer で公開               | **完了** | `kubectl get svc -n ingress-nginx ingress-nginx-controller`  |
-| ✅ kubectl コマンドによる操作デモ可能          | **完了** | `az aks get-credentials` でアクセス                          |
-| ✅ データが MongoDB に保存されることを証明     | **完了** | ブラウザでメッセージ投稿 → MongoDB クエリで確認              |
-
-#### トラフィックフロー
-
-```
-[User Browser]
-      ↓
-[Azure Public IP]
-      ↓
-[Azure Load Balancer (L4)]
-      ↓
-[NGINX Ingress Controller (L7, HTTP Routing)]
-      ↓
-[Kubernetes Service: guestbook-service (ClusterIP)]
-      ↓
-[Pod: guestbook-app (×2, ServiceAccount=default with cluster-admin)]
-      ↓
-[MongoDB VM (Private IP: 10.0.2.4, Port 27017, Authentication Enabled)]
-```
-
-### 脆弱性確認
+PowerShell で以下を実行:
 
 ```powershell
-# リソースグループ名を設定
-$RG_NAME = "<YOUR_RG_NAME>"
+# 変数設定（infra-outputs から取得した値を使用）
+$resourceGroup = "rg-bbs-cicd-aks"
+$aksClusterName = "aks-bbs-dev-xxxxx"  # 実際の値に置き換え
 
-# Storage Public Access
-$STORAGE_NAME = (az storage account list --resource-group $RG_NAME --query "[0].name" -o tsv)
-az storage account show `
-  --name $STORAGE_NAME `
-  --query allowBlobPublicAccess
+# AKS 認証情報を取得
+az aks get-credentials --resource-group $resourceGroup --name $aksClusterName --overwrite-existing
 
-# SSH公開確認
-$NSG_NAME = "<MONGODB_VM_NAME>-nsg"
-az network nsg rule show `
-  --resource-group $RG_NAME `
-  --nsg-name $NSG_NAME `
-  --name Allow-SSH-Internet
-
-# MongoDB認証なし確認
-$MONGO_IP = (az vm show -g $RG_NAME -n <MONGODB_VM_NAME> --show-details --query publicIps -o tsv)
-# 認証なしで接続可能 (脆弱性)
-mongosh "mongodb://${MONGO_IP}:27017/guestbook"
-
-# Kubernetes RBAC
-kubectl get clusterrolebindings developer-cluster-admin -o yaml
+# 確認
+kubectl get nodes
 ```
 
-## 📊 アプリケーションアクセス
+**出力例**:
 
-### Ingress Controller External IP の取得
+```text
+NAME                                STATUS   ROLES   AGE   VERSION
+aks-nodepool1-12345678-vmss000000   Ready    agent   5m    v1.28.3
+aks-nodepool1-12345678-vmss000001   Ready    agent   5m    v1.28.3
+```
+
+#### 2-2. GitHub Actions でアプリデプロイ
+
+1. **Actions** タブ → **"2-1. Build and Deploy Application"** を選択
+2. **Run workflow** → **Run workflow** をクリック
+
+**処理内容**:
+
+- **quality-check**: npm test でユニットテスト実行
+- **codeql-analysis**: CodeQL でコード品質スキャン
+- **scan-container**: Trivy で Docker イメージの脆弱性スキャン
+- **build-push**: ACR に Docker イメージをプッシュ
+- **deploy-aks**: Kubernetes マニフェストを適用
+
+完了まで **約 10〜15 分**。
+
+#### 2-3. デプロイ確認
 
 ```powershell
-# AKSクラスター認証情報を取得
-az aks get-credentials --resource-group <YOUR_RG_NAME> --name aks-dev --overwrite-existing
+# Pod の状態確認
+kubectl get pods
 
-# Ingress Controller の External IPを確認
-kubectl get svc -n ingress-nginx ingress-nginx-controller
+# Service の確認
+kubectl get services
 
-# Ingress リソース確認
-kubectl get ingress guestbook-ingress
-kubectl describe ingress guestbook-ingress
+# Ingress の確認（EXTERNAL-IP が割り当てられるまで数分かかる）
+kubectl get ingress
 ```
 
-**アクセス**:
+**出力例**:
 
-- URL: `http://<INGRESS-EXTERNAL-IP>`
-- トラフィックフロー: `User → Azure LB (L4) → Ingress Controller (L7) → ClusterIP Service → Pod`
+```text
+NAME                 CLASS   HOSTS   ADDRESS         PORTS   AGE
+guestbook-ingress    nginx   *       20.xxx.xxx.xxx  80      3m
+```
 
-### wizexercise.txt 確認
+---
+
+## 🧪 動作確認
+
+### 1. Web アプリケーションへのアクセス
 
 ```powershell
-# Pod内ファイル確認
-$POD_NAME = (kubectl get pods -l app=guestbook -o jsonpath='{.items[0].metadata.name}')
-kubectl exec $POD_NAME -- cat /app/wizexercise.txt
+# External IP を取得
+$externalIp = kubectl get ingress guestbook-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+
+# ブラウザで開く
+Start-Process "http://$externalIp"
 ```
 
-## 🛠️ トラブルシューティング
+**確認項目**:
 
-### Ingress External IP が pending のまま
+- ✅ 掲示板のフォームが表示される
+- ✅ 名前とメッセージを投稿できる
+- ✅ 投稿したメッセージが一覧に表示される
+
+### 2. ヘルスチェック
 
 ```powershell
-# Ingress Controller Pod 確認
-kubectl get pods -n ingress-nginx
-
-# Ingress Controller Service 確認
-kubectl get svc -n ingress-nginx ingress-nginx-controller
-
-# 通常2-3分で割り当て完了
+# ヘルスチェックエンドポイント
+Invoke-WebRequest -Uri "http://$externalIp/health" -UseBasicParsing | Select-Object StatusCode, Content
 ```
 
-### MongoDB に接続できない
+**期待される出力**:
+
+```text
+StatusCode : 200
+Content    : {"status":"OK","timestamp":"2025-01-05T12:34:56.789Z"}
+```
+
+### 3. MongoDB 接続確認
 
 ```powershell
-# VM IPアドレス確認
-$MONGO_IP = (az vm show `
-  -g <YOUR_RG_NAME> `
-  -n <MONGODB_VM_NAME> `
-  --show-details `
-  --query publicIps -o tsv)
+# MongoDB VM に SSH 接続（初期設定ではパスワード認証が必要）
+$mongoVmIp = "20.xxx.xxx.xxx"  # VM の Public IP
+ssh azureuser@$mongoVmIp
 
-# NSG確認 (Port 27017が開いているか)
-az network nsg rule list `
-  --resource-group <YOUR_RG_NAME> `
-  --nsg-name <MONGODB_VM_NAME>-nsg `
-  --query "[?destinationPortRange=='27017']"
+# MongoDB に接続（初期は認証なし）
+mongo
 
-# Deploymentの環境変数を確認
-kubectl get deployment guestbook-app -o yaml | grep MONGO_URI
+# データベース確認
+show dbs
+use guestbook
+db.messages.find().pretty()
+
+# 終了
+exit
+exit
 ```
 
-### ACR 認証エラー
+### 4. 脆弱性の確認（学習・デモ用）
+
+#### 4-1. Storage Account の Public Access
 
 ```powershell
-# AKS Managed IdentityにAcrPull権限があるか確認
-$AKS_KUBELET_ID = (az aks show -g <YOUR_RG_NAME> -n aks-dev --query identityProfile.kubeletidentity.objectId -o tsv)
-$ACR_ID = (az acr show -g <YOUR_RG_NAME> -n $(az acr list -g <YOUR_RG_NAME> --query "[0].name" -o tsv) --query id -o tsv)
-
-az role assignment list --assignee $AKS_KUBELET_ID --scope $ACR_ID
+$storageAccountName = "stbbsxxxxx"  # 実際の値
+Invoke-WebRequest -Uri "https://$storageAccountName.blob.core.windows.net/backups/" -UseBasicParsing
 ```
 
-## 🧹 リソース削除
+**確認結果**: 初期設定では Blob 一覧が見える → **脆弱性が存在**
+
+#### 4-2. SSH ポートの開放確認
 
 ```powershell
-# すべてのリソースを削除
-az group delete --name <YOUR_RG_NAME> --yes --no-wait
-
-# サービスプリンシパル削除
-$SP_ID = (az ad sp list --display-name "spexercise" --query "[0].appId" -o tsv)
-az ad sp delete --id $SP_ID
+# nmap で確認（事前にインストール必要: winget install Insecure.Nmap）
+nmap -Pn -p 22,27017 $mongoVmIp
 ```
 
-## 📚 関連ドキュメント
+**確認結果**: Port 22 (SSH) と 27017 (MongoDB) が `open` → **脆弱性が存在**
 
-- [環境情報](docs/ENVIRONMENT_INFO.md) - デプロイ環境の詳細
-- [トラブルシューティング履歴](Docs_issue_point/) - Phase 02-11 の問題解決記録
-- [Azure セットアップ](docs/AZURE_SETUP_INFO.md) - Azure 構成手順
-- **[GitHub Secrets 設定](Docs_Secrets/GitHub_Secrets_Configuration.md)** - 必須 Secrets 設定ガイド
-- **[GitHub Variables 設定](Docs_Secrets/GitHub_Variables_Setup.md)** - リソースグループ名などの設定ガイド
+#### 4-3. MongoDB 認証なし確認
 
-## ⚠️ セキュリティに関する注意
+```powershell
+# MongoDB VM に SSH 接続
+ssh azureuser@$mongoVmIp
 
-このプロジェクトは**教育目的**で意図的に脆弱性を含んでいます:
+# MongoDB に接続（認証なし）
+mongo
 
-- ✅ **デモ環境専用** - 本番環境では使用しないでください
-- ✅ **定期的な削除** - 使用後は必ずリソースを削除してください
-- ✅ **コスト管理** - AKS/VM 稼働でコストが発生します
+# データベース確認
+show dbs
+use guestbook
+db.messages.find().pretty()
+
+exit
+exit
+```
+
+**確認結果**: 認証なしでデータベースにアクセス可能 → **脆弱性が存在**
+
+#### 4-4. RBAC 過剰権限の確認
+
+```powershell
+kubectl auth can-i '*' '*' --as=system:serviceaccount:default:default
+```
+
+**確認結果**: `yes` と表示される → **過剰な権限が付与されている**
+
+---
+
+## 🔧 セキュリティ修正手順
+
+> **注**: 以下の修正手順は学習用です。本プロジェクトのワークフローでは自動適用されません。
+
+### 修正 1: Storage Account のハードニング
+
+```powershell
+# Public Access を無効化
+az storage account update \
+  --name $storageAccountName \
+  --resource-group $resourceGroup \
+  --allow-blob-public-access false \
+  --https-only true \
+  --min-tls-version TLS1_2
+```
+
+### 修正 2: NSG ルールの制限
+
+```powershell
+# SSH を特定 IP のみに制限
+$myIp = (Invoke-WebRequest -Uri "https://ifconfig.me/ip").Content.Trim()
+az network nsg rule update \
+  --resource-group $resourceGroup \
+  --nsg-name mongodb-nsg \
+  --name Allow-SSH-Internet \
+  --source-address-prefixes "$myIp/32"
+
+# MongoDB を AKS Subnet のみに制限
+az network nsg rule update \
+  --resource-group $resourceGroup \
+  --nsg-name mongodb-nsg \
+  --name Allow-MongoDB \
+  --source-address-prefixes "10.1.0.0/20"
+```
+
+### 修正 3: MongoDB 認証の有効化
+
+```powershell
+# VM で実行するスクリプトを作成
+$script = @'
+mongo admin --eval "db.createUser({ user: 'mongoadmin', pwd: '$MONGO_ADMIN_PASSWORD', roles: ['root'] })"
+sudo sed -i '/^#security:/a security:\n  authorization: enabled' /etc/mongod.conf
+sudo systemctl restart mongod
+'@
+
+# Run Command で実行
+az vm run-command invoke \
+  --resource-group $resourceGroup \
+  --name mongodb-vm \
+  --command-id RunShellScript \
+  --scripts "$script"
+```
+
+### 修正 4: Kubernetes RBAC の最小権限化
+
+脆弱な `ClusterRoleBinding` を削除し、最小権限の Role を適用:
+
+```powershell
+# 脆弱な設定を削除
+kubectl delete clusterrolebinding default-admin
+
+# 最小権限の Role を適用
+kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-reader
+  namespace: default
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pod-reader-binding
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+EOF
+```
+
+### 修正後の検証
+
+```powershell
+# Storage Account のアクセス確認
+Invoke-WebRequest -Uri "https://$storageAccountName.blob.core.windows.net/backups/" -UseBasicParsing
+# 期待: 403 Forbidden
+
+# MongoDB 接続確認
+mongo --host $mongoVmIp
+# 期待: 認証エラー
+
+# RBAC 確認
+kubectl auth can-i '*' '*' --as=system:serviceaccount:default:default
+# 期待: no
+```
+
+---
+
+## 🛠 トラブルシューティング
+
+### 問題 1: GitHub Actions で azure/login が認証エラーになる
+
+**例:**
+
+```text
+Error: Federated token fetch failed, client or tenant not found
+```
+
+**解決策**:
+
+1. `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` / `AZURE_SUBSCRIPTION_ID` の Secrets が設定されているか確認
+2. Microsoft Entra アプリに GitHub Actions 用 Federated Credential が作成されているか (`az ad app federated-credential list --id <appId>`)
+3. ロール割り当てが付与済みか (`az role assignment list --assignee <appId> --scope /subscriptions/$subscriptionId`)
+4. どうしても RBAC 付与が行えない場合は、一時的に `AZURE_CREDENTIALS` を登録して `infra-deploy` を再実行し、自動付与が完了したら削除する
+
+### 問題 2: AKS Pod が `ImagePullBackOff` 状態
+
+**エラー確認**:
+
+```powershell
+kubectl describe pod <POD_NAME>
+```
+
+**解決策**:
+
+1. ACR のログイン認証を確認:
+
+   ```powershell
+   az acr login --name <ACR_NAME>
+   ```
+
+2. AKS と ACR の統合を再設定:
+
+   ```powershell
+   az aks update --resource-group $resourceGroup --name $aksClusterName --attach-acr <ACR_NAME>
+   ```
+
+### 問題 3: Ingress の EXTERNAL-IP が `<pending>` のまま
+
+**確認**:
+
+```powershell
+kubectl get services -n ingress-nginx
+```
+
+**解決策**:
+
+1. Ingress Controller が正しくデプロイされているか確認
+2. Azure Load Balancer の作成を待つ（最大 10 分）
+3. NSG ルールで Port 80/443 が許可されているか確認
+
+### 問題 4: MongoDB 接続エラー
+
+**エラーログ**:
+
+```text
+MongoNetworkError: connect ECONNREFUSED
+```
+
+**解決策**:
+
+1. MongoDB VM の Private IP が正しいか確認:
+
+   ```powershell
+   az vm list-ip-addresses --resource-group $resourceGroup --name <VM_NAME> --output table
+   ```
+
+2. Kubernetes Deployment の環境変数 `MONGO_URI` を更新
+3. NSG で Port 27017 が AKS Subnet から許可されているか確認
+
+### 問題 5: Azure Policy の修復タスクが失敗
+
+**解決策**:
+
+1. Policy のマネージドアイデンティティに Contributor ロールを付与:
+
+   ```powershell
+   $principalId = az policy assignment show --name <ASSIGNMENT_NAME> --query identity.principalId -o tsv
+   az role assignment create --assignee $principalId --role Contributor --scope /subscriptions/<SUBSCRIPTION_ID>
+   ```
+
+---
+
+## 🧹 クリーンアップ
+
+### すべてのリソースを削除
+
+```powershell
+# リソースグループを削除（すべてのリソースが削除される）
+az group delete --name rg-bbs-cicd-aks --yes --no-wait
+
+# Microsoft Entra アプリ / サービスプリンシパルの削除（演習終了後に不要な場合のみ）
+az ad app delete --id "<AZURE_CLIENT_ID>"
+
+# ブートストラップ用に JSON シークレットを作成した場合のみ片付け
+if (Test-Path azure-credentials.json) {
+  Remove-Item azure-credentials.json
+}
+
+# kubectl 設定のクリーンアップ
+kubectl config delete-context <AKS_CLUSTER_NAME>
+```
+
+### 個別リソースの削除（オプション）
+
+```powershell
+# AKS クラスターのみ削除
+az aks delete --resource-group rg-bbs-cicd-aks --name <AKS_NAME> --yes --no-wait
+
+# VM のみ削除
+az vm delete --resource-group rg-bbs-cicd-aks --name <VM_NAME> --yes --no-wait
+
+# Storage Account のみ削除
+az storage account delete --name <STORAGE_NAME> --yes
+```
+
+---
+
+## 📚 参考資料
+
+### Azure 公式ドキュメント
+
+- [Azure Kubernetes Service (AKS) ドキュメント](https://learn.microsoft.com/ja-jp/azure/aks/)
+- [Azure Container Registry ドキュメント](https://learn.microsoft.com/ja-jp/azure/container-registry/)
+- [Azure Bicep ドキュメント](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/bicep/)
+- [Azure Policy ドキュメント](https://learn.microsoft.com/ja-jp/azure/governance/policy/)
+- [GitHub Actions for Azure](https://learn.microsoft.com/ja-jp/azure/developer/github/github-actions)
+
+### セキュリティベストプラクティス
+
+- [Microsoft Cloud Security Benchmark](https://learn.microsoft.com/ja-jp/security/benchmark/azure/)
+- [AKS セキュリティのベストプラクティス](https://learn.microsoft.com/ja-jp/azure/aks/concepts-security)
+- [Kubernetes RBAC の推奨設定](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+
+### ツール
+
+- [kubectl チートシート](https://kubernetes.io/ja/docs/reference/kubectl/cheatsheet/)
+- [Azure CLI リファレンス](https://learn.microsoft.com/ja-jp/cli/azure/)
+- [Trivy 公式サイト](https://aquasecurity.github.io/trivy/)
+
+---
 
 ## 📝 ライセンス
 
-このプロジェクトは MIT ライセンスの下で公開されています。詳細は [LICENSE](LICENSE) を参照してください。
+このプロジェクトは [MIT License](LICENSE) の下で公開されています。
+
+---
 
 ## 🤝 コントリビューション
 
-Issue や Pull Request は歓迎します！
+プルリクエストやイシューの報告を歓迎します！以下の手順でご協力ください：
+
+1. このリポジトリをフォーク
+2. フィーチャーブランチを作成 (`git checkout -b feature/awesome-feature`)
+3. 変更をコミット (`git commit -m 'Add awesome feature'`)
+4. ブランチにプッシュ (`git push origin feature/awesome-feature`)
+5. プルリクエストを作成
+
+---
+
+## 📧 お問い合わせ
+
+ご質問や問題がありましたら、GitHub Issues でお知らせください。
+
+---
+
+Happy Coding! 🎉
