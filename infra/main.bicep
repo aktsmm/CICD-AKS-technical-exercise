@@ -190,6 +190,15 @@ module aks 'modules/aks.bicep' = {
   }
 }
 
+module aksAcrRole 'modules/aks-acr-role.bicep' = {
+  scope: rg
+  name: 'aks-acr-role-${deploymentTimestamp}'
+  params: {
+    kubeletIdentityPrincipalId: aks.outputs.kubeletIdentity
+    acrName: acr.outputs.acrName
+  }
+}
+
 module diagnostics 'modules/diagnostics.bicep' = {
   scope: rg
   name: 'diagnostics-${deploymentTimestamp}'
