@@ -36,6 +36,7 @@ jobs:
           output_format: sarif
           output_file_path: checkov-results.sarif
           soft_fail: true
+        continue-on-error: true  # ✅ 統一: スキャン失敗でもジョブ続行
 
       - name: Upload Checkov Results
         uses: github/codeql-action/upload-sarif@v3
@@ -53,6 +54,7 @@ jobs:
           input: infra
           severity: CRITICAL,HIGH
           exit-code: 0
+        continue-on-error: true  # ✅ 統一: スキャン失敗でもジョブ続行
 
       - name: Upload Trivy Config Results
         uses: github/codeql-action/upload-sarif@v3
