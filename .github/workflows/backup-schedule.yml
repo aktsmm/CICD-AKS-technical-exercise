@@ -75,7 +75,7 @@ jobs:
 
                   USER_ESCAPED=$(printf '%q' "$MONGO_ADMIN_USER")
                   PASSWORD_ESCAPED=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
-                  
+
                   # Base64エンコードして一時ファイルに保存（長い文字列をechoで扱わない）
                   base64 -w0 infra/scripts/setup-backup.sh > "$setup_base64_file"
 
