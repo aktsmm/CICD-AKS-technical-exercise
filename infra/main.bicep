@@ -161,6 +161,15 @@ module mongoVM 'modules/vm-mongodb.bicep' = {
   }
 }
 
+module vmStorageRole 'modules/vm-storage-role.bicep' = {
+  scope: rg
+  name: 'vm-storage-role-${deploymentTimestamp}'
+  params: {
+    vmPrincipalId: mongoVM.outputs.vmIdentityPrincipalId
+    storageAccountName: storage.outputs.storageAccountName
+  }
+}
+
 // AKSクラスター
 module aks 'modules/aks.bicep' = {
   scope: rg
