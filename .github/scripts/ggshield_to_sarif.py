@@ -104,7 +104,8 @@ def build_sarif(data: Dict) -> Dict:
     """Build SARIF structure from ggshield findings."""
     results: List[Dict] = []
     rules: Dict[str, Dict] = {}
-    repo_root = Path.cwd()
+    repo_root = Path.cwd().resolve()
+    repo_uri = repo_root.as_uri().rstrip('/') + '/'
 
     for policy_break in iter_policy_breaks(data):
         matches = policy_break.get("matches") or []
@@ -165,9 +166,10 @@ def build_sarif(data: Dict) -> Dict:
 
             # Normalize file path (absolute → relative)
             try:
-                relative_path = str(Path(file_path).resolve().relative_to(repo_root))
+                resolved_path = Path(file_path).resolve()
+                relative_path = resolved_path.relative_to(repo_root).as_posix()
             except Exception:
-                relative_path = str(file_path)
+                relative_path = Path(file_path).as_posix()
 
             results.append(
                 {
@@ -179,7 +181,7 @@ def build_sarif(data: Dict) -> Dict:
                             "physicalLocation": {
                                 "artifactLocation": {
                                     "uri": relative_path,
-                                    "uriBaseId": "SRCROOT"  # ★ 必須: GitHub がファイルを認識する
+                                    "uriBaseId": "SRCROOT"
                                 },
                                 "region": {
                                     "startLine": int(line),
@@ -205,6 +207,14 @@ def build_sarif(data: Dict) -> Dict:
                     }
                 },
                 "results": results,
+                "originalUriBaseIds": {
+                    "SRCROOT": {
+                        "uri": repo_uri,
+                        "description": {
+                            "text": "Repository root"
+                        }
+                    }
+                },
             }
         ],
     }
