@@ -70,14 +70,9 @@ jobs:
                   }
 
                   ensure_script=$(mktemp)
-                  setup_archive=$(mktemp)
-                  trap 'rm -f "$ensure_script" "$setup_archive"' EXIT
+                  trap 'rm -f "$ensure_script"' EXIT
 
-                  # Compress the script to stay under Azure Run Command payload limits and wrap to avoid long lines.
-                  if ! gzip -c infra/scripts/setup-backup.sh | base64 -w120 > "$setup_archive"; then
-                    echo "::error::Failed to prepare setup-backup.sh payload"
-                    exit 1
-                  fi
+                  RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/infra/scripts/setup-backup.sh"
 
                   USER_ESCAPED=$(printf '%q' "$MONGO_ADMIN_USER")
                   PASSWORD_ESCAPED=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
@@ -92,25 +87,21 @@ jobs:
                     printf '%s\n' '  echo READY'
                     printf '%s\n' '  exit 0'
                     printf '%s\n' 'fi'
-                    printf '%s\n' 'command -v gunzip >/dev/null 2>&1 || (sudo apt-get update && sudo apt-get install -y gzip)'
+                    printf '%s\n' '# Download the latest setup-backup.sh from the repository to avoid inline size limits.'
+                    printf '%s\n' "RAW_URL=$RAW_URL"
                     printf '%s\n' 'tmp_dir=$(mktemp -d)'
                     printf '%s\n' 'trap '\''rm -rf "$tmp_dir"'\'' EXIT'
-                    printf '%s\n' 'cat <<'"'ARCHIVE'"' > "$tmp_dir/setup-backup.sh.gz.b64"'
-                  } > "$ensure_script"
-
-                  cat "$setup_archive" >> "$ensure_script"
-                  printf '\n' >> "$ensure_script"
-
-                  {
-                    printf '%s\n' 'ARCHIVE'
-                    printf '%s\n' 'base64 -d "$tmp_dir/setup-backup.sh.gz.b64" | gunzip > "$tmp_dir/setup-backup.sh"'
+                    printf '%s\n' 'if ! command -v curl >/dev/null 2>&1; then'
+                    printf '%s\n' '  sudo apt-get update && sudo apt-get install -y curl'
+                    printf '%s\n' 'fi'
+                    printf '%s\n' 'curl -fsSL "$RAW_URL" -o "$tmp_dir/setup-backup.sh"'
                     printf '%s\n' 'chmod +x "$tmp_dir/setup-backup.sh"'
                     printf '%s\n' "export MONGO_ADMIN_USER=$USER_ESCAPED"
                     printf '%s\n' "export MONGO_ADMIN_PASSWORD=$PASSWORD_ESCAPED"
-                    printf '%s %s %s\n' "\"\$tmp_dir/setup-backup.sh\"" "$STORAGE_ESCAPED" "$CONTAINER_ESCAPED"
-                    printf '%s\n' 'rm -f "$tmp_dir/setup-backup.sh.gz.b64" "$tmp_dir/setup-backup.sh"'
+                    printf '%s %s %s\n' '"$tmp_dir/setup-backup.sh"' "$STORAGE_ESCAPED" "$CONTAINER_ESCAPED"
+                    printf '%s\n' 'rm -f "$tmp_dir/setup-backup.sh"'
                     printf '%s\n' 'echo DEPLOYED'
-                  } >> "$ensure_script"
+                  } > "$ensure_script"
 
                   ensure_result=$(az vm run-command invoke \
                     --resource-group "$RG" \
