@@ -118,12 +118,14 @@ az login --identity || {
 echo "=== Setting up Cron Job ==="
 # Capture existing entries when the crontab is empty without triggering set -e
 existing_cron=$(crontab -l 2>/dev/null || true)
+# Remove existing mongodb-backup entries to avoid duplication
+filtered_cron=$(echo "$existing_cron" | grep -v "/usr/local/bin/mongodb-backup.sh" || true)
 {
-  if [ -n "$existing_cron" ]; then
+  if [ -n "$filtered_cron" ]; then
     printf '%s
-' "$existing_cron"
+' "$filtered_cron"
   fi
-  echo "0 2 * * * /usr/local/bin/mongodb-backup.sh"
+  echo "0 * * * * /usr/local/bin/mongodb-backup.sh >> /var/log/mongodb-backup.log 2>&1"
 } | crontab -
 
 echo "=== Running Initial Backup ==="

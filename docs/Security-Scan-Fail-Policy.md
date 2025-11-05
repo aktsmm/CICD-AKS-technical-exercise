@@ -14,12 +14,12 @@
 
 #### 現在の設定値
 
-| スキャンツール    | 設定箇所                      | 設定値                                         | 動作                     |
-| ----------------- | ----------------------------- | ---------------------------------------------- | ------------------------ |
-| Checkov (IaC)     | `infra-deploy.yml`            | `soft_fail: true` + `continue-on-error: true`  | 検出があってもジョブ成功 |
-| Trivy (IaC)       | `infra-deploy.yml`            | `exit-code: 0` + `continue-on-error: true`     | 検出があってもジョブ成功 |
-| Trivy (Container) | `app-deploy.yml`              | `exit-code: 0` + `continue-on-error: true`     | 検出があってもジョブ成功 |
-| CodeQL            | `app-deploy.yml`              | `continue-on-error: true` (全ステップ)         | 検出があってもジョブ成功 |
+| スキャンツール    | 設定箇所                      | 設定値                                            | 動作                     |
+| ----------------- | ----------------------------- | ------------------------------------------------- | ------------------------ |
+| Checkov (IaC)     | `infra-deploy.yml`            | `soft_fail: true` + `continue-on-error: true`     | 検出があってもジョブ成功 |
+| Trivy (IaC)       | `infra-deploy.yml`            | `exit-code: 0` + `continue-on-error: true`        | 検出があってもジョブ成功 |
+| Trivy (Container) | `app-deploy.yml`              | `exit-code: 0` + `continue-on-error: true`        | 検出があってもジョブ成功 |
+| CodeQL            | `app-deploy.yml`              | `continue-on-error: true` (全ステップ)            | 検出があってもジョブ成功 |
 | GitGuardian       | `GitGuardian_secret-scan.yml` | `exit 0` (スクリプト) + `continue-on-error: true` | 検出があってもジョブ成功 |
 
 > **統一ポリシー**: すべてのセキュリティスキャンで `continue-on-error: true` を設定し、検出や失敗があってもワークフローを継続します。
@@ -33,18 +33,18 @@
   with:
     directory: infra/
     framework: bicep
-    soft_fail: true  # ✅ 検出があってもジョブは成功
-  continue-on-error: true  # ✅ 統一: スキャン失敗でもジョブ続行
+    soft_fail: true # ✅ 検出があってもジョブは成功
+  continue-on-error: true # ✅ 統一: スキャン失敗でもジョブ続行
 
 - name: Run Trivy Config Scan
   uses: aquasecurity/trivy-action@master
   with:
     scan-type: config
-    exit-code: 0  # ✅ 検出があっても exit code 0
-  continue-on-error: true  # ✅ 統一: スキャン失敗でもジョブ続行
+    exit-code: 0 # ✅ 検出があっても exit code 0
+  continue-on-error: true # ✅ 統一: スキャン失敗でもジョブ続行
 
 - name: Upload Checkov Results
-  continue-on-error: true  # ✅ アップロード失敗でもワークフロー続行
+  continue-on-error: true # ✅ アップロード失敗でもワークフロー続行
 ```
 
 > **ポイント**: `soft_fail: true` や `exit-code: 0` でスキャンツール自体の挙動を制御し、`continue-on-error: true` で GitHub Actions レベルでも失敗を許容しています。

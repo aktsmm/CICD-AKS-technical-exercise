@@ -30,7 +30,7 @@ Log Analytics Workbook を使用したセキュリティ監視ダッシュボー
 2. `infra-outputs.txt` を開き、`WORKBOOK_URL` の値をコピー
 3. ブラウザで URL を開く
 
-#### Azure Portalから直接
+#### Azure Portal から直接
 
 1. Azure Portal → **Monitor** → **Workbooks**
 2. **Browse** タブを選択
@@ -43,7 +43,7 @@ Log Analytics Workbook を使用したセキュリティ監視ダッシュボー
 https://portal.azure.com/#@/resource/subscriptions/{subscriptionId}/resourceGroups/rg-bbs-cicd-aks/providers/Microsoft.Insights/workbooks/{workbookId}/overview
 ```
 
-> **注意**: 古いURL形式 (`#blade/AppInsightsExtension/UsageNotebookBlade/...`) は使用できません。新しい形式 (`#@/resource/...`) を使用してください。
+> **注意**: 古い URL 形式 (`#blade/AppInsightsExtension/UsageNotebookBlade/...`) は使用できません。新しい形式 (`#@/resource/...`) を使用してください。
 
 ## ダッシュボード構成
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # MongoDB バックアップ cron 設定スクリプト
-# 用途: VM 上で1日3回自動バックアップを実行する cron ジョブを設定
+# 用途: VM 上で1時間おきに自動バックアップを実行する cron ジョブを設定
 ################################################################################
 
 set -euo pipefail
@@ -17,24 +17,23 @@ if [ ! -x "$BACKUP_SCRIPT" ]; then
 fi
 
 # cron ジョブ設定
-# - 02:00 JST (17:00 UTC 前日) - 深夜バックアップ
-# - 10:00 JST (01:00 UTC) - 午前バックアップ
-# - 18:00 JST (09:00 UTC) - 夕方バックアップ
+# - 毎時0分 - 1時間おきバックアップ (ログファイルへ出力)
 
 CRON_JOBS=(
-  "0 17 * * * $BACKUP_SCRIPT >> /var/log/mongodb-backup.log 2>&1  # Daily 02:00 JST"
-  "0 1 * * * $BACKUP_SCRIPT >> /var/log/mongodb-backup.log 2>&1   # Daily 10:00 JST"
-  "0 9 * * * $BACKUP_SCRIPT >> /var/log/mongodb-backup.log 2>&1   # Daily 18:00 JST"
+  "0 * * * * $BACKUP_SCRIPT >> /var/log/mongodb-backup.log 2>&1  # Hourly backup"
 )
 
 echo "Setting up MongoDB backup cron jobs for user: $CRON_USER"
 
-# 既存の mongodb-backup cron ジョブを削除
-crontab -u "$CRON_USER" -l 2>/dev/null | grep -v "$BACKUP_SCRIPT" | crontab -u "$CRON_USER" - || true
+# 既存の mongodb-backup cron ジョブを削除（重複防止）
+existing_cron=$(crontab -u "$CRON_USER" -l 2>/dev/null || true)
+filtered_cron=$(echo "$existing_cron" | grep -v "$BACKUP_SCRIPT" || true)
 
 # 新しい cron ジョブを追加
 (
-  crontab -u "$CRON_USER" -l 2>/dev/null || true
+  if [ -n "$filtered_cron" ]; then
+    echo "$filtered_cron"
+  fi
   for job in "${CRON_JOBS[@]}"; do
     echo "$job"
   done
@@ -44,10 +43,8 @@ echo "✅ Cron jobs configured successfully:"
 crontab -u "$CRON_USER" -l | grep "$BACKUP_SCRIPT"
 
 echo ""
-echo "📋 Backup Schedule (JST):"
-echo "  - 02:00 JST (17:00 UTC) - 深夜バックアップ"
-echo "  - 10:00 JST (01:00 UTC) - 午前バックアップ"
-echo "  - 18:00 JST (09:00 UTC) - 夕方バックアップ"
+echo "📋 Backup Schedule:"
+echo "  - Every hour at :00 minutes (1時間おき)"
 echo ""
 echo "📁 Log file: /var/log/mongodb-backup.log"
 echo ""
