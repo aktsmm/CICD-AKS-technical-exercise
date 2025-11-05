@@ -69,55 +69,44 @@ jobs:
                     awk '/\[stdout\]/{getline; gsub(/\r/,"",$0); if(NF){print; exit}}' <<<"$1"
                   }
 
-                  ensure_script=$(mktemp)
-                  setup_base64_file=$(mktemp)
-                  trap 'rm -f "$ensure_script" "$setup_base64_file"' EXIT
-
-                  USER_ESCAPED=$(printf '%q' "$MONGO_ADMIN_USER")
-                  PASSWORD_ESCAPED=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
-
-                  # Base64エンコードして一時ファイルに保存（長い文字列をechoで扱わない）
-                  base64 -w0 infra/scripts/setup-backup.sh > "$setup_base64_file"
-
-                  {
-                    echo "#!/bin/bash"
-                    echo "set -euo pipefail"
-                    echo
-                    echo "if [ -x /usr/local/bin/mongodb-backup.sh ] && ! grep -q '__STORAGE_ACCOUNT__' /usr/local/bin/mongodb-backup.sh; then"
-                    echo "  echo READY"
-                    echo "  exit 0"
-                    echo "fi"
-                    echo
-                    echo "mkdir -p /tmp"
-                    echo "# Base64デコードしてsetup-backup.shを生成"
-                    echo "cat > /tmp/setup-backup.b64 << 'BASE64_EOF'"
-                    cat "$setup_base64_file"
-                    echo "BASE64_EOF"
-                    echo "base64 -d /tmp/setup-backup.b64 > /tmp/setup-backup.sh"
-                    echo "chmod +x /tmp/setup-backup.sh"
-                    echo "export MONGO_ADMIN_USER=$USER_ESCAPED"
-                    echo "export MONGO_ADMIN_PASSWORD=$PASSWORD_ESCAPED"
-                    echo "/tmp/setup-backup.sh '$STORAGE_ACCOUNT' '$CONTAINER_NAME'"
-                    echo "rm -f /tmp/setup-backup.sh /tmp/setup-backup.b64"
-                    echo "echo DEPLOYED"
-                  } > "$ensure_script"
-
-                  ensure_result=$(az vm run-command invoke \
+                  # スクリプト確認用の簡易チェック
+                  check_result=$(az vm run-command invoke \
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
-                    --scripts @"$ensure_script" \
+                    --scripts \
+                      '#!/bin/bash' \
+                      'if [ -x /usr/local/bin/mongodb-backup.sh ] && ! grep -q "__STORAGE_ACCOUNT__" /usr/local/bin/mongodb-backup.sh; then' \
+                      '  echo "READY"' \
+                      '  exit 0' \
+                      'fi' \
+                      'echo "NEED_DEPLOY"' \
                     -o json)
 
-                  status=$(extract_status "$(echo "$ensure_result" | jq -r '.value[0].message')")
+                  check_status=$(extract_status "$(echo "$check_result" | jq -r '.value[0].message')")
 
-                  if [ "$status" = "READY" ]; then
+                  if [ "$check_status" = "READY" ]; then
                     echo "::notice::Backup script already provisioned on $VM_NAME"
-                  elif [ "$status" = "DEPLOYED" ]; then
+                  elif [ "$check_status" = "NEED_DEPLOY" ]; then
+                    echo "::notice::Deploying backup script to $VM_NAME..."
+                    
+                    # setup-backup.shを環境変数付きで実行
+                    az vm run-command invoke \
+                      --resource-group "$RG" \
+                      --name "$VM_NAME" \
+                      --command-id RunShellScript \
+                      --scripts @infra/scripts/setup-backup.sh \
+                      --parameters \
+                        "MONGO_ADMIN_USER=$MONGO_ADMIN_USER" \
+                        "MONGO_ADMIN_PASSWORD=$MONGO_ADMIN_PASSWORD" \
+                        "arg1=$STORAGE_ACCOUNT" \
+                        "arg2=$CONTAINER_NAME" \
+                      -o json
+
                     echo "::notice::Backup script deployed on $VM_NAME (storage: $STORAGE_ACCOUNT)"
                   else
-                    echo "::error::Unexpected status while provisioning backup script: ${status:-<empty>}"
-                    echo "$ensure_result"
+                    echo "::error::Unexpected status while checking backup script: ${check_status:-<empty>}"
+                    echo "$check_result"
                     exit 1
                   fi
 
