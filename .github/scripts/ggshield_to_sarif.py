@@ -69,6 +69,44 @@ def extract_description(raw_rule: Dict) -> str:
 
 def iter_policy_breaks(data: Dict) -> Iterable[Dict]:
     """Yield policy breaks regardless of ggshield CLI schema version."""
+    
+    # New schema (ggshield v1.40+): scans[].entities_with_incidents[].incidents[]
+    if "scans" in data and isinstance(data["scans"], list):
+        for scan in data["scans"]:
+            entities = scan.get("entities_with_incidents", [])
+            if not isinstance(entities, list):
+                continue
+            for entity in entities:
+                incidents = entity.get("incidents", [])
+                if not isinstance(incidents, list):
+                    continue
+                filename = entity.get("filename", "(unknown file)")
+                for incident in incidents:
+                    occurrences = incident.get("occurrences", [])
+                    policy = incident.get("policy", "Unknown Policy")
+                    incident_type = incident.get("type", "Secret")
+                    
+                    matches = []
+                    for occurrence in occurrences:
+                        matches.append({
+                            "filename": filename,
+                            "line_start": occurrence.get("line_start") or occurrence.get("line_begin") or 1,
+                            "index_start": occurrence.get("index_start") or occurrence.get("column_start") or 1,
+                            "index_end": occurrence.get("index_end") or occurrence.get("column_end") or 1,
+                            "match": occurrence.get("match") or occurrence.get("secret_hash") or "***",
+                        })
+                    
+                    yield {
+                        "matches": matches,
+                        "rule": {
+                            "name": incident_type,
+                            "policy": policy,
+                            "severity": "high",  # GitGuardian treats all secrets as high severity
+                        },
+                    }
+        return
+    
+    # Legacy schema: policy_breaks[]
     if "policy_breaks" in data and isinstance(data["policy_breaks"], list):
         yield from data["policy_breaks"]
         return
@@ -111,30 +149,18 @@ def build_sarif(data: Dict) -> Dict:
     for policy_break in iter_policy_breaks(data):
         matches = policy_break.get("matches") or []
 
-        # ggshield v1.40+ uses "occurrences" instead of "matches"
-        if not matches and isinstance(policy_break.get("occurrences"), list):
-            for occurrence in policy_break["occurrences"]:
-                matches.append(
-                    {
-                        "filename": occurrence.get("filename")
-                        or occurrence.get("file")
-                        or occurrence.get("path"),
-                        "line_start": occurrence.get("line_start")
-                        or occurrence.get("line")
-                        or occurrence.get("line_begin"),
-                        "index_start": occurrence.get("index_start"),
-                        "index_end": occurrence.get("index_end"),
-                        "match": occurrence.get("match") or occurrence.get("secret_hash"),
-                    }
-                )
-
         raw_rule = policy_break.get("rule") or policy_break.get("policy")
         if not isinstance(raw_rule, dict):
             raw_rule = {"name": str(policy_break.get("break_type") or "policy_break")}
-        base_rule_id = normalize_rule_id(raw_rule)
+        
+        # Extract rule information from the new schema
+        rule_name = raw_rule.get("name", "Unknown")
+        rule_policy = raw_rule.get("policy", "Secrets detection")
+        base_rule_id = rule_name.replace(" ", "_")
+        
         rule_id = f"GGSHIELD_{base_rule_id}" if not base_rule_id.startswith("GGSHIELD_") else base_rule_id
         sarif_level = normalize_severity(raw_rule)
-        description = extract_description(raw_rule)
+        description = f"{rule_policy}: {rule_name}"
 
         # Register rule metadata once per rule id
         if rule_id not in rules:
