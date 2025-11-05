@@ -73,8 +73,8 @@ jobs:
                   setup_archive=$(mktemp)
                   trap 'rm -f "$ensure_script" "$setup_archive"' EXIT
 
-                  # Compress the script to stay under Azure Run Command payload limits.
-                  if ! gzip -c infra/scripts/setup-backup.sh | base64 -w0 > "$setup_archive"; then
+                  # Compress the script to stay under Azure Run Command payload limits and wrap to avoid long lines.
+                  if ! gzip -c infra/scripts/setup-backup.sh | base64 -w120 > "$setup_archive"; then
                     echo "::error::Failed to prepare setup-backup.sh payload"
                     exit 1
                   fi
