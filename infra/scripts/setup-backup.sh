@@ -116,7 +116,15 @@ az login --identity || {
 }
 
 echo "=== Setting up Cron Job ==="
-(crontab -l 2>/dev/null; echo "0 2 * * * /usr/local/bin/mongodb-backup.sh") | crontab -
+# Capture existing entries when the crontab is empty without triggering set -e
+existing_cron=$(crontab -l 2>/dev/null || true)
+{
+  if [ -n "$existing_cron" ]; then
+    printf '%s
+' "$existing_cron"
+  fi
+  echo "0 2 * * * /usr/local/bin/mongodb-backup.sh"
+} | crontab -
 
 echo "=== Running Initial Backup ==="
 /usr/local/bin/mongodb-backup.sh || echo "WARNING: Initial backup failed, will retry via cron"
