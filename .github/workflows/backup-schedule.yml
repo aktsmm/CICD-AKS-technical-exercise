@@ -71,124 +71,36 @@ jobs:
                     --scripts 'echo "RunCommand operational ✅"' \
                     -o table
 
-            - name: Ensure Mongo backup script is provisioned on VM
-              env:
-                  MONGO_ADMIN_USER: ${{ vars.MONGO_ADMIN_USER != '' && vars.MONGO_ADMIN_USER || 'mongoadmin' }}
-                  MONGO_ADMIN_PASSWORD: ${{ secrets.MONGO_ADMIN_PASSWORD }}
-                  FORCE_REDEPLOY: ${{ vars.BACKUP_FORCE_REDEPLOY != '' && vars.BACKUP_FORCE_REDEPLOY || 'true' }}
+            - name: Validate MongoDB backup script exists
               run: |
                   set -euo pipefail
 
-                  if ! command -v jq >/dev/null 2>&1; then
-                    echo "::error::jq is required but not available on PATH"
-                    exit 1
-                  fi
-
                   RG="${{ env.RESOURCE_GROUP }}"
                   VM_NAME="${{ env.MONGO_VM_NAME }}"
-                  CONTAINER_NAME="backups"
 
-                  STORAGE_ACCOUNT=$(az storage account list --resource-group "$RG" --query "[0].name" -o tsv)
-                  if [ -z "$STORAGE_ACCOUNT" ] || [ "$STORAGE_ACCOUNT" = "" ] || [ "$STORAGE_ACCOUNT" = "None" ]; then
-                    echo "::error::Failed to detect a storage account in resource group '$RG'"
-                    exit 1
-                  fi
+                  echo "::notice::Checking if backup script exists on $VM_NAME"
 
-                  if [ -z "${MONGO_ADMIN_PASSWORD:-}" ]; then
-                    echo "::error::MONGO_ADMIN_PASSWORD secret is not configured"
-                    exit 1
-                  fi
-
-                  if [ -z "${MONGO_ADMIN_USER:-}" ]; then
-                    echo "::error::MONGO_ADMIN_USER variable is not configured"
-                    exit 1
-                  fi
-
-                  extract_status() {
-                    awk '/\[stdout\]/{getline; gsub(/\r/,"",$0); if(NF){print; exit}}' <<<"$1"
-                  }
-
-                  ensure_script=$(mktemp)
-                  sanitized_script=$(mktemp)
-                  trap 'rm -f "$ensure_script" "$sanitized_script"' EXIT
-
-                  RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/infra/scripts/setup-backup.sh"
-
-                  # Fail fast when the raw script URL is unreachable (e.g., typo or private repo).
-                  if ! curl -fsSI "$RAW_URL" >/dev/null; then
-                    echo "::error::Failed to reach $RAW_URL"
-                    exit 1
-                  fi
-
-                  USER_ESCAPED=$(printf '%q' "$MONGO_ADMIN_USER")
-                  PASSWORD_ESCAPED=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
-                  STORAGE_ESCAPED=$(printf '%q' "$STORAGE_ACCOUNT")
-                  CONTAINER_ESCAPED=$(printf '%q' "$CONTAINER_NAME")
-                  FORCE_REDEPLOY_ESCAPED=$(printf '%q' "${FORCE_REDEPLOY:-false}")
-
-                  {
-                    printf '%s\n' '#!/bin/bash'
-                    printf '%s\n' 'set -euo pipefail'
-                    printf '%s\n' 'TARGET=/usr/local/bin/mongodb-backup.sh'
-                    printf '%s\n' "FORCE_REDEPLOY=$FORCE_REDEPLOY_ESCAPED"
-                    printf '%s\n' 'if [ "$FORCE_REDEPLOY" = "true" ]; then'
-                    printf '%s\n' '  echo "Forcing redeploy of backup script..."'
-                    printf '%s\n' '  rm -f "$TARGET"'
-                    printf '%s\n' 'fi'
-                    printf '%s\n' 'if [ -x "$TARGET" ] && grep -q "#!/bin/bash" "$TARGET" && grep -q "mongodb-backup" "$TARGET"; then'
-                    printf '%s\n' '  echo READY'
-                    printf '%s\n' '  exit 0'
-                    printf '%s\n' 'fi'
-                    printf '%s\n' '# Download the latest setup-backup.sh from the repository to avoid inline size limits.'
-                    printf '%s\n' "RAW_URL=$RAW_URL"
-                    printf '%s\n' 'tmp_dir=$(mktemp -d)'
-                    printf '%s\n' 'trap '\''rm -rf "$tmp_dir"'\'' EXIT'
-                    printf '%s\n' 'if ! command -v curl >/dev/null 2>&1; then'
-                    printf '%s\n' '  echo "Installing curl..."'
-                    printf '%s\n' '  sudo apt-get update && sudo apt-get install -y curl'
-                    printf '%s\n' 'fi'
-                    printf '%s\n' 'echo "Downloading setup script from: $RAW_URL"'
-                    printf '%s\n' 'if ! curl -fsSL "$RAW_URL" -o "$tmp_dir/setup-backup.sh"; then'
-                    printf '%s\n' '  echo "ERROR: Failed to download setup-backup.sh from $RAW_URL"'
-                    printf '%s\n' '  exit 1'
-                    printf '%s\n' 'fi'
-                    printf '%s\n' 'echo "Downloaded $(wc -l < "$tmp_dir/setup-backup.sh") lines"'
-                    printf '%s\n' 'echo "First 5 lines of downloaded script:"'
-                    printf '%s\n' 'head -n 5 "$tmp_dir/setup-backup.sh"'
-                    printf '%s\n' 'chmod +x "$tmp_dir/setup-backup.sh"'
-                    printf '%s\n' "export MONGO_ADMIN_USER=$USER_ESCAPED"
-                    printf '%s\n' "export MONGO_ADMIN_PASSWORD=$PASSWORD_ESCAPED"
-                    printf '%s\n' 'echo "Executing setup script..."'
-                    printf '%s %s %s\n' '"$tmp_dir/setup-backup.sh"' "$STORAGE_ESCAPED" "$CONTAINER_ESCAPED"
-                    printf '%s\n' 'rm -f "$tmp_dir/setup-backup.sh"'
-                    printf '%s\n' 'echo DEPLOYED'
-                  } > "$ensure_script"
-
-                  cp "$ensure_script" "$sanitized_script"
-                  if [ -n "${MONGO_ADMIN_PASSWORD:-}" ]; then
-                    sed -i "s/${MONGO_ADMIN_PASSWORD}/***MASKED***/g" "$sanitized_script"
-                  fi
-
-                  echo '::group::Ensure script payload'
-                  cat "$sanitized_script"
-                  echo '::endgroup::'
-
-                  ensure_result=$(az vm run-command invoke \
+                  # Quick validation: check if /usr/local/bin/mongodb-backup.sh exists and is executable
+                  check_result=$(az vm run-command invoke \
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
-                    --scripts @"$ensure_script" \
+                    --scripts '
+                      if [ -x /usr/local/bin/mongodb-backup.sh ]; then
+                        echo "READY"
+                      else
+                        echo "NOT_FOUND"
+                      fi
+                    ' \
                     -o json)
 
-                  ensure_status=$(extract_status "$(echo "$ensure_result" | jq -r '.value[0].message')")
+                  status=$(echo "$check_result" | jq -r '.value[0].message' | awk '/\[stdout\]/{getline; gsub(/\r/,"",$0); if(NF){print; exit}}')
 
-                  if [ "$ensure_status" = "READY" ]; then
-                    echo "::notice::Backup script already provisioned on $VM_NAME"
-                  elif [ "$ensure_status" = "DEPLOYED" ]; then
-                    echo "::notice::Backup script deployed on $VM_NAME (storage: $STORAGE_ACCOUNT)"
+                  if [ "$status" = "READY" ]; then
+                    echo "::notice::✅ Backup script already deployed (presumably by Bicep)"
                   else
-                    echo "::error::Unexpected status while provisioning backup script: ${ensure_status:-<empty>}"
-                    echo "$ensure_result"
+                    echo "::error::❌ Backup script not found at /usr/local/bin/mongodb-backup.sh"
+                    echo "::error::Please ensure Bicep deployment ran setup-backup.sh during VM provisioning"
                     exit 1
                   fi
 
