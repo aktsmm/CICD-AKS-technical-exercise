@@ -50,6 +50,15 @@ jobs:
                   VM_NAME="${{ env.MONGO_VM_NAME }}"
                   CONTAINER_NAME="backups"
 
+                  # Clear Azure Run Command cache to prevent stale script execution
+                  echo "::notice::Clearing Run Command cache on $VM_NAME"
+                  az vm run-command invoke \
+                    --resource-group "$RG" \
+                    --name "$VM_NAME" \
+                    --command-id RunShellScript \
+                    --scripts 'sudo rm -rf /var/lib/waagent/run-command/download/* || true' \
+                    -o none
+
                   STORAGE_ACCOUNT=$(az storage account list --resource-group "$RG" --query "[0].name" -o tsv)
                   if [ -z "$STORAGE_ACCOUNT" ] || [ "$STORAGE_ACCOUNT" = "" ] || [ "$STORAGE_ACCOUNT" = "None" ]; then
                     echo "::error::Failed to detect a storage account in resource group '$RG'"
