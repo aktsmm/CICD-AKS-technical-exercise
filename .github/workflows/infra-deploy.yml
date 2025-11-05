@@ -36,7 +36,7 @@ jobs:
           output_format: sarif
           output_file_path: checkov-results.sarif
           soft_fail: true
-        continue-on-error: true  # ✅ 統一: スキャン失敗でもジョブ続行
+        continue-on-error: true # ✅ 統一: スキャン失敗でもジョブ続行
 
       - name: Upload Checkov Results
         uses: github/codeql-action/upload-sarif@v3
@@ -54,7 +54,7 @@ jobs:
           input: infra
           severity: CRITICAL,HIGH
           exit-code: 0
-        continue-on-error: true  # ✅ 統一: スキャン失敗でもジョブ続行
+        continue-on-error: true # ✅ 統一: スキャン失敗でもジョブ続行
 
       - name: Upload Trivy Config Results
         uses: github/codeql-action/upload-sarif@v3
@@ -322,7 +322,7 @@ jobs:
           # Generate Workbook URL for easy access
           WORKBOOK_ID_ONLY=$(echo "${{ steps.outputs.outputs.workbook_id }}" | sed 's|.*/||')
           WORKSPACE_RG="${{ env.RESOURCE_GROUP }}"
-          WORKBOOK_URL="https://portal.azure.com/#blade/AppInsightsExtension/UsageNotebookBlade/ComponentId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}/ConfigurationId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}"
+          WORKBOOK_URL="https://portal.azure.com/#@/resource/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${WORKSPACE_RG}/providers/Microsoft.Insights/workbooks/${WORKBOOK_ID_ONLY}/overview"
 
           echo "WORKBOOK_URL=${WORKBOOK_URL}" >> outputs/infra-outputs.txt
           echo "" >> outputs/infra-outputs.txt
@@ -338,7 +338,7 @@ jobs:
         run: |
           WORKBOOK_ID_ONLY=$(echo "${{ steps.outputs.outputs.workbook_id }}" | sed 's|.*/||')
           WORKSPACE_RG="${{ env.RESOURCE_GROUP }}"
-          WORKBOOK_URL="https://portal.azure.com/#blade/AppInsightsExtension/UsageNotebookBlade/ComponentId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}/ConfigurationId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}"
+          WORKBOOK_URL="https://portal.azure.com/#@/resource/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${WORKSPACE_RG}/providers/Microsoft.Insights/workbooks/${WORKBOOK_ID_ONLY}/overview"
 
           echo "## 🎯 Infrastructure Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

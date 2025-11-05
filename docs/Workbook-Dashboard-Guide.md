@@ -30,11 +30,20 @@ Log Analytics Workbook を使用したセキュリティ監視ダッシュボー
 2. `infra-outputs.txt` を開き、`WORKBOOK_URL` の値をコピー
 3. ブラウザで URL を開く
 
-#### Azure Portal から直接
+#### Azure Portalから直接
 
 1. Azure Portal → **Monitor** → **Workbooks**
-2. **Shared Workbooks** タブを選択
-3. 「**Security Dashboard - dev**」を検索して開く
+2. **Browse** タブを選択
+3. サブスクリプションとリソースグループでフィルター
+4. 「**Security Dashboard - dev**」を検索して開く
+
+**または、直接リソースにアクセス:**
+
+```
+https://portal.azure.com/#@/resource/subscriptions/{subscriptionId}/resourceGroups/rg-bbs-cicd-aks/providers/Microsoft.Insights/workbooks/{workbookId}/overview
+```
+
+> **注意**: 古いURL形式 (`#blade/AppInsightsExtension/UsageNotebookBlade/...`) は使用できません。新しい形式 (`#@/resource/...`) を使用してください。
 
 ## ダッシュボード構成
 
