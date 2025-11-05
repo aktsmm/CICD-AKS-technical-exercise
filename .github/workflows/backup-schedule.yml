@@ -127,44 +127,42 @@ jobs:
                     exit 1
                   fi
 
-                  USER_ESCAPED=$(printf '%q' "$MONGO_ADMIN_USER")
-                  PASSWORD_ESCAPED=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
-                  STORAGE_ESCAPED=$(printf '%q' "$STORAGE_ACCOUNT")
-                  CONTAINER_ESCAPED=$(printf '%q' "$CONTAINER_NAME")
-
                   setup_script=$(mktemp)
                   trap 'rm -f "$setup_script"' EXIT
 
-                  cat > "$setup_script" <<'SETUP_EOF'
+                  # Embed all parameters directly in the script to avoid --parameters issues
+                  cat > "$setup_script" <<SETUP_EOF
                   #!/bin/bash
                   set -euo pipefail
-                  RAW_URL="${1}"
-                  MONGO_USER="${2}"
-                  MONGO_PASS="${3}"
-                  STORAGE="${4}"
-                  CONTAINER="${5}"
 
-                  tmp_dir=$(mktemp -d)
-                  trap 'rm -rf "$tmp_dir"' EXIT
+                  RAW_URL="$RAW_URL"
+                  MONGO_USER=$(printf '%q' "$MONGO_ADMIN_USER")
+                  MONGO_PASS=$(printf '%q' "$MONGO_ADMIN_PASSWORD")
+                  STORAGE=$(printf '%q' "$STORAGE_ACCOUNT")
+                  CONTAINER=$(printf '%q' "$CONTAINER_NAME")
+
+                  tmp_dir=\$(mktemp -d)
+                  trap 'rm -rf "\$tmp_dir"' EXIT
 
                   if ! command -v curl >/dev/null 2>&1; then
                     echo "Installing curl..."
                     sudo apt-get update && sudo apt-get install -y curl
                   fi
 
-                  echo "Downloading setup-backup.sh..."
-                  if ! curl -fsSL "$RAW_URL" -o "$tmp_dir/setup-backup.sh"; then
+                  echo "Downloading setup-backup.sh from: \$RAW_URL"
+                  if ! curl -fsSL "\$RAW_URL" -o "\$tmp_dir/setup-backup.sh"; then
                     echo "ERROR: Failed to download setup-backup.sh"
                     exit 1
                   fi
 
-                  chmod +x "$tmp_dir/setup-backup.sh"
+                  echo "Downloaded \$(wc -l < "\$tmp_dir/setup-backup.sh") lines"
+                  chmod +x "\$tmp_dir/setup-backup.sh"
 
-                  export MONGO_ADMIN_USER="$MONGO_USER"
-                  export MONGO_ADMIN_PASSWORD="$MONGO_PASS"
+                  export MONGO_ADMIN_USER=\$MONGO_USER
+                  export MONGO_ADMIN_PASSWORD=\$MONGO_PASS
 
                   echo "Executing setup-backup.sh..."
-                  "$tmp_dir/setup-backup.sh" "$STORAGE" "$CONTAINER"
+                  "\$tmp_dir/setup-backup.sh" "\$STORAGE" "\$CONTAINER"
 
                   echo "DEPLOYED"
                   SETUP_EOF
@@ -174,12 +172,6 @@ jobs:
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
                     --scripts @"$setup_script" \
-                    --parameters \
-                      "$RAW_URL" \
-                      "$USER_ESCAPED" \
-                      "$PASSWORD_ESCAPED" \
-                      "$STORAGE_ESCAPED" \
-                      "$CONTAINER_ESCAPED" \
                     -o json)
 
                   deploy_status=$(echo "$deploy_result" | jq -r '.value[0].message' | awk '/\[stdout\]/{getline; gsub(/\r/,"",$0); if(NF){print; exit}}')
