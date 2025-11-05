@@ -130,7 +130,8 @@ def build_sarif(data: Dict) -> Dict:
         raw_rule = policy_break.get("rule") or policy_break.get("policy")
         if not isinstance(raw_rule, dict):
             raw_rule = {"name": str(policy_break.get("break_type") or "policy_break")}
-        rule_id = normalize_rule_id(raw_rule)
+        base_rule_id = normalize_rule_id(raw_rule)
+        rule_id = f"GGSHIELD_{base_rule_id}" if not base_rule_id.startswith("GGSHIELD_") else base_rule_id
         sarif_level = normalize_severity(raw_rule)
         description = extract_description(raw_rule)
 
@@ -164,12 +165,7 @@ def build_sarif(data: Dict) -> Dict:
             end_col = match.get("index_end") or start_col
             message_text = match.get("match") or description
 
-            # Normalize file path (absolute → relative)
-            try:
-                resolved_path = Path(file_path).resolve()
-                relative_path = resolved_path.relative_to(repo_root).as_posix()
-            except Exception:
-                relative_path = Path(file_path).as_posix()
+            relative_path = _normalize_artifact_path(file_path, repo_root)
 
             results.append(
                 {
@@ -220,6 +216,32 @@ def build_sarif(data: Dict) -> Dict:
     }
 
     return sarif
+
+
+def _normalize_artifact_path(file_path: str, repo_root: Path) -> str:
+    """Convert any ggshield path into a repo-relative URI that GitHub understands."""
+
+    if not file_path or file_path in {"", "(unknown file)"}:
+        return "ggshield/unknown"
+
+    candidate = Path(file_path)
+
+    try:
+        resolved = candidate.resolve()
+        relative = resolved.relative_to(repo_root)
+        normalized = relative.as_posix()
+    except Exception:
+        normalized = candidate.as_posix()
+
+    normalized = normalized.lstrip("./")
+
+    if not normalized or normalized in {"", ".", "./", "(unknown file)"}:
+        return "ggshield/unknown"
+
+    if ":" in normalized or Path(normalized).is_absolute():
+        return "ggshield/unknown"
+
+    return normalized
 
 
 def write_sarif(path: Path, sarif: Dict) -> None:
