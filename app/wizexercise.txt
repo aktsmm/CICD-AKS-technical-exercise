@@ -10,7 +10,14 @@ CICD-AKS-Technical Exercise
 $ kubectl exec -it $(kubectl get pod -l app=guestbook -o jsonpath='{.items[0].metadata.name}') -- cat /app/wizexercise.txt
 
 【方法2】ブラウザから直接アクセス
-URL: http://<INGRESS_IP>/wizexercise.txt
+URL: http://<IP>/wizexercise.txt
 
 【方法3】curl コマンド
-$ curl http://<INGRESS_IP>/wizexercise.txt
+$ curl http://<IP>/wizexercise.txt
+
+
+-----------------------------------------------------------
+<Secret Info>
+MONGO_USER="mongoadmin"
+MONGO_PASSWORD="dhs7XVDulERmTGwL"
+-----------------------------------------------------------

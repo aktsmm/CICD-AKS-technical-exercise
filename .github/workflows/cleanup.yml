@@ -4,12 +4,12 @@ on:
   schedule:
     - cron: "0 */12 * * *" # 12時間ごと
   workflow_dispatch:
-  # workflow_run:
-  #   workflows:
-  #     - "1. Deploy Infrastructure"
-  #     - "2-1. Build and Deploy Application"
-  #     - "2-2. Deploy Policy Guardrails"
-  #   types: [completed]
+  workflow_run:
+    workflows:
+      - "1. Deploy Infrastructure"
+      - "2-1. Build and Deploy Application"
+      - "2-2. Deploy Policy Guardrails"
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -62,10 +62,10 @@ jobs:
           ALL_RUNS=$(gh api repos/$REPO/actions/runs --paginate -q '.workflow_runs[] | {id: .id, name: .name, conclusion: .conclusion, created_at: .created_at, actor: (.actor.login // "unknown")}' | jq -s 'sort_by(.created_at) | reverse')
 
           # ✅ 成功した human 実行: 最新7件保持
-          KEEP_HUMAN=$(echo "$ALL_RUNS" | jq -c '[.[] | select(.actor != "dependabot[bot]" and .conclusion == "success")][:7] | map(.id)')
+          KEEP_HUMAN=$(echo "$ALL_RUNS" | jq -c '[.[] | select(.actor != "dependabot[bot]" and .conclusion == "success")][:10] | map(.id)')
 
           # ✅ 成功した dependabot 実行: 最新3件保持
-          KEEP_DEPENDABOT=$(echo "$ALL_RUNS" | jq -c '[.[] | select(.actor == "dependabot[bot]" and .conclusion == "success")][:3] | map(.id)')
+          KEEP_DEPENDABOT=$(echo "$ALL_RUNS" | jq -c '[.[] | select(.actor == "dependabot[bot]" and .conclusion == "success")][:5] | map(.id)')
 
           # ✅ 失敗した実行: 最新1件保持
           KEEP_FAILED=$(echo "$ALL_RUNS" | jq -c '[.[] | select(.conclusion != "success")][:1] | map(.id)')

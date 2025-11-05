@@ -41,8 +41,8 @@
 
 - **`MONGO_ADMIN_PASSWORD`**
   - 用途: MongoDB 管理者 (mongoadmin) アカウントのパスワード。
-  - 取り扱い: セキュアなランダム値を生成し、GitHub Secret に直接入力する。
-  - 補足: 実運用を想定して複雑性ポリシーを満たすこと。
+  - 取り扱い: GitHub Secret に保存済み。ローカルでは `mongo_password.txt` に記載 (.gitignore により保護)。
+  - 補足: 実運用を想定して複雑性ポリシーを満たすこと。パスワード変更時は GitHub Secret とローカルファイルの両方を更新する。
 
 > GitHub での登録手順: `Settings` → `Secrets and variables` → `Actions` → `New repository secret` から上記値を登録する。
 
@@ -55,6 +55,7 @@
 | `AZURE_GITHUB_PRINCIPAL_ID`       | `60603759-feba-41e2-9b02-9dc78248bdf3` | GitHub Actions (OIDC) サービスプリンシパルの Object ID。RBAC ブートストラップ モジュールで使用。                  |
 | `AZURE_GRANT_GITHUB_OWNER` (任意) | `false`                                | `true` の場合、Owner を付与。通常は最小権限維持のため `false`。                                                   |
 | `IMAGE_NAME`                      | `guestbook`                            | コンテナビルド後に ACR へ push するイメージ名。                                                                   |
+| `MONGO_ADMIN_USER`                | `mongoadmin`                           | MongoDB 管理者ユーザー名。`3. Scheduled Mongo Backup` で利用。ローカルでは `mongo_password.txt` に記載。           |
 | `MONGO_VM_NAME` (任意)            | `vm-mongo-dev`                         | `3. Scheduled Mongo Backup` を複数環境で使い分ける場合に設定。未定義時は既定値 `vm-mongo-dev` を利用。            |
 
 変数は `Settings` → `Secrets and variables` → `Actions` → `Variables` から登録する。
@@ -75,10 +76,14 @@ mongo_password.txt
 *.credentials
 .env
 *.env
+Docs_Secrets/
+Docs_issue_point/
+Docs_work_history/
 ```
 
 推奨されるローカルファイル例:
 
+- `mongo_password.txt`: MongoDB 認証情報 (ユーザー名 `mongoadmin` とパスワード)。GitHub Actions では `MONGO_ADMIN_USER` (Variables) と `MONGO_ADMIN_PASSWORD` (Secrets) に保存済み。
 - `azure-credentials.json`: `AZURE_CREDENTIALS` 秘密情報の元ファイル。用途後は削除または暗号化保管。
 - `.env` / `*.env`: 端末上での一時検証に利用。リポジトリへは決してコミットしない。
 
