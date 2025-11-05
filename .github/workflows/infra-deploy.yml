@@ -304,7 +304,7 @@ jobs:
           echo "STORAGE_ACCOUNT_NAME=${{ steps.outputs.outputs.storage_name }}" >> outputs/infra-outputs.txt
 
       - name: Upload Outputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: infra-outputs
           path: outputs/infra-outputs.txt
