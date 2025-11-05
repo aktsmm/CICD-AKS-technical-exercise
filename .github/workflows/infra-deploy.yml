@@ -50,7 +50,7 @@ jobs:
           scan-type: config
           format: sarif
           output: trivy-config.sarif
-          path: infra
+          input: infra
           severity: CRITICAL,HIGH
           exit-code: 0
 
@@ -316,12 +316,12 @@ jobs:
           echo "STORAGE_ACCOUNT_NAME=${{ steps.outputs.outputs.storage_name }}" >> outputs/infra-outputs.txt
           echo "WORKBOOK_ID=${{ steps.outputs.outputs.workbook_id }}" >> outputs/infra-outputs.txt
           echo "LOG_ANALYTICS_WORKSPACE_ID=${{ steps.outputs.outputs.workspace_id }}" >> outputs/infra-outputs.txt
-          
+
           # Generate Workbook URL for easy access
           WORKBOOK_ID_ONLY=$(echo "${{ steps.outputs.outputs.workbook_id }}" | sed 's|.*/||')
           WORKSPACE_RG="${{ env.RESOURCE_GROUP }}"
           WORKBOOK_URL="https://portal.azure.com/#blade/AppInsightsExtension/UsageNotebookBlade/ComponentId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}/ConfigurationId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}"
-          
+
           echo "WORKBOOK_URL=${WORKBOOK_URL}" >> outputs/infra-outputs.txt
           echo "" >> outputs/infra-outputs.txt
           echo "🔗 Security Dashboard: ${WORKBOOK_URL}" >> outputs/infra-outputs.txt
@@ -337,7 +337,7 @@ jobs:
           WORKBOOK_ID_ONLY=$(echo "${{ steps.outputs.outputs.workbook_id }}" | sed 's|.*/||')
           WORKSPACE_RG="${{ env.RESOURCE_GROUP }}"
           WORKBOOK_URL="https://portal.azure.com/#blade/AppInsightsExtension/UsageNotebookBlade/ComponentId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}/ConfigurationId/%2Fsubscriptions%2F${{ env.AZURE_SUBSCRIPTION_ID }}%2FresourceGroups%2F${WORKSPACE_RG}%2Fproviders%2Fmicrosoft.insights%2Fworkbooks%2F${WORKBOOK_ID_ONLY}"
-          
+
           echo "## 🎯 Infrastructure Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Security Monitoring Dashboard" >> $GITHUB_STEP_SUMMARY
