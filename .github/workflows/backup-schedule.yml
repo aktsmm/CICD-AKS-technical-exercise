@@ -119,14 +119,7 @@ jobs:
 
                   cp "$ensure_script" "$sanitized_script"
                   if [ -n "${MONGO_ADMIN_PASSWORD:-}" ]; then
-                    python3 - "$sanitized_script" "${MONGO_ADMIN_PASSWORD}" <<'PY'
-                    import pathlib, sys
-                    path = pathlib.Path(sys.argv[1])
-                    secret = sys.argv[2]
-                    text = path.read_text()
-                    text = text.replace(secret, "***MASKED***")
-                    path.write_text(text)
-                    PY
+                    sed -i "s/${MONGO_ADMIN_PASSWORD}/***MASKED***/g" "$sanitized_script"
                   fi
 
                   echo '::group::Ensure script payload'
