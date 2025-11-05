@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Convert GitGuardian ggshield JSON findings into SARIF output."""
+"""
+Convert GitGuardian ggshield JSON findings into SARIF output.
+(Enhanced version: adds uriBaseId and relative path normalization for GitHub Code Scanning)
+"""
 from __future__ import annotations
 
 import json
@@ -7,7 +10,10 @@ import sys
 from pathlib import Path
 from typing import Dict, Iterable, List
 
+# SARIF Schema URL
 SARIF_SCHEMA = "https://json.schemastore.org/sarif-2.1.0.json"
+
+# Severity mapping from GitGuardian → SARIF
 SEVERITY_MAP = {
     "critical": "error",
     "high": "error",
@@ -55,6 +61,7 @@ def normalize_severity(raw_rule: Dict) -> str:
 
 
 def extract_description(raw_rule: Dict) -> str:
+    """Extract or fallback rule description."""
     if not isinstance(raw_rule, dict):
         return "Secret detected by ggshield."
     return raw_rule.get("message") or raw_rule.get("description") or "Secret detected by ggshield."
@@ -94,8 +101,10 @@ def iter_policy_breaks(data: Dict) -> Iterable[Dict]:
 
 
 def build_sarif(data: Dict) -> Dict:
+    """Build SARIF structure from ggshield findings."""
     results: List[Dict] = []
     rules: Dict[str, Dict] = {}
+    repo_root = Path.cwd()
 
     for policy_break in iter_policy_breaks(data):
         matches = policy_break.get("matches") or []
@@ -154,6 +163,12 @@ def build_sarif(data: Dict) -> Dict:
             end_col = match.get("index_end") or start_col
             message_text = match.get("match") or description
 
+            # Normalize file path (absolute → relative)
+            try:
+                relative_path = str(Path(file_path).resolve().relative_to(repo_root))
+            except Exception:
+                relative_path = str(file_path)
+
             results.append(
                 {
                     "ruleId": rule_id,
@@ -162,7 +177,10 @@ def build_sarif(data: Dict) -> Dict:
                     "locations": [
                         {
                             "physicalLocation": {
-                                "artifactLocation": {"uri": file_path},
+                                "artifactLocation": {
+                                    "uri": relative_path,
+                                    "uriBaseId": "SRCROOT"  # ★ 必須: GitHub がファイルを認識する
+                                },
                                 "region": {
                                     "startLine": int(line),
                                     "startColumn": int(start_col),
