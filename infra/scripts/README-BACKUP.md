@@ -271,3 +271,6 @@ A: `setup-cron-backup.sh` の `CRON_JOBS` 配列を編集して再実行して�
 
 **Q: GitHub Actions は使わないの？**  
 A: Azure Run Command の不安定性により、VM 内 cron に変更しました。より信頼性が高く、シンプルです。
+
+**Q: 以前の GitHub Actions ワークフロー (`backup-schedule.yml`) はどうなった？**  
+A: 2025 年 11 月 6 日に削除されました。VM 内 cron で安定稼働しているため、GitHub Actions 経由のバックアップは不要になりました。手動バックアップが必要な場合は、上記の「オンデマンドバックアップ」セクションを参照してください。
