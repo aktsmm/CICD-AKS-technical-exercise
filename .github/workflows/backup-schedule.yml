@@ -1,4 +1,4 @@
-name: 3. Scheduled Mongo Backup
+name: 3. Mongo Backup
 
 on:
     push:
