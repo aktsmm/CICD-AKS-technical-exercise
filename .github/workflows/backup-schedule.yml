@@ -36,48 +36,40 @@ jobs:
             - name: Repair RunCommand Extension
               run: |
                   set -euo pipefail
-                  
+
                   RG="${{ env.RESOURCE_GROUP }}"
                   VM_NAME="${{ env.MONGO_VM_NAME }}"
-                  
+
                   echo "::notice::Checking RunCommand extension health on $VM_NAME"
-                  
-                  # Check if RunCommandLinux extension exists and remove it synchronously
-                  if az vm extension show \
-                    --resource-group "$RG" \
-                    --vm-name "$VM_NAME" \
-                    --name RunCommandLinux >/dev/null 2>&1; then
-                    echo "::warning::Removing existing RunCommand extension to clear stale cache"
-                    az vm extension delete \
-                      --resource-group "$RG" \
-                      --vm-name "$VM_NAME" \
-                      --name RunCommandLinux
-                    
-                    # Wait for deletion to fully complete and extension state to stabilize
-                    echo "::notice::Waiting for extension deletion to complete..."
-                    sleep 30
-                  fi
-                  
-                  # Reinstall RunCommand extension with clean state
-                  echo "::notice::Installing fresh RunCommand extension"
-                  az vm extension set \
-                    --publisher Microsoft.CPlat.Core \
-                    --name RunCommandLinux \
-                    --resource-group "$RG" \
-                    --vm-name "$VM_NAME"
-                  
-                  # Additional wait for extension to fully initialize
-                  echo "::notice::Waiting for extension to initialize..."
-                  sleep 15
-                  
-                  # Clear any remaining cache on VM
-                  echo "::notice::Clearing Run Command cache on $VM_NAME"
+
+                  # Clear stale RunCommand cache inside the VM
+                  # Note: az vm extension delete is not allowed as RunCommandLinux is managed by Compute RP
+                  echo "::notice::Clearing stale RunCommand cache inside the VM"
                   az vm run-command invoke \
                     --resource-group "$RG" \
                     --name "$VM_NAME" \
                     --command-id RunShellScript \
-                    --scripts 'sudo rm -rf /var/lib/waagent/run-command/download/* || true' \
-                    -o none
+                    --scripts '
+                      echo "[INFO] Restarting walinuxagent and clearing RunCommand cache"
+                      sudo systemctl stop walinuxagent || true
+                      sudo rm -rf /var/lib/waagent/Microsoft.CPlat.Core.RunCommandLinux* || true
+                      sudo rm -rf /var/lib/waagent/run-command || true
+                      sudo systemctl start walinuxagent || true
+                    ' \
+                    -o table
+
+                  # Wait for walinuxagent to fully restart and extension state to stabilize
+                  echo "::notice::Waiting for walinuxagent to fully restart..."
+                  sleep 25
+
+                  # Validate that RunCommand is operational
+                  echo "::notice::Validating RunCommand works"
+                  az vm run-command invoke \
+                    --resource-group "$RG" \
+                    --name "$VM_NAME" \
+                    --command-id RunShellScript \
+                    --scripts 'echo "RunCommand operational ✅"' \
+                    -o table
 
             - name: Ensure Mongo backup script is provisioned on VM
               env:
