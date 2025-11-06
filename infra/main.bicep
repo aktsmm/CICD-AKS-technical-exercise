@@ -139,6 +139,17 @@ resource defenderForCloudPlans 'Microsoft.Security/pricings@2022-03-01' = [for p
   }
 }]
 
+// Defender for Cloud を Log Analytics Workspace に接続
+module defenderWorkspaceSettings 'modules/defender-workspace-settings.bicep' = {
+  name: 'defender-workspace-${deploymentTimestamp}'
+  params: {
+    workspaceId: monitoring.outputs.workspaceId
+  }
+  dependsOn: [
+    defenderForCloudPlans
+  ]
+}
+
 // Storage Account (脆弱な構成)
 module storage 'modules/storage.bicep' = {
   scope: rg
