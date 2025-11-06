@@ -1,18 +1,19 @@
-# Issue: Dockerイメージ名の大文字エラー
+# Issue: Docker イメージ名の大文字エラー
 
 ## 📋 概要
 
-**問題**: GitHub Actions ワークフロー「Scan Container Image」ジョブが、Dockerイメージのビルド時に失敗。
+**問題**: GitHub Actions ワークフロー「Scan Container Image」ジョブが、Docker イメージのビルド時に失敗。
 
 **エラーメッセージ**:
+
 ```
-ERROR: failed to build: invalid tag "SuperBBS:3378faea2ae51a4bcbec8a747c1c814bc1ee3439": 
+ERROR: failed to build: invalid tag "SuperBBS:3378faea2ae51a4bcbec8a747c1c814bc1ee3439":
 repository name must be lowercase
 ```
 
-**原因**: GitHub Variables の `IMAGE_NAME` に大文字が含まれていたため、Dockerのタグ命名規則に違反。
+**原因**: GitHub Variables の `IMAGE_NAME` に大文字が含まれていたため、Docker のタグ命名規則に違反。
 
-**影響範囲**: CI/CDパイプライン（アプリケーションデプロイワークフロー）
+**影響範囲**: CI/CD パイプライン（アプリケーションデプロイワークフロー）
 
 ---
 
@@ -35,22 +36,22 @@ repository name must be lowercase
 
 ```text
 Run cd app
-ERROR: failed to build: invalid tag "SuperBBS:3378faea2ae51a4bcbec8a747c1c814bc1ee3439": 
+ERROR: failed to build: invalid tag "SuperBBS:3378faea2ae51a4bcbec8a747c1c814bc1ee3439":
 repository name must be lowercase
 Error: Process completed with exit code 1.
 ```
 
 ### 根本原因
 
-1. **GitHub Variables設定**:
+1. **GitHub Variables 設定**:
    - `IMAGE_NAME` の値が `SuperBBS` と大文字を含んでいた
-   
-2. **Docker命名規則違反**:
-   - Dockerイメージのリポジトリ名（タグ）は**小文字のみ**許可
+2. **Docker 命名規則違反**:
+
+   - Docker イメージのリポジトリ名（タグ）は**小文字のみ**許可
    - 大文字、特殊文字（一部除く）は使用不可
 
 3. **検証不足**:
-   - GitHub Variables設定時に命名規則のバリデーションなし
+   - GitHub Variables 設定時に命名規則のバリデーションなし
    - ワークフロー実行時に初めてエラーが検出される
 
 ---
@@ -60,11 +61,13 @@ Error: Process completed with exit code 1.
 ### 1. GitHub Variables の修正
 
 **修正前**:
+
 ```bash
 IMAGE_NAME=SuperBBS
 ```
 
 **修正後**:
+
 ```bash
 IMAGE_NAME=bbs-app
 ```
@@ -82,7 +85,7 @@ gh variable set IMAGE_NAME --body "bbs-app"
 gh variable get IMAGE_NAME
 ```
 
-### 2. Dockerタグ命名規則の確認
+### 2. Docker タグ命名規則の確認
 
 #### 許可される文字
 
@@ -133,7 +136,7 @@ gh variable set IMAGE_NAME --body "bbs-app"
 
 ### Step 3: ワークフローを再実行
 
-1. GitHub Actions画面に移動
+1. GitHub Actions 画面に移動
 2. 失敗した「2-1. Build and Deploy Application」ワークフローを選択
 3. 「Re-run failed jobs」をクリック
 
@@ -149,7 +152,7 @@ git push origin main
 
 ## 🎯 検証方法
 
-### 1. ローカルでDockerビルド確認
+### 1. ローカルで Docker ビルド確認
 
 ```bash
 cd app
@@ -161,7 +164,7 @@ docker build -t bbs-app:test .
 docker images | grep bbs-app
 ```
 
-### 2. GitHub Actionsログ確認
+### 2. GitHub Actions ログ確認
 
 ```bash
 # 最新のワークフロー実行を確認
@@ -171,9 +174,9 @@ gh run list --workflow="02-1.app-deploy.yml" --limit 3
 gh run view <RUN_ID>
 ```
 
-### 3. ACRへのプッシュ確認
+### 3. ACR へのプッシュ確認
 
-ワークフロー成功後、ACRに正しくイメージがプッシュされたか確認:
+ワークフロー成功後、ACR に正しくイメージがプッシュされたか確認:
 
 ```bash
 # ACR名を取得
@@ -190,9 +193,9 @@ az acr repository show-tags --name $ACR_NAME --repository bbs-app --output table
 
 ## 📚 関連知識
 
-### Dockerタグの完全な命名規則
+### Docker タグの完全な命名規則
 
-Docker公式ドキュメントより:
+Docker 公式ドキュメントより:
 
 ```text
 tag := [registry-url/]name[:tag]
@@ -208,10 +211,10 @@ component := [a-z0-9]+ ([-._] [a-z0-9]+)*
 
 ### Azure Container Registry (ACR) の追加制約
 
-ACRは基本的にDockerの命名規則に従いますが、追加の推奨事項があります:
+ACR は基本的に Docker の命名規則に従いますが、追加の推奨事項があります:
 
-- リポジトリ名: 1-256文字
-- タグ名: 1-128文字
+- リポジトリ名: 1-256 文字
+- タグ名: 1-128 文字
 - 階層構造のサポート: `myapp/backend`, `myapp/frontend`
 
 ---
@@ -223,7 +226,7 @@ ACRは基本的にDockerの命名規則に従いますが、追加の推奨事�
 ```markdown
 □ 小文字のみ使用
 □ 英数字とハイフン・アンダースコア・ドットのみ
-□ 128文字以内
+□ 128 文字以内
 □ 意味のある名前（例: アプリ名-役割）
 □ 環境別の命名規則統一
 ```
@@ -236,21 +239,21 @@ ACRは基本的にDockerの命名規則に従いますが、追加の推奨事�
 - name: Validate IMAGE_NAME
   run: |
     IMAGE_NAME="${{ env.IMAGE_NAME }}"
-    
+
     # 小文字チェック
     if [[ "$IMAGE_NAME" =~ [A-Z] ]]; then
       echo "❌ ERROR: IMAGE_NAME contains uppercase letters: $IMAGE_NAME"
       echo "Docker image names must be lowercase only."
       exit 1
     fi
-    
+
     # 不正文字チェック
     if [[ ! "$IMAGE_NAME" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
       echo "❌ ERROR: IMAGE_NAME contains invalid characters: $IMAGE_NAME"
       echo "Allowed: lowercase letters, numbers, dots, hyphens, underscores"
       exit 1
     fi
-    
+
     echo "✅ IMAGE_NAME validation passed: $IMAGE_NAME"
 ```
 
@@ -262,6 +265,7 @@ ACRは基本的にDockerの命名規則に従いますが、追加の推奨事�
 ### GitHub Variables 設定時の注意事項
 
 **IMAGE_NAME の命名規則**:
+
 - ✅ 小文字のみ使用（例: bbs-app, myapp-web）
 - ❌ 大文字は使用不可（例: SuperBBS, MyApp）
 - 推奨形式: `{アプリ名}-{役割}` または `{プロジェクト名}-app`
@@ -271,10 +275,10 @@ ACRは基本的にDockerの命名規則に従いますが、追加の推奨事�
 
 ## 📝 修正履歴
 
-| 日付 | 担当者 | 内容 |
-|------|--------|------|
-| 2025-11-06 | - | IMAGE_NAMEを `SuperBBS` → `bbs-app` に修正 |
-| 2025-11-06 | - | Issueドキュメント作成 |
+| 日付       | 担当者 | 内容                                        |
+| ---------- | ------ | ------------------------------------------- |
+| 2025-11-06 | -      | IMAGE_NAME を `SuperBBS` → `bbs-app` に修正 |
+| 2025-11-06 | -      | Issue ドキュメント作成                      |
 
 ---
 
@@ -287,7 +291,7 @@ ACRは基本的にDockerの命名規則に従いますが、追加の推奨事�
 ---
 
 **ステータス**: ✅ 解決済み  
-**対応日**: 2025年11月6日  
-**影響範囲**: CI/CD パイプライン（Scan Container Imageジョブ）  
+**対応日**: 2025 年 11 月 6 日  
+**影響範囲**: CI/CD パイプライン（Scan Container Image ジョブ）  
 **優先度**: 高（パイプライン停止）  
 **再発防止**: バリデーション追加、ドキュメント更新
