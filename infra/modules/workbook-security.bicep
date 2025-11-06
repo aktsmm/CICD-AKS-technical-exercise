@@ -38,7 +38,7 @@ resource securityWorkbook 'Microsoft.Insights/workbooks@2022-04-01' = {
           type: 3
           content: {
             version: 'KqlItem/1.0'
-            query: 'SecurityIncident\n| where TimeGenerated > ago(7d)\n| extend OwnerName = coalesce(Owner.objectName, "Unassigned")\n| summarize IncidentCount = count(), OpenCount = countif(IncidentStatus != "Closed"), LatestUpdate = max(TimeGenerated) by Severity, OwnerName\n| extend SeverityOrder = case(Severity == "High", 0, Severity == "Medium", 1, Severity == "Low", 2, 3)\n| order by SeverityOrder asc, OpenCount desc, IncidentCount desc\n| project-away SeverityOrder\n| take 50'
+            query: 'union isfuzzy=true\n(SecurityIncident\n| where TimeGenerated > ago(7d)\n| extend OwnerName = coalesce(Owner.objectName, "Unassigned")\n| summarize IncidentCount = count(), OpenCount = countif(IncidentStatus != "Closed"), LatestUpdate = max(TimeGenerated) by Severity, OwnerName\n| extend SeverityOrder = case(Severity == "High", 0, Severity == "Medium", 1, Severity == "Low", 2, 3)\n| order by SeverityOrder asc, OpenCount desc, IncidentCount desc\n| project-away SeverityOrder\n| take 50),\n(print Message = "Defender for Cloud データ収集中... Workspaceに接続後、数時間でデータが表示されます")'
             size: 0
             title: '重大インシデント担当状況 (過去7日)'
             timeContext: {
@@ -65,7 +65,7 @@ resource securityWorkbook 'Microsoft.Insights/workbooks@2022-04-01' = {
           type: 3
           content: {
             version: 'KqlItem/1.0'
-            query: 'AzureActivity\n| where TimeGenerated > ago(3d)\n| where ActivityStatusValue == "Failed"\n| where OperationNameValue has_any ("Delete", "Write", "Policy", "RoleAssignment", "Security", "Administration")\n| extend CallerDisplay = coalesce(Caller, CallerUserDisplayName, CallerIpAddress, "Unknown")\n| summarize Failures = count(), LatestFailure = max(TimeGenerated), AffectedResources = dcount(ResourceId) by CallerDisplay, OperationNameValue, ResourceGroup\n| order by Failures desc, LatestFailure desc\n| take 20'
+            query: 'AzureActivity\n| where TimeGenerated > ago(3d)\n| where ActivityStatusValue == "Failed"\n| where OperationNameValue has_any ("Delete", "Write", "Policy", "RoleAssignment", "Security", "Administration")\n| extend CallerDisplay = coalesce(Caller, CallerIpAddress, "Unknown")\n| summarize Failures = count(), LatestFailure = max(TimeGenerated), AffectedResources = dcount(ResourceId) by CallerDisplay, OperationNameValue, ResourceGroup\n| order by Failures desc, LatestFailure desc\n| take 20'
             size: 0
             title: '重要操作の失敗イベント (過去3日)'
             timeContext: {
@@ -119,7 +119,7 @@ resource securityWorkbook 'Microsoft.Insights/workbooks@2022-04-01' = {
           type: 3
           content: {
             version: 'KqlItem/1.0'
-            query: 'AzureActivity\n| where TimeGenerated > ago(7d)\n| where CategoryValue in ("Administrative", "Security", "Policy")\n| extend CallerDisplay = coalesce(Caller, CallerUserDisplayName, CallerIpAddress, "Unknown")\n| summarize Operations = count(), DistinctOperations = dcount(OperationNameValue), DistinctResources = dcount(ResourceId) by CallerDisplay\n| order by Operations desc\n| take 10'
+            query: 'AzureActivity\n| where TimeGenerated > ago(7d)\n| where CategoryValue in ("Administrative", "Security", "Policy")\n| extend CallerDisplay = coalesce(Caller, CallerIpAddress, "Unknown")\n| summarize Operations = count(), DistinctOperations = dcount(OperationNameValue), DistinctResources = dcount(ResourceId) by CallerDisplay\n| order by Operations desc\n| take 10'
             size: 0
             title: 'リソース操作数上位ユーザー (過去7日)'
             timeContext: {
@@ -225,7 +225,7 @@ resource securityWorkbook 'Microsoft.Insights/workbooks@2022-04-01' = {
           type: 3
           content: {
             version: 'KqlItem/1.0'
-            query: 'SecurityAlert\n| where TimeGenerated > ago(7d)\n| summarize Count = count() by AlertName, AlertSeverity, ProductName\n| order by Count desc'
+            query: 'union isfuzzy=true\n(SecurityAlert\n| where TimeGenerated > ago(7d)\n| summarize Count = count() by AlertName, AlertSeverity, ProductName\n| order by Count desc),\n(print Message = "Defender for Cloud データ収集中...", AlertName = "", AlertSeverity = "", ProductName = "", Count = 0 | where Count > 0)'
             size: 0
             title: '過去7日間の Defender アラート'
             timeContext: {
@@ -272,7 +272,7 @@ resource securityWorkbook 'Microsoft.Insights/workbooks@2022-04-01' = {
           type: 3
           content: {
             version: 'KqlItem/1.0'
-            query: 'SecurityAlert\n| where TimeGenerated > ago(7d)\n| summarize Alerts = count(), HighSeverity = countif(AlertSeverity == "High") by ResourceGroup\n| order by Alerts desc\n| take 10'
+            query: 'union isfuzzy=true\n(SecurityAlert\n| where TimeGenerated > ago(7d)\n| summarize Alerts = count(), HighSeverity = countif(AlertSeverity == "High") by ResourceGroup\n| order by Alerts desc\n| take 10),\n(print Message = "Defender for Cloud データ収集中...", ResourceGroup = "", Alerts = 0, HighSeverity = 0 | where Alerts > 0)'
             size: 0
             title: 'Defender アラート密度 (リソースグループ別)'
             timeContext: {
@@ -299,7 +299,7 @@ resource securityWorkbook 'Microsoft.Insights/workbooks@2022-04-01' = {
           type: 3
           content: {
             version: 'KqlItem/1.0'
-            query: 'SecurityRecommendation\n| where TimeGenerated > ago(1d)\n| summarize arg_max(TimeGenerated, *) by RecommendationName\n| summarize Count = count() by RecommendationSeverity\n| order by Count desc'
+            query: 'union isfuzzy=true\n(SecurityRecommendation\n| where TimeGenerated > ago(1d)\n| summarize arg_max(TimeGenerated, *) by RecommendationName\n| summarize Count = count() by RecommendationSeverity\n| order by Count desc),\n(print Message = "Defender for Cloud データ収集中...", RecommendationSeverity = "", Count = 0 | where Count > 0)'
             size: 0
             title: 'セキュリティ推奨事項 (重要度別)'
             timeContext: {
