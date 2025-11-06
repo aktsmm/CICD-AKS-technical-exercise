@@ -1,8 +1,8 @@
-# Issue: Deploymentマニフェストのイメージ名動的化
+# Issue: Deployment マニフェストのイメージ名動的化
 
 ## 📋 概要
 
-**問題**: Kubernetesの`deployment.yaml`でコンテナイメージ名が`guestbook`とハードコードされていたため、イメージ名を変更する際にマニフェストファイルの修正が必要だった。
+**問題**: Kubernetes の`deployment.yaml`でコンテナイメージ名が`guestbook`とハードコードされていたため、イメージ名を変更する際にマニフェストファイルの修正が必要だった。
 
 **解決**: GitHub Variables `IMAGE_NAME`を使用して、ワークフロー実行時に動的にイメージ名を置換するように改善。
 
@@ -24,7 +24,7 @@ containers:
 
 - イメージ名`guestbook`がハードコード
 - イメージ名変更時にマニフェストファイルの修正が必要
-- GitHub Variablesで`IMAGE_NAME`を定義しているのに活用されていない
+- GitHub Variables で`IMAGE_NAME`を定義しているのに活用されていない
 - 環境ごとに異なるイメージ名を使う場合の柔軟性が低い
 
 ### ワークフローの処理
@@ -46,7 +46,7 @@ containers:
 
 ## ✅ 解決策
 
-### 1. Deploymentマニフェストの修正
+### 1. Deployment マニフェストの修正
 
 **ファイル**: `app/k8s/deployment.yaml`
 
@@ -76,7 +76,7 @@ containers:
     sed -i "s|<IMAGE_TAG>|${IMAGE_TAG}|g" rendered/deployment.yaml
 ```
 
-### 3. GitHub Variables設定
+### 3. GitHub Variables 設定
 
 既に設定済み:
 
@@ -97,19 +97,22 @@ gh variable list
 ### メリット
 
 1. **保守性向上**
-   - イメージ名変更時はGitHub Variablesの`IMAGE_NAME`のみ更新
+
+   - イメージ名変更時は GitHub Variables の`IMAGE_NAME`のみ更新
    - マニフェストファイルの修正不要
 
 2. **柔軟性向上**
+
    - 環境ごとに異なるイメージ名を簡単に設定可能
    - 複数の環境(dev/staging/prod)への展開が容易
 
 3. **設定の一元管理**
-   - イメージ名はGitHub Variablesで一元管理
+
+   - イメージ名は GitHub Variables で一元管理
    - コードとインフラ設定の分離
 
 4. **一貫性**
-   - ACR名、イメージ名、イメージタグすべてが動的置換
+   - ACR 名、イメージ名、イメージタグすべてが動的置換
    - プレースホルダーパターンの統一
 
 ### 動作フロー
@@ -138,7 +141,7 @@ gh variable list
 
 ## 📦 関連ファイル
 
-- `app/k8s/deployment.yaml` - Kubernetesデプロイメントマニフェスト
+- `app/k8s/deployment.yaml` - Kubernetes デプロイメントマニフェスト
 - `.github/workflows/02-1.app-deploy.yml` - アプリケーションデプロイワークフロー
 - GitHub Variables: `IMAGE_NAME` (値: `bbs-app`)
 
@@ -148,7 +151,7 @@ gh variable list
 
 ### イメージ名の変更手順
 
-1. GitHub Variablesの更新:
+1. GitHub Variables の更新:
 
    ```bash
    gh variable set IMAGE_NAME --body "新しいイメージ名"
@@ -156,8 +159,8 @@ gh variable list
 
 2. ワークフローを実行:
 
-   - 自動: `app/` ディレクトリ配下を変更してpush
-   - 手動: GitHub Actions画面から「2-1. Build and Deploy Application」を実行
+   - 自動: `app/` ディレクトリ配下を変更して push
+   - 手動: GitHub Actions 画面から「2-1. Build and Deploy Application」を実行
 
 3. 確認:
 
@@ -178,17 +181,17 @@ gh variable set IMAGE_NAME --body "bbs-app"
 ## 📝 コミット情報
 
 - **コミットハッシュ**: `f64c353`
-- **コミット日時**: 2025年11月6日
+- **コミット日時**: 2025 年 11 月 6 日
 - **ブランチ**: `main`
 - **コミットメッセージ**:
 
   ```text
   feat: Deploymentマニフェストのイメージ名をGitHub変数から動的取得
-  
+
   変更内容:
   - app/k8s/deployment.yaml: イメージ名を <IMAGE_NAME> プレースホルダー化
   - .github/workflows/02-1.app-deploy.yml: sed コマンドで IMAGE_NAME 変数を置換
-  
+
   メリット:
   - イメージ名の変更時に GitHub Variables の IMAGE_NAME のみ更新すればよい
   - マニフェストファイルの修正が不要
@@ -219,7 +222,7 @@ kubectl get deployment guestbook-app -o yaml | grep image:
 # image: acr000xxxxx.azurecr.io/bbs-app:コミットSHA
 ```
 
-### 3. GitHub Variables確認
+### 3. GitHub Variables 確認
 
 ```bash
 gh variable list
@@ -232,7 +235,7 @@ gh variable list
 
 ### 1. 環境別イメージ名
 
-Environment機能を使用して環境ごとに異なるイメージ名を設定:
+Environment 機能を使用して環境ごとに異なるイメージ名を設定:
 
 ```yaml
 environment:
@@ -245,15 +248,15 @@ environment:
 セマンティックバージョニングへの対応:
 
 ```yaml
-IMAGE_TAG: v1.2.3  # GitHubリリースタグから取得
+IMAGE_TAG: v1.2.3 # GitHubリリースタグから取得
 ```
 
 ### 3. マルチリージョン展開
 
-リージョンごとに異なるACR + イメージ名の組み合わせ:
+リージョンごとに異なる ACR + イメージ名の組み合わせ:
 
 ```yaml
-IMAGE_NAME: ${REGION}-bbs-app  # asia-bbs-app, europe-bbs-app
+IMAGE_NAME: ${REGION}-bbs-app # asia-bbs-app, europe-bbs-app
 ```
 
 ---
@@ -267,6 +270,6 @@ IMAGE_NAME: ${REGION}-bbs-app  # asia-bbs-app, europe-bbs-app
 ---
 
 **ステータス**: ✅ 解決済み  
-**対応日**: 2025年11月6日  
+**対応日**: 2025 年 11 月 6 日  
 **影響範囲**: CI/CD パイプライン、Kubernetes デプロイメント  
 **優先度**: 中（保守性改善）
