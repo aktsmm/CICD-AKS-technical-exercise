@@ -35,19 +35,19 @@ cd CICD-AKS-technical-exercise
 1. リポジトリの **Settings** > **Secrets and variables** > **Actions** を開く
 1. スクリプト出力の値を使って以下の Secrets を作成:
 
-| Secret 名 | 値 |
-|-----------|---|
-| `AZURE_CREDENTIALS` | スクリプトが出力した JSON (クリップボードにコピー済み) |
-| `AZURE_SUBSCRIPTION_ID` | Azure サブスクリプション ID |
-| `MONGO_ADMIN_PASSWORD` | MongoDB 管理者パスワード(任意の強力なパスワード) |
+| Secret 名               | 値                                                     |
+| ----------------------- | ------------------------------------------------------ |
+| `AZURE_CREDENTIALS`     | スクリプトが出力した JSON (クリップボードにコピー済み) |
+| `AZURE_SUBSCRIPTION_ID` | Azure サブスクリプション ID                            |
+| `MONGO_ADMIN_PASSWORD`  | MongoDB 管理者パスワード(任意の強力なパスワード)       |
 
 1. **Variables** タブで以下を設定:
 
-| Variable 名 | 値 | 説明 |
-|-------------|---|------|
-| `AZURE_RESOURCE_GROUP` | `rg-bbs-cicd-aks` | リソースグループ名 |
-| `AZURE_LOCATION` | `japaneast` | デプロイ先リージョン |
-| `IMAGE_NAME` | `guestbook` | コンテナイメージ名 |
+| Variable 名            | 値                | 説明                 |
+| ---------------------- | ----------------- | -------------------- |
+| `AZURE_RESOURCE_GROUP` | `rg-bbs-cicd-aks` | リソースグループ名   |
+| `AZURE_LOCATION`       | `japaneast`       | デプロイ先リージョン |
+| `IMAGE_NAME`           | `guestbook`       | コンテナイメージ名   |
 
 ### 3. GitHub Actions 実行
 
