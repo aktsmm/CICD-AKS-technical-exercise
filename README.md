@@ -2,6 +2,63 @@
 
 > **注意:** このリポジトリは Wiz 社の面接課題用に作成されたデモ環境です。意図的な脆弱性を含むため、本番用途では必ず防御策を追加してください。
 
+## 🚀 クイックスタート (初回セットアップ)
+
+### 前提条件
+
+- Azure CLI がインストールされ、`az login` 済み
+- GitHub リポジトリへの管理者アクセス権限
+- PowerShell 7+ (Windows/macOS/Linux)
+
+### 1. Service Principal 作成と権限付与
+
+```powershell
+# リポジトリをクローン
+git clone https://github.com/aktsmm/CICD-AKS-technical-exercise.git
+cd CICD-AKS-technical-exercise
+
+# 自動セットアップスクリプトを実行
+.\Scripts\Setup-ServicePrincipal.ps1 -SubscriptionId "YOUR_SUBSCRIPTION_ID"
+```
+
+このスクリプトは以下を自動実行します:
+
+- ✅ Service Principal `sp-wizexercise-github` を作成
+- ✅ 必要な権限を付与:
+  - **Contributor**: リソース管理
+  - **Resource Policy Contributor**: Azure Policy 管理
+  - **User Access Administrator**: RBAC 自動管理(完全自動化に必要)
+- ✅ GitHub Secrets 用 JSON を生成してクリップボードにコピー
+
+### 2. GitHub Secrets 設定
+
+1. リポジトリの **Settings** > **Secrets and variables** > **Actions** を開く
+1. スクリプト出力の値を使って以下の Secrets を作成:
+
+| Secret 名 | 値 |
+|-----------|---|
+| `AZURE_CREDENTIALS` | スクリプトが出力した JSON (クリップボードにコピー済み) |
+| `AZURE_SUBSCRIPTION_ID` | Azure サブスクリプション ID |
+| `MONGO_ADMIN_PASSWORD` | MongoDB 管理者パスワード(任意の強力なパスワード) |
+
+1. **Variables** タブで以下を設定:
+
+| Variable 名 | 値 | 説明 |
+|-------------|---|------|
+| `AZURE_RESOURCE_GROUP` | `rg-bbs-cicd-aks` | リソースグループ名 |
+| `AZURE_LOCATION` | `japaneast` | デプロイ先リージョン |
+| `IMAGE_NAME` | `guestbook` | コンテナイメージ名 |
+
+### 3. GitHub Actions 実行
+
+1. **Actions** タブを開く
+2. **"1. Deploy Infrastructure"** ワークフローを手動実行 (Run workflow)
+3. 完了後、自動的に **"2-1. Build and Deploy Application"** と **"2-2. Deploy Azure Policy Guardrails"** が実行されます
+
+✅ **完了!** 以降はコミット時に自動デプロイされます。
+
+---
+
 ## 1. プロジェクト概要
 
 ### 目的と背景

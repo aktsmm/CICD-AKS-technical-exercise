@@ -66,10 +66,13 @@ jobs:
                   creds: ${{ secrets.AZURE_CREDENTIALS }}
 
             - name: Verify Required RBAC Permissions
+              id: check_permissions
               shell: bash
               run: |
                   echo "Checking if Service Principal has 'Resource Policy Contributor' role..."
                   SP_OBJECT_ID=$(az ad sp list --filter "appId eq '$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientId)'" --query '[0].id' -o tsv)
+
+                  echo "SP_OBJECT_ID=$SP_OBJECT_ID" >> $GITHUB_OUTPUT
 
                   ROLE_ASSIGNED=$(az role assignment list \
                     --assignee-object-id "$SP_OBJECT_ID" \
@@ -79,16 +82,38 @@ jobs:
 
                   if [ -z "$ROLE_ASSIGNED" ]; then
                     echo "❌ WARNING: Service Principal lacks 'Resource Policy Contributor' role!"
-                    echo "Run this command locally to fix:"
-                    echo "  az role assignment create \\"
-                    echo "    --assignee-object-id $SP_OBJECT_ID \\"
-                    echo "    --assignee-principal-type ServicePrincipal \\"
-                    echo "    --role 'Resource Policy Contributor' \\"
-                    echo "    --scope '/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}'"
-                    exit 0  # Continue anyway to show the actual error
+                    echo "has_permission=false" >> $GITHUB_OUTPUT
+                    
+                    echo "::warning::Service Principal (Object ID: $SP_OBJECT_ID) lacks 'Resource Policy Contributor' role."
+                    echo "::warning::Attempting automatic role assignment..."
+                    
+                    # Try to assign role (may fail if current context lacks User Access Administrator)
+                    if az role assignment create \
+                      --assignee-object-id "$SP_OBJECT_ID" \
+                      --assignee-principal-type ServicePrincipal \
+                      --role "Resource Policy Contributor" \
+                      --scope "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}" 2>/dev/null; then
+                      echo "✅ Successfully assigned 'Resource Policy Contributor' role"
+                      echo "has_permission=true" >> $GITHUB_OUTPUT
+                    else
+                      echo "::error::Failed to auto-assign role. Run this command locally:"
+                      echo "::error::  az role assignment create \\"
+                      echo "::error::    --assignee-object-id $SP_OBJECT_ID \\"
+                      echo "::error::    --assignee-principal-type ServicePrincipal \\"
+                      echo "::error::    --role 'Resource Policy Contributor' \\"
+                      echo "::error::    --scope '/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}'"
+                      echo "has_permission=false" >> $GITHUB_OUTPUT
+                    fi
                   else
                     echo "✅ Service Principal has required permissions"
+                    echo "has_permission=true" >> $GITHUB_OUTPUT
                   fi
+
+            - name: Wait for RBAC propagation
+              if: steps.check_permissions.outputs.has_permission == 'true'
+              run: |
+                  echo "Waiting 30 seconds for RBAC changes to propagate..."
+                  sleep 30
 
             - name: Publish Custom MCSB Policy Set
               shell: pwsh
@@ -139,12 +164,45 @@ jobs:
                       $cliArgs += @('--definition-groups', "@$groupsFile")
                   }
 
-                  $createResult = az policy set-definition create @cliArgs
-                  if ($LASTEXITCODE -ne 0) {
-                      Write-Host 'Create failed; attempting to update existing definition.'
-                      $updateResult = az policy set-definition update @cliArgs
-                      if ($LASTEXITCODE -ne 0) {
-                          throw 'Failed to publish custom MCSB policy set.'
+                  # Retry logic for RBAC propagation delays
+                  $maxAttempts = 3
+                  $attempt = 1
+                  $success = $false
+
+                  while ($attempt -le $maxAttempts -and -not $success) {
+                      Write-Host "Attempt $attempt/$maxAttempts: Publishing custom MCSB policy set..."
+                      
+                      $createResult = az policy set-definition create @cliArgs 2>&1
+                      if ($LASTEXITCODE -eq 0) {
+                          Write-Host "✅ Policy set definition created successfully"
+                          $success = $true
+                      } elseif ($createResult -match 'AuthorizationFailed') {
+                          if ($attempt -lt $maxAttempts) {
+                              Write-Host "⚠️ Authorization failed (RBAC may still be propagating). Waiting 30 seconds before retry..."
+                              Start-Sleep -Seconds 30
+                              $attempt++
+                          } else {
+                              Write-Host "Create failed; attempting to update existing definition."
+                              $updateResult = az policy set-definition update @cliArgs 2>&1
+                              if ($LASTEXITCODE -eq 0) {
+                                  Write-Host "✅ Policy set definition updated successfully"
+                                  $success = $true
+                              } else {
+                                  Write-Host "::error::Failed to publish custom MCSB policy set."
+                                  Write-Host "::error::Error details: $updateResult"
+                                  Write-Host "::error::Ensure Service Principal has 'Resource Policy Contributor' role assigned."
+                                  throw 'Failed to publish custom MCSB policy set. Check workflow logs for details.'
+                              }
+                          }
+                      } else {
+                          Write-Host "Create failed; attempting to update existing definition."
+                          $updateResult = az policy set-definition update @cliArgs 2>&1
+                          if ($LASTEXITCODE -eq 0) {
+                              Write-Host "✅ Policy set definition updated successfully"
+                              $success = $true
+                          } else {
+                              throw 'Failed to publish custom MCSB policy set.'
+                          }
                       }
                   }
 
