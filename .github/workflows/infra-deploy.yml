@@ -158,6 +158,63 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Ensure Required RBAC Permissions for Deployment
+        id: check_deployment_permissions
+        shell: bash
+        run: |
+          echo "Checking Service Principal permissions for infrastructure deployment..."
+
+          SP_OBJECT_ID=$(az ad sp list --filter "appId eq '$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientId)'" --query '[0].id' -o tsv)
+          echo "SP_OBJECT_ID=$SP_OBJECT_ID" >> $GITHUB_OUTPUT
+
+          # Required roles for infrastructure deployment
+          REQUIRED_ROLES=("Contributor" "Resource Policy Contributor" "User Access Administrator")
+          MISSING_ROLES=()
+
+          for ROLE in "${REQUIRED_ROLES[@]}"; do
+            ROLE_ASSIGNED=$(az role assignment list \
+              --assignee-object-id "$SP_OBJECT_ID" \
+              --role "$ROLE" \
+              --scope "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}" \
+              --query '[].roleDefinitionName' -o tsv)
+            
+            if [ -z "$ROLE_ASSIGNED" ]; then
+              echo "::warning::Missing role: $ROLE"
+              MISSING_ROLES+=("$ROLE")
+            else
+              echo "✅ Role assigned: $ROLE"
+            fi
+          done
+
+          # Attempt to assign missing roles
+          if [ ${#MISSING_ROLES[@]} -gt 0 ]; then
+            echo "::warning::Attempting to assign missing roles..."
+            
+            for ROLE in "${MISSING_ROLES[@]}"; do
+              echo "Assigning role: $ROLE..."
+              
+              if az role assignment create \
+                --assignee-object-id "$SP_OBJECT_ID" \
+                --assignee-principal-type ServicePrincipal \
+                --role "$ROLE" \
+                --scope "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}" 2>/dev/null; then
+                echo "✅ Successfully assigned: $ROLE"
+              else
+                echo "::error::Failed to assign role: $ROLE"
+                echo "::error::Run this command locally:"
+                echo "::error::  az role assignment create \\"
+                echo "::error::    --assignee-object-id $SP_OBJECT_ID \\"
+                echo "::error::    --assignee-principal-type ServicePrincipal \\"
+                echo "::error::    --role \"$ROLE\" \\"
+                echo "::error::    --scope '/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}'"
+              fi
+            done
+            
+            # Wait for RBAC propagation
+            echo "Waiting 30 seconds for RBAC changes to propagate..."
+            sleep 30
+          fi
+
       - name: Resolve Existing Mongo Role Assignments
         id: resolve_roles
         env:
@@ -215,21 +272,49 @@ jobs:
           echo "EXISTING_VM_ROLE_ASSIGNMENT=$vm_contributor_assignment" >> "$GITHUB_ENV"
 
       - name: Preview Changes with What-If
+        shell: bash
         run: |
-          az deployment sub what-if \
-            --name infra-whatif-${{ github.run_number }} \
-            --location ${{ env.LOCATION }} \
-            --template-file ./infra/main.bicep \
-            --parameters \
-              @infra/parameters/main-dev.parameters.json \
-              resourceGroupName=${{ env.RESOURCE_GROUP }} \
-              location=${{ env.LOCATION }} \
-              mongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }} \
-              automationPrincipalObjectId=${{ vars.AZURE_GITHUB_PRINCIPAL_ID }} \
-              grantAutomationPrincipalOwner=${{ env.GRANT_OWNER_PARAMETER }} \
-              existingStorageRoleAssignmentName=${{ env.EXISTING_STORAGE_ROLE_ASSIGNMENT }} \
-              existingVmContributorRoleAssignmentName=${{ env.EXISTING_VM_ROLE_ASSIGNMENT }} \
-            --result-format ResourceIdOnly
+          MAX_ATTEMPTS=3
+          ATTEMPT=1
+          SUCCESS=false
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ] && [ "$SUCCESS" = "false" ]; do
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Running What-If analysis..."
+            
+            if az deployment sub what-if \
+              --name infra-whatif-${{ github.run_number }} \
+              --location ${{ env.LOCATION }} \
+              --template-file ./infra/main.bicep \
+              --parameters \
+                @infra/parameters/main-dev.parameters.json \
+                resourceGroupName=${{ env.RESOURCE_GROUP }} \
+                location=${{ env.LOCATION }} \
+                mongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }} \
+                automationPrincipalObjectId=${{ vars.AZURE_GITHUB_PRINCIPAL_ID }} \
+                grantAutomationPrincipalOwner=${{ env.GRANT_OWNER_PARAMETER }} \
+                existingStorageRoleAssignmentName=${{ env.EXISTING_STORAGE_ROLE_ASSIGNMENT }} \
+                existingVmContributorRoleAssignmentName=${{ env.EXISTING_VM_ROLE_ASSIGNMENT }} \
+              --result-format ResourceIdOnly; then
+              echo "✅ What-If analysis completed successfully"
+              SUCCESS=true
+            else
+              EXIT_CODE=$?
+              echo "⚠️ What-If analysis failed with exit code: $EXIT_CODE"
+              
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                echo "RBAC permissions may still be propagating. Waiting 30 seconds before retry..."
+                sleep 30
+                ATTEMPT=$((ATTEMPT + 1))
+              else
+                echo "::error::What-If analysis failed after $MAX_ATTEMPTS attempts"
+                echo "::error::Ensure Service Principal has required permissions:"
+                echo "::error::  - Contributor"
+                echo "::error::  - Resource Policy Contributor"
+                echo "::error::  - User Access Administrator"
+                exit 1
+              fi
+            fi
+          done
 
       - name: Deploy Bicep
         uses: azure/arm-deploy@v1
