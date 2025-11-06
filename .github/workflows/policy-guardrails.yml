@@ -170,7 +170,7 @@ jobs:
                   $success = $false
 
                   while ($attempt -le $maxAttempts -and -not $success) {
-                      Write-Host "Attempt $attempt/$maxAttempts: Publishing custom MCSB policy set..."
+                      Write-Host "Attempt $attempt of ${maxAttempts}: Publishing custom MCSB policy set..."
                       
                       $createResult = az policy set-definition create @cliArgs 2>&1
                       if ($LASTEXITCODE -eq 0) {
