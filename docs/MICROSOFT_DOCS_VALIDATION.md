@@ -97,7 +97,7 @@ addonProfiles: {
 
 #### 2.1 Bicep デプロイワークフロー
 
-**該当ファイル**: `.github/workflows/infra-deploy.yml`
+**該当ファイル**: `.github/workflows/01.infra-deploy.yml`
 
 ```yaml
 - name: Login to Azure
@@ -122,7 +122,7 @@ addonProfiles: {
 
 #### 2.2 セキュリティスキャン統合
 
-**該当ファイル**: `.github/workflows/infra-deploy.yml`, `.github/workflows/app-deploy.yml`
+**該当ファイル**: `.github/workflows/01.infra-deploy.yml`, `.github/workflows/02-1.app-deploy.yml`
 
 ```yaml
 # IaC Security Scanning
@@ -186,7 +186,7 @@ addonProfiles: {
 
 #### 3.1 ACR ログインとイメージ Push
 
-**該当ファイル**: `.github/workflows/app-deploy.yml`
+**該当ファイル**: `.github/workflows/02-1.app-deploy.yml`
 
 ```yaml
 - name: Login to ACR
@@ -665,7 +665,7 @@ az ad app federated-credential create \
 #### 改善 2: Bicep what-if 分析の追加
 
 ```yaml
-# .github/workflows/infra-deploy.yml に追加
+# .github/workflows/01.infra-deploy.yml に追加
 - name: What-If Analysis
   uses: azure/arm-deploy@v1
   with:

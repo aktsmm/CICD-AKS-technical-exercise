@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - "app/**"
-      - ".github/workflows/app-deploy.yml"
+      - ".github/workflows/02-1.app-deploy.yml"
   workflow_dispatch:
   # Infrastructure完了後に自動実行
   workflow_run:

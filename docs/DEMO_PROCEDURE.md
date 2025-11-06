@@ -601,7 +601,7 @@ storage.bicep     d:\...\infra\modules\storage.bicep
 **GitHub Actions ワークフロー確認**:
 
 ```powershell
-cat .github/workflows/infra-deploy.yml | Select-String -Pattern "name:|uses:|run:" | Select-Object -First 20
+cat .github/workflows/01.infra-deploy.yml | Select-String -Pattern "name:|uses:|run:" | Select-Object -First 20
 ```
 
 **期待される出力**:
@@ -616,7 +616,7 @@ run: az deployment sub create ...
 **デプロイ履歴確認**:
 
 ```powershell
-Start-Process "https://github.com/aktsmm/CICD-AKS-technical-exercise/actions/workflows/infra-deploy.yml"
+Start-Process "https://github.com/aktsmm/CICD-AKS-technical-exercise/actions/workflows/01.infra-deploy.yml"
 ```
 
 **説明**: Bicep による IaC と、GitHub Actions による自動デプロイを実装 ✅
@@ -626,7 +626,7 @@ Start-Process "https://github.com/aktsmm/CICD-AKS-technical-exercise/actions/wor
 **GitHub Actions ワークフロー確認**:
 
 ```powershell
-cat .github/workflows/app-deploy.yml | Select-String -Pattern "name:|uses:|run:" | Select-Object -First 25
+cat .github/workflows/02-1.app-deploy.yml | Select-String -Pattern "name:|uses:|run:" | Select-Object -First 25
 ```
 
 **期待される出力**:
@@ -671,7 +671,7 @@ Tag                                       CreatedTime
 **Trivy スキャン設定確認**:
 
 ```powershell
-cat .github/workflows/app-deploy.yml | Select-String -Pattern "trivy" -Context 2
+cat .github/workflows/02-1.app-deploy.yml | Select-String -Pattern "trivy" -Context 2
 ```
 
 **現状**:

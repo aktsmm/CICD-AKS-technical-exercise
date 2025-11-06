@@ -339,7 +339,7 @@ If you discover a security vulnerability in this project, please report it by:
 - ✅ Code Scanning (CodeQL)
 
 ### Disabled (intentionally)
-- ⚠️ Trivy Container Scanning (commented out in `.github/workflows/app-deploy.yml`)
+- ⚠️ Trivy Container Scanning (commented out in `.github/workflows/02-1.app-deploy.yml`)
 
 ## Responsible Disclosure
 
@@ -723,7 +723,7 @@ jobs:
 
 ```
 ⚠️ Azure Connection String detected
-   File: pipelines/infra-deploy.yml:15
+   File: pipelines/01.infra-deploy.yml:15
    Pattern: AccountKey=...
 
 ⚠️ MongoDB Password detected
@@ -731,7 +731,7 @@ jobs:
    Pattern: Plain text password
 
 ⚠️ GitHub Personal Access Token
-   File: .github/workflows/app-deploy.yml:25
+   File: .github/workflows/02-1.app-deploy.yml:25
    Pattern: ghp_...
 ```
 

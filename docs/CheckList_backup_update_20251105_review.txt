@@ -6,9 +6,9 @@
 ✅ OS は Ubuntu 20.04 LTS (infra/modules/vm-mongodb.bicep) で最新より 1 年以上古いバージョンを指定済み
 ✅ MongoDB 4.4 のインストールとバージョンログ出力を setup スクリプトで実装 (infra/scripts/install-mongodb.sh)
 ✅ SSH 22/TCP を任意 IP に開放する NSG を適用 (infra/modules/vm-mongodb.bicep)
-✅ VM のシステム割り当て ID に Contributor / Virtual Machine Contributor / Storage Blob Data Contributor を付与 (.github/workflows/infra-deploy.yml)
+✅ VM のシステム割り当て ID に Contributor / Virtual Machine Contributor / Storage Blob Data Contributor を付与 (.github/workflows/01.infra-deploy.yml)
 ✅ MongoDB 27017/TCP を 10.0.0.0/16 に制限 (infra/modules/vm-mongodb.bicep)
-✅ 認証有効化と Secret 化を実装 (infra/scripts/setup-mongodb-auth.sh, .github/workflows/app-deploy.yml)
+✅ 認証有効化と Secret 化を実装 (infra/scripts/setup-mongodb-auth.sh, .github/workflows/02-1.app-deploy.yml)
 
 6. バックアップと公開ストレージ
 ✅ mongodump ベースのバックアップスクリプトを生成 (infra/scripts/setup-backup.sh, /usr/local/bin/mongodb-backup.sh)
@@ -19,7 +19,7 @@
 
 7. AKS／アプリ構成
 ⚠️ ノードはプライベートサブネット (10.0.1.0/24) 配置だが API サーバーは公開のまま (infra/modules/aks.bicep enablePrivateCluster=false)
-✅ Mongo 接続文字列を Secret 経由で注入 (.github/workflows/app-deploy.yml で mongo-secret.yaml を生成)
+✅ Mongo 接続文字列を Secret 経由で注入 (.github/workflows/02-1.app-deploy.yml で mongo-secret.yaml を生成)
 ✅ wizexercise.txt を Docker ビルドに同梱 (app/Dockerfile, app/wizexercise.txt)
 ✅ default ServiceAccount に cluster-admin を付与 (app/k8s/rbac-vulnerable.yaml)
 ✅ Ingress + Public Load Balancer で外部公開 (app/k8s/ingress-nginx-controller.yaml, app/k8s/ingress.yaml)
@@ -27,18 +27,18 @@
 
 8. GitHub Actions (IaC)
 ✅ Bicep で IaC 構成を管理 (infra/**)
-✅ azure/arm-deploy で `az deployment sub create` をラップして自動デプロイ (.github/workflows/infra-deploy.yml)
-✅ デプロイ前に `az deployment sub what-if` を実行 (.github/workflows/infra-deploy.yml)
-✅ Checkov + Trivy Config でセキュリティスキャンを実行 (.github/workflows/infra-deploy.yml)
-✅ GitHub OIDC による azure/login を使用し Secrets を最小化 (.github/workflows/infra-deploy.yml, .github/workflows/app-deploy.yml)
+✅ azure/arm-deploy で `az deployment sub create` をラップして自動デプロイ (.github/workflows/01.infra-deploy.yml)
+✅ デプロイ前に `az deployment sub what-if` を実行 (.github/workflows/01.infra-deploy.yml)
+✅ Checkov + Trivy Config でセキュリティスキャンを実行 (.github/workflows/01.infra-deploy.yml)
+✅ GitHub OIDC による azure/login を使用し Secrets を最小化 (.github/workflows/01.infra-deploy.yml, .github/workflows/02-1.app-deploy.yml)
 
 9. GitHub Actions (アプリ)
-⚠️ Jest による単体テストは実行するが `npm run lint` を実行していない (.github/workflows/app-deploy.yml)
-✅ Docker イメージビルドと Trivy スキャンを実行 (.github/workflows/app-deploy.yml)
-✅ az acr login → docker push を自動化 (.github/workflows/app-deploy.yml)
-✅ AKS へ `az aks command invoke` + `kubectl apply` で自動更新 (.github/workflows/app-deploy.yml)
-⚠️ `kubectl rollout status` は実行するが 結果通知は Step Summary のみで PR/Teams 連携が未設定 (.github/workflows/app-deploy.yml)
-✅ GitHub Environment `aks-demo` を指定し承認フローを適用できる構成 (.github/workflows/app-deploy.yml)
+⚠️ Jest による単体テストは実行するが `npm run lint` を実行していない (.github/workflows/02-1.app-deploy.yml)
+✅ Docker イメージビルドと Trivy スキャンを実行 (.github/workflows/02-1.app-deploy.yml)
+✅ az acr login → docker push を自動化 (.github/workflows/02-1.app-deploy.yml)
+✅ AKS へ `az aks command invoke` + `kubectl apply` で自動更新 (.github/workflows/02-1.app-deploy.yml)
+⚠️ `kubectl rollout status` は実行するが 結果通知は Step Summary のみで PR/Teams 連携が未設定 (.github/workflows/02-1.app-deploy.yml)
+✅ GitHub Environment `aks-demo` を指定し承認フローを適用できる構成 (.github/workflows/02-1.app-deploy.yml)
 
 10. クラウドネイティブセキュリティ
 ✅ Azure Activity Log を Log Analytics Workspace へ送信 (infra/main.bicep diagnosticSettings)

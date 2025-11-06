@@ -145,7 +145,7 @@ MongoDB VM (10.0.2.0/24) ──► Azure Storage (バックアップ用 BLOB)
 
 - **Guestbook アプリ (AKS 上 Pod):** `app/app.js` の Express アプリが一覧表示と投稿処理を担当。`/health` で Liveness/Readiness Probe に応答します。
 - **MongoDB (Azure VM):** `infra/modules/vm-mongodb.bicep` と `infra/scripts/*.sh` がインストールと認証設定、バックアップを自動化します。
-- **Azure Container Registry:** `app-deploy.yml` の `build-push` ジョブが `acrname.azurecr.io/guestbook:<tag>` 形式でイメージを管理します。
+- **Azure Container Registry:** `02-1.app-deploy.yml` の `build-push` ジョブが `acrname.azurecr.io/guestbook:<tag>` 形式でイメージを管理します。
 - **監視 (Log Analytics + Workbook):** `infra/modules/workbook-security.bicep` が Defender アラートやアクティビティログを可視化するダッシュボードを展開します。
 
 ### データフローと依存関係
@@ -207,11 +207,11 @@ az group create `
 
 ### 7.4 GitHub Actions ワークフローの流れ
 
-1. `infra-deploy.yml`
+1. `01.infra-deploy.yml`
    - Checkov/Trivy で Bicep をスキャン (soft_fail=true)。
    - `az deployment sub what-if` で差分を確認し、`azure/arm-deploy` で `main.bicep` を展開します。
    - 成果物サマリに AKS 名称や Workbook URL を出力します。
-2. `app-deploy.yml`
+2. `02-1.app-deploy.yml`
    - Lint/Jest、CodeQL、Trivy を実行して品質と脆弱性を確認します。
    - ACR にイメージをプッシュし、`az aks command invoke` でマニフェストや Secret を適用します。
    - cert-manager を導入し、自己署名証明書で HTTPS を有効化します。

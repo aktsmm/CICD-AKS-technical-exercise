@@ -94,7 +94,7 @@ The following vulnerabilities are **intentionally implemented** as part of the W
 
 - **CVSS**: 7.3 High
 - **Status**: Known, intentional for demo
-- **Location**: [`.github/workflows/app-deploy.yml:45`](../.github/workflows/app-deploy.yml)
+- **Location**: [`.github/workflows/02-1.app-deploy.yml:45`](../.github/workflows/02-1.app-deploy.yml)
 - **Description**: Trivy vulnerability scanner commented out in pipeline
 - **Impact**: Vulnerable container images deployed to production
 - **Mitigation**: Uncomment Trivy action and fail build on HIGH/CRITICAL findings
@@ -104,7 +104,7 @@ The following vulnerabilities are **intentionally implemented** as part of the W
 
 - **CVSS**: 8.2 High
 - **Status**: Mitigated (GitHub Secrets)
-- **Location**: [`.github/workflows/infra-deploy.yml:20`](../.github/workflows/infra-deploy.yml)
+- **Location**: [`.github/workflows/01.infra-deploy.yml:20`](../.github/workflows/01.infra-deploy.yml)
 - **Description**: MongoDB password stored in GitHub Secrets (encrypted at rest)
 - **Impact**: Compromised GitHub account exposes secrets
 - **Mitigation**: Use Azure Key Vault with Managed Identity

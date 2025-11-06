@@ -26,8 +26,8 @@
 ```
 wiz-technical-exercise/
 ├── .github/workflows/      # GitHub Actions ワークフロー
-│   ├── infra-deploy.yml   # インフラデプロイ (Bicep)
-│   └── app-deploy.yml     # アプリデプロイ (Docker + Kubernetes)
+│   ├── 01.infra-deploy.yml   # インフラデプロイ (Bicep)
+│   └── 02-1.app-deploy.yml     # アプリデプロイ (Docker + Kubernetes)
 ├── app/                    # Node.js アプリケーション
 │   ├── app.js             # Express.js サーバー
 │   ├── Dockerfile         # コンテナイメージ定義
@@ -383,7 +383,7 @@ az acr create --resource-group rg-bbs-cicd-aks `
 ### GitHub Actions でデプロイ
 
 ```bash
-# 1. コードをプッシュ（infra-deploy.yml が自動実行）
+# 1. コードをプッシュ（01.infra-deploy.yml が自動実行）
 git push origin main
 
 # 2. インフラデプロイ完了後、ACR と AKS を統合

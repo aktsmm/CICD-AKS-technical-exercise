@@ -138,8 +138,8 @@ https://github.com/aktsmm/CICD-AKS-technical-exercise/security
 ```
 
 **参考資料**:
-- [.github/workflows/infra-deploy.yml L23-68](https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/infra-deploy.yml#L23-L68)
-- [.github/workflows/app-deploy.yml L58-123](https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/app-deploy.yml#L58-L123)
+- [.github/workflows/01.infra-deploy.yml L23-68](https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/01.infra-deploy.yml#L23-L68)
+- [.github/workflows/02-1.app-deploy.yml L58-123](https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/02-1.app-deploy.yml#L58-L123)
 
 ---
 
@@ -216,7 +216,7 @@ kubectl rollout undo deployment/guestbook-app --to-revision=2
 - Bicep デプロイは冪等性があるため、前のバージョンの main.bicep を再デプロイで復元
 
 **参考資料**:
-- [app-deploy.yml L124-145](https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/app-deploy.yml#L124-L145)
+- [02-1.app-deploy.yml L124-145](https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/02-1.app-deploy.yml#L124-L145)
 
 ---
 
@@ -255,7 +255,7 @@ describe('GET /health', () => {
 
 **参考資料**:
 - [app/__tests__/health.test.js](https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/app/__tests__/health.test.js)
-- [app-deploy.yml L35-52](https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/app-deploy.yml#L35-L52)
+- [02-1.app-deploy.yml L35-52](https://github.com/aktsmm/CICD-AKS-technical-exercise/blob/main/.github/workflows/02-1.app-deploy.yml#L35-L52)
 
 ---
 
@@ -530,7 +530,7 @@ Date: [Presentation Date]
   - aks.bicep, vm-mongodb.bicep, storage.bicep, networking.bicep
 
 ### CI/CD:
-- **GitHub Actions**: infra-deploy.yml
+- **GitHub Actions**: 01.infra-deploy.yml
   1. Checkov/Trivy スキャン
   2. az deployment sub what-if
   3. az deployment sub create
@@ -574,7 +574,7 @@ Date: [Presentation Date]
 - **Ingress**: HTTPS で外部公開
 
 ### CI/CD:
-- **GitHub Actions**: app-deploy.yml
+- **GitHub Actions**: 02-1.app-deploy.yml
   1. Jest テスト
   2. CodeQL スキャン
   3. Trivy イメージスキャン

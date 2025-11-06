@@ -107,7 +107,7 @@ az role assignment list \
 
 #### 実装内容
 
-`policy-guardrails.yml`に新しいステップを追加しました:
+`02-2.policy-guardrails.yml`に新しいステップを追加しました:
 
 - Azure Login の直後に**権限検証ステップ**を挿入
 - Resource Policy Contributor ロールが無い場合、コマンド例を表示

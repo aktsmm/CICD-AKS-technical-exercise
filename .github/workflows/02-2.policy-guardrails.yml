@@ -11,7 +11,7 @@ on:
         branches:
             - main
         paths:
-            - ".github/workflows/policy-guardrails.yml"
+            - ".github/workflows/02-2.policy-guardrails.yml"
 
 permissions:
     contents: read

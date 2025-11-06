@@ -24,7 +24,7 @@ GitHub リポジトリで初めて Code Scanning を使う場合、明示的に�
 
 ワークフローの `permissions` が正しく設定されているか確認。
 
-現在の設定（GitGuardian_secret-scan.yml）:
+現在の設定（02-3.GitGuardian_secret-scan.yml）:
 
 ```yaml
 permissions:

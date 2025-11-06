@@ -14,20 +14,20 @@
 
 #### 現在の設定値
 
-| スキャンツール    | 設定箇所                      | 設定値                                            | 動作                     |
-| ----------------- | ----------------------------- | ------------------------------------------------- | ------------------------ |
-| Checkov (IaC)     | `infra-deploy.yml`            | `soft_fail: true` + `continue-on-error: true`     | 検出があってもジョブ成功 |
-| Trivy (IaC)       | `infra-deploy.yml`            | `exit-code: 0` + `continue-on-error: true`        | 検出があってもジョブ成功 |
-| Trivy (Container) | `app-deploy.yml`              | `exit-code: 0` + `continue-on-error: true`        | 検出があってもジョブ成功 |
-| CodeQL            | `app-deploy.yml`              | `continue-on-error: true` (全ステップ)            | 検出があってもジョブ成功 |
-| GitGuardian       | `GitGuardian_secret-scan.yml` | `exit 0` (スクリプト) + `continue-on-error: true` | 検出があってもジョブ成功 |
+| スキャンツール    | 設定箇所                           | 設定値                                            | 動作                     |
+| ----------------- | ---------------------------------- | ------------------------------------------------- | ------------------------ |
+| Checkov (IaC)     | `01.infra-deploy.yml`              | `soft_fail: true` + `continue-on-error: true`     | 検出があってもジョブ成功 |
+| Trivy (IaC)       | `01.infra-deploy.yml`              | `exit-code: 0` + `continue-on-error: true`        | 検出があってもジョブ成功 |
+| Trivy (Container) | `02-1.app-deploy.yml`              | `exit-code: 0` + `continue-on-error: true`        | 検出があってもジョブ成功 |
+| CodeQL            | `02-1.app-deploy.yml`              | `continue-on-error: true` (全ステップ)            | 検出があってもジョブ成功 |
+| GitGuardian       | `02-3.GitGuardian_secret-scan.yml` | `exit 0` (スクリプト) + `continue-on-error: true` | 検出があってもジョブ成功 |
 
 > **統一ポリシー**: すべてのセキュリティスキャンで `continue-on-error: true` を設定し、検出や失敗があってもワークフローを継続します。
 
 #### 設定例
 
 ```yaml
-# infra-deploy.yml
+# 01.infra-deploy.yml
 - name: Run Checkov Scan
   uses: bridgecrewio/checkov-action@master
   with:
@@ -429,7 +429,7 @@ jobs:
 ### Fail させたい場合の変更箇所
 
 ```yaml
-# infra-deploy.yml
+# 01.infra-deploy.yml
 - name: Run Checkov Scan
   with:
     soft_fail: false # true → false に変更
@@ -438,7 +438,7 @@ jobs:
   with:
     exit-code: 1 # 0 → 1 に変更
 
-# app-deploy.yml
+# 02-1.app-deploy.yml
 - name: Run Trivy Vulnerability Scanner
   continue-on-error: false # true → false に変更
 ```
@@ -450,9 +450,9 @@ jobs:
 grep -r "soft_fail\|exit-code: 0\|continue-on-error" .github/workflows/
 
 # 期待される出力:
-# infra-deploy.yml:38:  soft_fail: true
-# infra-deploy.yml:55:  exit-code: 0
-# app-deploy.yml:102:  continue-on-error: true
+# 01.infra-deploy.yml:38:  soft_fail: true
+# 01.infra-deploy.yml:55:  exit-code: 0
+# 02-1.app-deploy.yml:102:  continue-on-error: true
 ```
 
 ---

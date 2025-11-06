@@ -46,13 +46,13 @@ az group show --name <RESOURCE_GROUP_NAME>
 
 ### リソース一覧
 
-| リソース名                | タイプ             | 用途                   | 状態       |
-| ------------------------- | ------------------ | ---------------------- | ---------- |
-| **aks-dev**               | AKS Cluster        | Kubernetes クラスター  | ✅ Running |
+| リソース名                 | タイプ             | 用途                   | 状態       |
+| -------------------------- | ------------------ | ---------------------- | ---------- |
+| **aks-dev**                | AKS Cluster        | Kubernetes クラスター  | ✅ Running |
 | **<ACR_NAME>**             | Container Registry | Docker イメージ管理    | ✅ Active  |
-| **<MONGODB_VM_NAME>**          | Virtual Machine    | MongoDB サーバー       | ✅ Running |
-| **vnetdev**               | Virtual Network    | ネットワーク基盤       | ✅ Active  |
-| **<LOG_ANALYTICS_NAME>**               | Log Analytics      | 監視・ログ収集         | ✅ Active  |
+| **<MONGODB_VM_NAME>**      | Virtual Machine    | MongoDB サーバー       | ✅ Running |
+| **vnetdev**                | Virtual Network    | ネットワーク基盤       | ✅ Active  |
+| **<LOG_ANALYTICS_NAME>**   | Log Analytics      | 監視・ログ収集         | ✅ Active  |
 | **<STORAGE_ACCOUNT_NAME>** | Storage Account    | バックアップストレージ | ✅ Active  |
 
 ### リソース構成図
@@ -134,8 +134,8 @@ External Access:
 
 ### サブネット構成
 
-| サブネット名 | アドレス範囲 | 用途       | 接続リソース              |
-| ------------ | ------------ | ---------- | ------------------------- |
+| サブネット名          | アドレス範囲 | 用途       | 接続リソース              |
+| --------------------- | ------------ | ---------- | ------------------------- |
 | **<SUBNET_AKS_NAME>** | 10.0.1.0/24  | AKS ノード | AKS クラスター (2 ノード) |
 | **<SUBNET_VM_NAME>**  | 10.0.2.0/24  | 仮想マシン | MongoDB VM                |
 
@@ -152,7 +152,7 @@ External Access:
 
 | 名前                         | IP アドレス  | 用途                 |
 | ---------------------------- | ------------ | -------------------- |
-| **<MONGODB_VM_NAME>-pip**         | 172.192.25.0 | MongoDB VM           |
+| **<MONGODB_VM_NAME>-pip**    | 172.192.25.0 | MongoDB VM           |
 | **ingress-nginx-controller** | 20.18.117.80 | Ingress LoadBalancer |
 
 ---
@@ -195,11 +195,11 @@ Node 2: aks-nodepool1-28174749-vmss000001
 
 #### Namespace: default
 
-| リソース       | 名前              | レプリカ  | イメージ                          | 状態       |
-| -------------- | ----------------- | --------- | --------------------------------- | ---------- |
+| リソース       | 名前              | レプリカ  | イメージ                           | 状態       |
+| -------------- | ----------------- | --------- | ---------------------------------- | ---------- |
 | **Deployment** | guestbook-app     | 2/2       | <ACR_NAME>.azurecr.io/guestbook:v4 | ✅ Running |
-| **Service**    | guestbook-service | ClusterIP | -                                 | ✅ Active  |
-| **Ingress**    | guestbook-ingress | nginx     | -                                 | ✅ Active  |
+| **Service**    | guestbook-service | ClusterIP | -                                  | ✅ Active  |
+| **Ingress**    | guestbook-ingress | nginx     | -                                  | ✅ Active  |
 
 #### Namespace: ingress-nginx
 
@@ -248,7 +248,7 @@ kubectl logs -l app=guestbook --tail=50
 
 | 項目                | 値                             |
 | ------------------- | ------------------------------ |
-| **VM 名**           | <MONGODB_VM_NAME>                   |
+| **VM 名**           | <MONGODB_VM_NAME>              |
 | **VM サイズ**       | Standard_B2s (2 vCPU, 4GB RAM) |
 | **OS**              | Ubuntu 20.04 LTS               |
 | **パブリック IP**   | 172.192.25.0                   |
@@ -309,8 +309,8 @@ mongo --host 10.0.2.4 --port 27017
 
 | 項目                      | 値                           |
 | ------------------------- | ---------------------------- |
-| **レジストリ名**          | <ACR_NAME>                    |
-| **Login Server**          | <ACR_NAME>.azurecr.io         |
+| **レジストリ名**          | <ACR_NAME>                   |
+| **Login Server**          | <ACR_NAME>.azurecr.io        |
 | **SKU**                   | Basic                        |
 | **管理者アカウント**      | 無効 (Managed Identity 使用) |
 | **Public Network Access** | 有効                         |
@@ -416,7 +416,7 @@ CMD ["npm", "start"]
 
 ### GitHub Actions ワークフロー
 
-#### 1. インフラデプロイ (`infra-deploy.yml`)
+#### 1. インフラデプロイ (`01.infra-deploy.yml`)
 
 **トリガー**:
 
@@ -443,7 +443,7 @@ CMD ["npm", "start"]
 - Storage Account
 - Log Analytics
 
-#### 2. アプリデプロイ (`app-deploy.yml`)
+#### 2. アプリデプロイ (`02-1.app-deploy.yml`)
 
 **トリガー**:
 

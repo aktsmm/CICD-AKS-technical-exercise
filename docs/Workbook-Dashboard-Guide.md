@@ -9,7 +9,7 @@ Log Analytics Workbook を使用したセキュリティ監視ダッシュボー
 
 ### ワークフロー統合
 
-`infra-deploy.yml` ワークフローが以下を自動実行します:
+`01.infra-deploy.yml` ワークフローが以下を自動実行します:
 
 1. **Bicep デプロイ**: `infra/modules/workbook-security.bicep` が Workbook リソースを作成
 2. **出力取得**: Workbook ID と Log Analytics Workspace ID を取得
@@ -20,7 +20,7 @@ Log Analytics Workbook を使用したセキュリティ監視ダッシュボー
 
 #### GitHub Actions から
 
-1. `infra-deploy.yml` ワークフローの実行完了後、**Summary** タブを確認
+1. `01.infra-deploy.yml` ワークフローの実行完了後、**Summary** タブを確認
 2. 🔗 **Security Dashboard にアクセス** リンクをクリック
 3. Azure Portal が開き、ダッシュボードが表示されます
 
