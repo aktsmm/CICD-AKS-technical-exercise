@@ -206,6 +206,23 @@ jobs:
           echo "✅ インフラを展開するリージョン: $location"
           echo "LOCATION=$location" >> "$GITHUB_ENV"
 
+      - name: Align Location with Existing Deployment (if rerun)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          deployment_name="infra-deployment-${{ github.run_number }}"
+          existing_location=$(az deployment sub show --name "$deployment_name" --query location -o tsv 2>/dev/null || true)
+
+          if [ -n "$existing_location" ] && [ "$existing_location" != "null" ]; then
+            if [ "$existing_location" != "${LOCATION}" ]; then
+              echo "♻️ 既存デプロイ $deployment_name のリージョン ${existing_location} を再利用します (要求: ${LOCATION})."
+              echo "LOCATION=$existing_location" >> "$GITHUB_ENV"
+            else
+              echo "✅ 既存デプロイと同一リージョン (${existing_location}) を使用します。"
+            fi
+          fi
+
       - name: Ensure Required RBAC Permissions for Deployment
         id: check_deployment_permissions
         shell: bash
