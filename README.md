@@ -292,3 +292,5 @@ kubectl get ingress guestbook-ingress
 - 脆弱な構成を 1 つずつ修正し、Checkov/Trivy の結果変化を比較して学習を深める。
 - Azure Policy を追加し、`policy-guardrails.bicep` をベースにガバナンス強化を行う。
 - GitHub Actions に手動承認ステップや環境保護ルールを追加し、実運用に近いパイプライン設計を検証する。
+
+フリーライセンス！
