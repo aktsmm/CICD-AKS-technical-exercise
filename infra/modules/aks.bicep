@@ -4,24 +4,61 @@ param location string
 @description('環境名')
 param environment string
 
-// ランダムな文字列を生成（リソースグループIDとロケーションのハッシュから6文字）
-var uniqueSuffix = uniqueString(resourceGroup().id, location)
-var acrName = 'acrwiz${environment}${substring(uniqueSuffix, 0, 6)}'
+@description('サブネットID')
+param subnetId string
 
-// Azure Container Registry
-resource acr 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
-  name: acrName
+@description('Log Analytics Workspace ID')
+param logAnalyticsWorkspaceId string
+
+var clusterName = 'aks-${environment}'
+
+// AKSクラスター
+resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
+  name: clusterName
   location: location
-  sku: {
-    name: 'Basic'
+  identity: {
+    type: 'SystemAssigned'
   }
   properties: {
-    adminUserEnabled: true  // 脆弱性: Admin user 有効化
-    publicNetworkAccess: 'Enabled'
-    anonymousPullEnabled: false
+    dnsPrefix: clusterName
+    // パブリック クラスターを想定して API Server を公開
+    apiServerAccessProfile: {
+      enablePrivateCluster: false
+    }
+    agentPoolProfiles: [
+      {
+        name: 'nodepool1'
+        count: 2
+        vmSize: 'Standard_B2s'
+        osType: 'Linux'
+        mode: 'System'
+        vnetSubnetID: subnetId
+      }
+    ]
+    networkProfile: {
+      networkPlugin: 'azure'
+      serviceCidr: '10.1.0.0/16'
+      dnsServiceIP: '10.1.0.10'
+      loadBalancerSku: 'standard'
+      // LoadBalancer を Public に設定して Ingress 経由の外部アクセスを許可
+      outboundType: 'loadBalancer'
+    }
+    // 監査ログ有効化
+    addonProfiles: {
+      omsagent: {
+        enabled: true
+        config: {
+          logAnalyticsWorkspaceResourceID: logAnalyticsWorkspaceId
+        }
+      }
+    }
+    // 脆弱性注意: RBACは有効だが、後でCluster Admin権限を不適切に付与
+    enableRBAC: true
   }
 }
 
-output acrName string = acr.name
-output acrLoginServer string = acr.properties.loginServer
-output acrId string = acr.id
+output clusterName string = aks.name
+// パブリッククラスターなので通常の FQDN を使用
+output clusterFqdn string = aks.properties.fqdn
+output kubeletIdentity string = aks.properties.identityProfile.kubeletidentity.objectId
+output clusterResourceId string = aks.id
