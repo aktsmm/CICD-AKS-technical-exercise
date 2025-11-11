@@ -14,24 +14,17 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   curl \
   ca-certificates
 
-# MongoDB 公式リポジトリの GPG キーを追加 (apt-key 非推奨のため keyring へ保存)
-mkdir -p /usr/share/keyrings
-curl -fsSL https://www.mongodb.org/static/pgp/server-4.4.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-org-4.4.gpg
+# MongoDB 公式リポジトリの GPG キーを追加
+curl -fsSL https://www.mongodb.org/static/pgp/server-4.4.asc | apt-key add -
 
 # MongoDB リポジトリを追加 (MongoDB 4.4 - 2020年リリース、要件を満たす古いバージョン)
-echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-org-4.4.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list
 
 # パッケージリストを更新
 apt-get update
 
-# MongoDB をインストール (4.4 系をバージョン固定で取得)
-MONGO_VERSION="4.4.29"
-DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  mongodb-org=${MONGO_VERSION} \
-  mongodb-org-server=${MONGO_VERSION} \
-  mongodb-org-shell=${MONGO_VERSION} \
-  mongodb-org-mongos=${MONGO_VERSION} \
-  mongodb-org-tools=${MONGO_VERSION} || {
+# MongoDB をインストール
+DEBIAN_FRONTEND=noninteractive apt-get install -y mongodb-org=4.4.* || {
   echo "ERROR: Failed to install mongodb-org package"
   exit 1
 }
